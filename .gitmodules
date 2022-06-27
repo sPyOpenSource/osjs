@@ -1,0 +1,3 @@
+[submodule "apps/Laserbox"]
+	path = apps/Laserbox
+	url = https://github.com/sPyOpenSource/laserbox.git

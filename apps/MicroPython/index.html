@@ -49,7 +49,7 @@
   <div style="display:inline-block; vertical-align:top;">
     <form>
       <input type="text" name="webrepl_url" id="url" value="ws://espressif.local:8266/" />
-      <input type="submit" id="button" value="Connect" onclick="button_click(); return false;" />
+      <input type="submit" id="button" value="Connect" onclick="button_click" />
     </form>
     <div id="term">
     </div>
@@ -61,13 +61,13 @@
       <strong>Send a file</strong>
       <input type="file" id="put-file-select" />
       <div id="put-file-list"></div>
-      <input type="button" value="Send to device" id="put-file-button" onclick="put_file(); return false;" />
+      <input type="button" value="Send to device" id="put-file-button" onclick="put_file" />
     </div>
 
     <div class="file-box">
       <strong>Get a file</strong>
       <input type="text" name="get_filename" id="get_filename" value="" size="13" />
-      <input type="button" value="Get from device" onclick="get_file(); return false;" />
+      <input type="button" value="Get from device" onclick="get_file" />
     </div>
 
     <div class="file-box" id="file-status"><span style="color:#707070">(file operation status)</span></div>

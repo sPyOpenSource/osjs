@@ -206,7 +206,7 @@ __webpack_require__.r(__webpack_exports__);
     }
   },
   ws: {
-    uri: 'ws://192.168.1.26:8090/'
+    uri: 'ws://localhost:8001'
   }
 });
 

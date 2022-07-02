@@ -1668,7 +1668,7 @@
                         grow: 1
                     },
                     //src: "http://192.168.1.15:8090"
-                    src: "/apps/RiscVAngel"
+                    src: "/apps/RiscV"
                 })])
             }), n);
             e.file && R(t, i, o, a, e.file), o.on("drop", (function(e, n) {

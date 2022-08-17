@@ -166,7 +166,8 @@ var register = function register(core, args, options, metadata) {
   let frame = document.createElement('iframe')
   frame.width = 800
   frame.height = 640
-  frame.src = "http://192.168.1.15:6080/vnc_auto.html?token=android"
+  //frame.src = "http://192.168.1.15:6080/vnc_auto.html?token=android"
+  frame.src = "/apps/MicroPython"
   divE.appendChild(frame)
   proc.createWindow({
     id: 'WelcomeWindow',

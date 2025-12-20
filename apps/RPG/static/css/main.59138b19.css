@@ -1,2 +1,26 @@
-body{margin:0;padding:0;font-family:sans-serif;background-color:#000}.tile{display:-ms-inline-flexbox;display:inline-flex;background-color:#42b842}.rock{background-image:url("/tiles/rock.png"),url("/rpg/tiles/rock.png"),url("/apps/RPG/tiles/rock.png")}.tree{background-image:url("/tiles/tree.png"),url("/rpg/tiles/tree.png"),url("/apps/RPG/tiles/tree.png")}.chest{background-image:url("/tiles/chest.png"),url("/rpg/tiles/chest.png"),url("/apps/RPG/tiles/chest.png")}
+body {
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+    background-color: #000
+}
+
+.tile {
+    display: -ms-inline-flexbox;
+    display: inline-flex;
+    background-color: #42b842
+}
+
+.rock {
+    background-image: url("/tiles/rock.png"), url("/rpg/tiles/rock.png"), url("/apps/RPG/tiles/rock.png")
+}
+
+.tree {
+    background-image: url("/tiles/tree.png"), url("/rpg/tiles/tree.png"), url("/apps/RPG/tiles/tree.png")
+}
+
+.chest {
+    background-image: url("/tiles/chest.png"), url("/rpg/tiles/chest.png"), url("/apps/RPG/tiles/chest.png")
+}
+
 /*# sourceMappingURL=main.59138b19.css.map*/

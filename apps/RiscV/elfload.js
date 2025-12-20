@@ -9,10 +9,10 @@ function loadElf(binfile, filename, filesList) {
     //document.getElementById("testresult").innerHTML = "Loading " + filename;
     var elf = {};
     var magic = ((binfile.charCodeAt(0) & 0xFF) << 24) | ((binfile.charCodeAt(1) & 0xFF) << 16) |
-                ((binfile.charCodeAt(2) & 0xFF) << 8) | (binfile.charCodeAt(3) & 0xFF);
+        ((binfile.charCodeAt(2) & 0xFF) << 8) | (binfile.charCodeAt(3) & 0xFF);
     if (magic === 0x7f454c46) {
         // everything is fine. proceed
-    } else { 
+    } else {
         throw new RISCVError("NOT AN ELF. ERR");
     }
 
@@ -67,15 +67,15 @@ function loadElf(binfile, filename, filesList) {
     var section_headers = [];
 
     for (var i = 0; i < elf["e_shnum"]; i++) {
-        var addr = elf["e_shoff"].getLowBits() + i*elf["e_shentsize"];
+        var addr = elf["e_shoff"].getLowBits() + i * elf["e_shentsize"];
         var section = {};
         section["name"] = bytes_to_int(binfile, addr, 4, end);
 
-        section["type"] = bytes_to_int(binfile, addr+4, 4, end);
-        section["flags"] = bytes_to_long(binfile, addr+8, 8, end);
-        section["addr"] = bytes_to_long(binfile, addr+16, 8, end);
-        section["offs"] = bytes_to_long(binfile, addr+24, 8, end);
-        section["size"] = bytes_to_long(binfile, addr+32, 8, end);
+        section["type"] = bytes_to_int(binfile, addr + 4, 4, end);
+        section["flags"] = bytes_to_long(binfile, addr + 8, 8, end);
+        section["addr"] = bytes_to_long(binfile, addr + 16, 8, end);
+        section["offs"] = bytes_to_long(binfile, addr + 24, 8, end);
+        section["size"] = bytes_to_long(binfile, addr + 32, 8, end);
         section_headers.push(section);
     }
 
@@ -84,12 +84,12 @@ function loadElf(binfile, filename, filesList) {
         // check for allocate flag (bit #1) and type != 8 (aka NOT NOBITS)
         if ((((section_headers[i]["flags"].getLowBits() >> 1) & 0x1) == 0x1) && (section_headers[i]["type"] != 8)) {
             for (var j = 0; j < section_headers[i]["size"].getLowBits(); j++) {
-                RISCV.memory[((section_headers[i]["addr"].getLowBits()&0x7FFFFFFF) + j) >> 2] |= (binfile.charCodeAt((section_headers[i]["offs"].getLowBits()|0)+j) & 0xFF) << ((j & 0x3) << 3);
+                RISCV.memory[((section_headers[i]["addr"].getLowBits() & 0x7FFFFFFF) + j) >> 2] |= (binfile.charCodeAt((section_headers[i]["offs"].getLowBits() | 0) + j) & 0xFF) << ((j & 0x3) << 3);
             }
         } else if ((((section_headers[i]["flags"].getLowBits() >> 1) & 0x1) == 0x1) && (section_headers[i]["type"] == 8)) {
             // for .bss, load in zeroes, since it's not actually stored in the elf
             for (var j = 0; j < section_headers[i]["size"].getLowBits(); j++) {
-                RISCV.memory[((section_headers[i]["addr"].getLowBits()&0x7FFFFFFF) + j) >> 2] = 0x0;
+                RISCV.memory[((section_headers[i]["addr"].getLowBits() & 0x7FFFFFFF) + j) >> 2] = 0x0;
             }
         }
     }
@@ -124,9 +124,9 @@ function loadElf(binfile, filename, filesList) {
 // numbytes must always be 8, keep it as an arg for consistency
 function bytes_to_long(input, addr, numbytes, end) {
     if (end == "b") {
-        return new Long(bytes_to_int(input, addr+4, 4, end), bytes_to_int(input, addr, 4, end));
+        return new Long(bytes_to_int(input, addr + 4, 4, end), bytes_to_int(input, addr, 4, end));
     } else if (end == "l") {
-        return new Long(bytes_to_int(input, addr, 4, end), bytes_to_int(input, addr+4, 4, end));
+        return new Long(bytes_to_int(input, addr, 4, end), bytes_to_int(input, addr + 4, 4, end));
     } else {
         throw new RISCVError("invalid endianness in bytes_to_long");
     }
@@ -137,46 +137,46 @@ function bytes_to_long(input, addr, numbytes, end) {
 function bytes_to_int(input, addr, numbytes, end) {
     var toArr = [];
     for (var x = 0; x < numbytes; x++) {
-        toArr.push(input.charCodeAt(addr+x) & 0xFF);
+        toArr.push(input.charCodeAt(addr + x) & 0xFF);
     }
     if (end === "l") {
         toArr = toArr.reverse();
     }
     var output = 0;
     for (var x = 0; x < numbytes; x++) {
-        output = output | (toArr[x] << (8*(numbytes-1-x)));
+        output = output | (toArr[x] << (8 * (numbytes - 1 - x)));
     }
     return output;
 }
 
 function chainedFileLoader(binFile, filename, filesList) {
-        // add binFile and filename to global array
-        RISCV.pname_fd[filename] = RISCV.next_fd;
-        RISCV.fd_pname[RISCV.next_fd] = filename;
-        RISCV.binaries[RISCV.next_fd] = binFile;
-        RISCV.next_fd += 1;
+    // add binFile and filename to global array
+    RISCV.pname_fd[filename] = RISCV.next_fd;
+    RISCV.fd_pname[RISCV.next_fd] = filename;
+    RISCV.binaries[RISCV.next_fd] = binFile;
+    RISCV.next_fd += 1;
 
-        if (filesList.length > 0) {
-            handle_file_continue(filesList);
-        } else {
-            // call elfload with vmlinux kernel to start boot
-            loadElf(RISCV.binaries[RISCV.pname_fd["vmlinux"]], "vmlinux", filesList);
-            // if cmdargs is empty and next fd is 5, assume fd 4 is user prog:
-            var arg = "";
-            if (arg === "" && RISCV.next_fd == 5) {
-                if (RISCV.pname_fd["vmlinux"] == 3) {
-                    cmdargs.value = RISCV.fd_pname[4] + "";
-                } else {
-                    cmdargs.value = RISCV.fd_pname[3] + "";
-                }
+    if (filesList.length > 0) {
+        handle_file_continue(filesList);
+    } else {
+        // call elfload with vmlinux kernel to start boot
+        loadElf(RISCV.binaries[RISCV.pname_fd["vmlinux"]], "vmlinux", filesList);
+        // if cmdargs is empty and next fd is 5, assume fd 4 is user prog:
+        var arg = "";
+        if (arg === "" && RISCV.next_fd == 5) {
+            if (RISCV.pname_fd["vmlinux"] == 3) {
+                cmdargs.value = RISCV.fd_pname[4] + "";
+            } else {
+                cmdargs.value = RISCV.fd_pname[3] + "";
             }
-
-            cont = true;
-            // now, run!
-            while (cont) {
-                cont = elfRunNextInst();
-            }
-            return;
         }
-        //$('#WriteCRun').removeAttr('disabled');
+
+        cont = true;
+        // now, run!
+        while (cont) {
+            cont = elfRunNextInst();
+        }
+        return;
+    }
+    //$('#WriteCRun').removeAttr('disabled');
 }

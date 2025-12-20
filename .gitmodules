@@ -1,3 +1,6 @@
 [submodule "apps/Laserbox"]
 	path = apps/Laserbox
 	url = https://github.com/sPyOpenSource/laserbox.git
+[submodule "apps/Website"]
+	path = apps/Website
+	url = https://github.com/sPyOpenSource/personal-website.git

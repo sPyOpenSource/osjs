@@ -13,17 +13,17 @@ function elfRunNextInst() {
     // fix MIPS count at boot and return from idle
     var lastTimeSlot = (new Date()).getTime();
 
-    for (var i = 1; ; i++)  {
+    for (var i = 1; ; i++) {
         if (!(i & 0x1FFFFF)) {
             var ctime = (new Date()).getTime();
-            postMessage({"type": "m", "d": 2097.152 / (ctime - lastTimeSlot)});
+            postMessage({ "type": "m", "d": 2097.152 / (ctime - lastTimeSlot) });
             lastTimeSlot = ctime;
         }
 
         // handle special cases @ cpu_idle
-        if (RISCV.pc == (0x80152b58|0)) {
+        if (RISCV.pc == (0x80152b58 | 0)) {
             if (readTest.length) {
-                if (readTest[0]  == 'THIS_IS_ESC') {
+                if (readTest[0] == 'THIS_IS_ESC') {
                     readTest[0] = String.fromCharCode(0x1b);
                     lastCharWritten = 1;
                 }
@@ -51,7 +51,7 @@ function elfRunNextInst() {
 
         // set last PC value for comparison
         //RISCV.oldpc = RISCV.pc;
-        
+
         instVal = RISCV.load_inst_from_mem(RISCV.pc);
         if (!RISCV.excpTrigg) {
             runInstruction(instVal); // , RISCV);
@@ -69,7 +69,7 @@ function elfRunNextInst() {
                 RISCV.excpTrigg = undefined;
                 handle_trap(e);
             }
-        } 
+        }
 
 
         // handle interrupts here. DO NOT put this in inst.js (exceptions will break interrupts)
@@ -78,12 +78,13 @@ function elfRunNextInst() {
                 // interrupts are enabled
                 if (((RISCV.priv_reg[PCR["CSR_STATUS"]["num"]] >>> 16) & 0x80) != 0x0) {
                     // timer interrupt is enabled
-                        // set IP bit for timer interrupt
-                        RISCV.priv_reg[PCR["CSR_STATUS"]["num"]] = RISCV.priv_reg[PCR["CSR_STATUS"]["num"]] | 0x80000000;
-                        var InterruptException = new RISCVTrap("Timer interrupt");
-                        handle_trap(InterruptException);
+                    // set IP bit for timer interrupt
+                    RISCV.priv_reg[PCR["CSR_STATUS"]["num"]] = RISCV.priv_reg[PCR["CSR_STATUS"]["num"]] | 0x80000000;
+                    var InterruptException = new RISCVTrap("Timer interrupt");
+                    handle_trap(InterruptException);
                 }
             }
         }
     }
 }
+ß

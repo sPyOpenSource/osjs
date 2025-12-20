@@ -57,8 +57,7 @@
             }
             function connect_onclick(){
                 if(ws == null){
-                    var ws_host_addr = "s55969da3.adsl.online.nl"
-                    ws_host_addr = "beaglebone.local:1880/OS"
+                    var ws_host_addr = "beaglebone.local:1880/OS"
                     
                     ws = new WebSocket('ws://' + ws_host_addr)
                     document.getElementById('ws_state').innerHTML = 'CONNECTING'

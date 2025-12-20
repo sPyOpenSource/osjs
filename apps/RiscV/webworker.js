@@ -8,8 +8,8 @@ importScripts("lib/javascript-biginteger/biginteger.js");
 Long = goog.math.Long;
 
 importScripts("devices/character.js", "lib/binfile/binfile.js",
-        "mappings.js", "utils.js", "mmu.js", "trap.js", "elfload.js", "inst.js",
-        "cpu.js", "elfrun.js");
+    "mappings.js", "utils.js", "mmu.js", "trap.js", "elfload.js", "inst.js",
+    "cpu.js", "elfrun.js");
 
 //onmessage = function(oEvent) {
 //            // handle term event
@@ -38,7 +38,7 @@ self.addEventListener("message", function (oEvent) {
 function runCodeC(userIn) {
     //compilestat = document.getElementById("compilestatus");
     //compilestat.innerHTML = "Compile Status: Compiling, waiting for server response.";
-    filesList = ["lib/riscv_compiled/vmlinux" ];
+    filesList = ["lib/riscv_compiled/vmlinux"];
 
     handle_file_continue(filesList);
 

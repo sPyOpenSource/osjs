@@ -3,15 +3,15 @@
 // Fill HTML register table for user 
 function update_html_regtable(RISCV, tab) {
     for (var i = 0; i < RISCV.gen_reg.length; i++) {
-        tab.rows[i+1].cells[1].innerHTML = stringLongHex(RISCV.gen_reg[i]);
-        tab.rows[i+1].cells[2].innerHTML = longtoStringUnsigned(RISCV.gen_reg[i]).toString();
+        tab.rows[i + 1].cells[1].innerHTML = stringLongHex(RISCV.gen_reg[i]);
+        tab.rows[i + 1].cells[2].innerHTML = longtoStringUnsigned(RISCV.gen_reg[i]).toString();
     }
 }
 
 function update_elf_proptable(elf, tab) {
     var elfprops = ["e_type", "e_machine", "e_version", "e_entry", "e_phoff",
-                    "e_shoff", "e_flags", "e_ehsize", "e_phentsize", "e_phnum",
-                    "e_shentsize", "e_shnum", "e_shstrndx"];
+        "e_shoff", "e_flags", "e_ehsize", "e_phentsize", "e_phnum",
+        "e_shentsize", "e_shnum", "e_shstrndx"];
 
     var samplerow = "<tr><td>ELF Property</td><td>Value</td></tr>";
     var addinnerhtml = samplerow;
@@ -107,7 +107,7 @@ function stringIntHex(valin) {
 // negative sign and messes up the rep instead of 
 // just showing the bare rep
 function stringLongHex(longin) {
-    return "0x" + num_to_hexstr(longin.getHighBits()) + num_to_hexstr(longin.getLowBits());    
+    return "0x" + num_to_hexstr(longin.getHighBits()) + num_to_hexstr(longin.getLowBits());
 }
 
 // build proper hex rep of 32 bit quantity
@@ -147,7 +147,7 @@ function long_less_than_unsigned(long1, long2) {
     } else {
         var long1down = signed_to_unsigned(long1.getLowBits());
         var long2down = signed_to_unsigned(long2.getLowBits());
-        return (long1down < long2down);        
+        return (long1down < long2down);
     }
 }
 
@@ -199,11 +199,11 @@ function longtoStringUnsigned(long1) {
     }
 
     var output = mapper(new Array(outputlen), zeroarr);
-    for(var b = 0; b < outputlen-1; b++) {
-        var a = outputlen-1-b;
+    for (var b = 0; b < outputlen - 1; b++) {
+        var a = outputlen - 1 - b;
         var res = twosixtythree[a] + digitarr[a] + output[a];
         output[a] = res % 10;
-        output[a-1] = Math.floor(res / 10);
+        output[a - 1] = Math.floor(res / 10);
     }
     output[0] += twosixtythree[0] + digitarr[0];
 

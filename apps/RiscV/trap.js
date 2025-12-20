@@ -1,13 +1,13 @@
 // trap handling
 
-function handle_trap(trap){
+function handle_trap(trap) {
     //first, need to check EI bit. if it is not one, processor enters ERROR
     //mode (throw new RISCVError("ERROR");)
     if ((RISCV.priv_reg[PCR["CSR_STATUS"]["num"]] & SR["SR_EI"]) == 0x0) {
         // this means exceptions are disabled
         // enter ERROR mode:
         throw new RISCVError("Exceptions are Disabled but Trap Occurred, Terminating");
-    } 
+    }
     //console.log("Trap occurred at " + stringIntHex(RISCV.pc));
 
     // store exception code to cause register

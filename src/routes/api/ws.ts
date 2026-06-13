@@ -47,7 +47,13 @@ export const Route = createFileRoute("/api/ws")({
 
         const origin = request.headers.get("Origin");
         const requestUrl = new URL(request.url);
-        if (!origin || new URL(origin).host !== requestUrl.host) {
+        let originHost = "";
+        try {
+          originHost = origin ? new URL(origin).host : "";
+        } catch {
+          originHost = "";
+        }
+        if (!originHost || originHost !== requestUrl.host) {
           return new Response("Forbidden", { status: 403 });
         }
 

@@ -8,11 +8,13 @@ const messageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("ping"), id: z.string().uuid().optional() }).strict(),
   z.object({ type: z.literal("time"), id: z.string().uuid().optional() }).strict(),
   z.object({ type: z.literal("system"), id: z.string().uuid().optional() }).strict(),
-  z.object({
-    type: z.literal("echo"),
-    id: z.string().uuid().optional(),
-    payload: z.string().max(2_000),
-  }).strict(),
+  z
+    .object({
+      type: z.literal("echo"),
+      id: z.string().uuid().optional(),
+      payload: z.string().max(2_000),
+    })
+    .strict(),
 ]);
 
 function handle(msg: Msg): Msg {
@@ -58,7 +60,9 @@ export const Route = createFileRoute("/api/ws")({
         }
 
         // Cloudflare Workers WebSocketPair (available in workerd runtime).
-        const WSPair = (globalThis as unknown as { WebSocketPair?: new () => Record<string, WebSocket> }).WebSocketPair;
+        const WSPair = (
+          globalThis as unknown as { WebSocketPair?: new () => Record<string, WebSocket> }
+        ).WebSocketPair;
         if (!WSPair) {
           return new Response("WebSockets not supported in this runtime", { status: 500 });
         }
@@ -77,7 +81,9 @@ export const Route = createFileRoute("/api/ws")({
           try {
             const result = messageSchema.safeParse(JSON.parse(event.data));
             if (!result.success) {
-              server.send(JSON.stringify({ type: "error", payload: { message: "invalid message" } }));
+              server.send(
+                JSON.stringify({ type: "error", payload: { message: "invalid message" } }),
+              );
               return;
             }
             server.send(JSON.stringify(handle(result.data)));
@@ -101,7 +107,9 @@ export const Route = createFileRoute("/api/ws")({
 
         server.addEventListener("close", () => clearInterval(interval));
 
-        return new Response(null, { status: 101, webSocket: client } as ResponseInit & { webSocket: WebSocket });
+        return new Response(null, { status: 101, webSocket: client } as ResponseInit & {
+          webSocket: WebSocket;
+        });
       },
     },
   },

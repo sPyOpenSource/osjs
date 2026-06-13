@@ -22,9 +22,15 @@ export function Browser() {
   return (
     <div className="h-full flex flex-col bg-window">
       <div className="h-11 flex items-center gap-2 px-3 border-b bg-muted/40">
-        <button className="p-1 rounded hover:bg-black/5"><ArrowLeft className="w-4 h-4" /></button>
-        <button className="p-1 rounded hover:bg-black/5"><ArrowRight className="w-4 h-4" /></button>
-        <button className="p-1 rounded hover:bg-black/5"><RotateCw className="w-4 h-4" /></button>
+        <button className="p-1 rounded hover:bg-black/5">
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <button className="p-1 rounded hover:bg-black/5">
+          <ArrowRight className="w-4 h-4" />
+        </button>
+        <button className="p-1 rounded hover:bg-black/5">
+          <RotateCw className="w-4 h-4" />
+        </button>
         <div className="flex-1 mx-2">
           <input
             value={url}
@@ -37,10 +43,18 @@ export function Browser() {
             aria-describedby={error ? "browser-url-error" : undefined}
             className="w-full h-7 px-3 rounded-md bg-white border text-xs text-center outline-none focus:ring-2 ring-primary/40"
           />
-          {error && <p id="browser-url-error" className="sr-only">{error}</p>}
+          {error && (
+            <p id="browser-url-error" className="sr-only">
+              {error}
+            </p>
+          )}
         </div>
-        <button className="p-1 rounded hover:bg-black/5"><Share className="w-4 h-4" /></button>
-        <button className="p-1 rounded hover:bg-black/5"><Plus className="w-4 h-4" /></button>
+        <button className="p-1 rounded hover:bg-black/5">
+          <Share className="w-4 h-4" />
+        </button>
+        <button className="p-1 rounded hover:bg-black/5">
+          <Plus className="w-4 h-4" />
+        </button>
       </div>
       {error ? (
         <div className="flex-1 grid place-items-center bg-muted/20 text-sm text-destructive">

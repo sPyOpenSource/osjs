@@ -1,6 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 
 type Msg = { type: string; id?: string; payload?: unknown };
+
+const MAX_MESSAGE_BYTES = 8_192;
+const messageSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("ping"), id: z.string().uuid().optional() }).strict(),
+  z.object({ type: z.literal("time"), id: z.string().uuid().optional() }).strict(),
+  z.object({ type: z.literal("system"), id: z.string().uuid().optional() }).strict(),
+  z
+    .object({
+      type: z.literal("echo"),
+      id: z.string().uuid().optional(),
+      payload: z.string().max(2_000),
+    })
+    .strict(),
+]);
 
 function handle(msg: Msg): Msg {
   switch (msg.type) {
@@ -16,8 +31,7 @@ function handle(msg: Msg): Msg {
         id: msg.id,
         payload: {
           ua: "webOS Worker",
-          uptime: Math.round(performance.now()),
-          random: Math.random(),
+          status: "available",
         },
       };
     default:
@@ -33,8 +47,22 @@ export const Route = createFileRoute("/api/ws")({
           return new Response("Expected WebSocket upgrade", { status: 426 });
         }
 
+        const origin = request.headers.get("Origin");
+        const requestUrl = new URL(request.url);
+        let originHost = "";
+        try {
+          originHost = origin ? new URL(origin).host : "";
+        } catch {
+          originHost = "";
+        }
+        if (!originHost || originHost !== requestUrl.host) {
+          return new Response("Forbidden", { status: 403 });
+        }
+
         // Cloudflare Workers WebSocketPair (available in workerd runtime).
-        const WSPair = (globalThis as unknown as { WebSocketPair?: new () => Record<string, WebSocket> }).WebSocketPair;
+        const WSPair = (
+          globalThis as unknown as { WebSocketPair?: new () => Record<string, WebSocket> }
+        ).WebSocketPair;
         if (!WSPair) {
           return new Response("WebSockets not supported in this runtime", { status: 500 });
         }
@@ -45,14 +73,23 @@ export const Route = createFileRoute("/api/ws")({
         server.accept();
 
         server.addEventListener("message", (event: MessageEvent) => {
-          let msg: Msg;
-          try {
-            msg = typeof event.data === "string" ? JSON.parse(event.data) : { type: "error" };
-          } catch {
-            server.send(JSON.stringify({ type: "error", payload: { message: "invalid JSON" } }));
+          if (typeof event.data !== "string" || event.data.length > MAX_MESSAGE_BYTES) {
+            server.send(JSON.stringify({ type: "error", payload: { message: "invalid message" } }));
             return;
           }
-          server.send(JSON.stringify(handle(msg)));
+
+          try {
+            const result = messageSchema.safeParse(JSON.parse(event.data));
+            if (!result.success) {
+              server.send(
+                JSON.stringify({ type: "error", payload: { message: "invalid message" } }),
+              );
+              return;
+            }
+            server.send(JSON.stringify(handle(result.data)));
+          } catch {
+            server.send(JSON.stringify({ type: "error", payload: { message: "invalid JSON" } }));
+          }
         });
 
         server.send(
@@ -70,7 +107,9 @@ export const Route = createFileRoute("/api/ws")({
 
         server.addEventListener("close", () => clearInterval(interval));
 
-        return new Response(null, { status: 101, webSocket: client } as ResponseInit & { webSocket: WebSocket });
+        return new Response(null, { status: 101, webSocket: client } as ResponseInit & {
+          webSocket: WebSocket;
+        });
       },
     },
   },

@@ -3,6 +3,22 @@ import { ArrowLeft, ArrowRight, RotateCw, Share, Plus } from "lucide-react";
 
 export function Browser() {
   const [url, setUrl] = useState("https://lovable.dev");
+  const [safeUrl, setSafeUrl] = useState("https://lovable.dev");
+  const [error, setError] = useState("");
+
+  const navigate = () => {
+    try {
+      const candidate = new URL(url.trim());
+      if (candidate.protocol !== "https:" && candidate.protocol !== "http:") {
+        throw new Error("Unsupported protocol");
+      }
+      setSafeUrl(candidate.href);
+      setError("");
+    } catch {
+      setError("Enter a valid http:// or https:// address");
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-window">
       <div className="h-11 flex items-center gap-2 px-3 border-b bg-muted/40">
@@ -13,14 +29,32 @@ export function Browser() {
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") navigate();
+            }}
+            onBlur={navigate}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? "browser-url-error" : undefined}
             className="w-full h-7 px-3 rounded-md bg-white border text-xs text-center outline-none focus:ring-2 ring-primary/40"
           />
+          {error && <p id="browser-url-error" className="sr-only">{error}</p>}
         </div>
         <button className="p-1 rounded hover:bg-black/5"><Share className="w-4 h-4" /></button>
         <button className="p-1 rounded hover:bg-black/5"><Plus className="w-4 h-4" /></button>
       </div>
-      <iframe src={url} className="flex-1 flex flex-col items-center justify-center text-center gap-3 bg-gradient-to-b from-sky-50 to-white">
-      </iframe>
+      {error ? (
+        <div className="flex-1 grid place-items-center bg-muted/20 text-sm text-destructive">
+          {error}
+        </div>
+      ) : (
+        <iframe
+          src={safeUrl}
+          title="Web browser content"
+          sandbox="allow-scripts allow-same-origin allow-forms"
+          referrerPolicy="strict-origin-when-cross-origin"
+          className="flex-1 w-full bg-window"
+        />
+      )}
     </div>
   );
 }

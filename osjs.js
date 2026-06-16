@@ -146,7 +146,6 @@
  	for(var i = 0; i < jsonpArray.length; i++) webpackJsonpCallback(jsonpArray[i]);
  	var parentJsonpFunction = oldJsonpFunction;
 
-
  	// add entry module to deferred list
  	deferredModules.push(["./src/client/index.js","vendors~osjs"]);
  	// run deferred modules when ready

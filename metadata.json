@@ -1,6 +1,6 @@
 {
-  "name": "Clash of Clans Tactics & Army Planner",
-  "description": "An interactive army calculator, troop statistics compendium, strategy tactics guide, and AI attack planner for Clash of Clans.",
-  "requestFramePermissions": [],
+  "name": "Real Racing 3D",
+  "description": "A hyper-realistic 3D racing game featuring licensed real-world tracks, customizable supercars, precise driving physics, and an AI-powered Race Engineer Crew Chief.",
+  "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

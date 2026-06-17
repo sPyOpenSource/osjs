@@ -1,94 +1,58 @@
-export interface CarSpecs {
-  topSpeed: number; // in km/h
-  acceleration: number; // 0-100 km/h in seconds
-  braking: number; // 100-0 km/h stopping distance in meters
-  grip: number; // lateral G force (e.g. 1.15 to 2.85)
-}
-
-export interface CarUpgrades {
-  engine: number;      // Level 0 to 4
-  drivetrain: number;  // Level 0 to 4
-  aerodynamics: number;// Level 0 to 4
-  tyres: number;       // Level 0 to 4
-}
-
-export interface Car {
+export interface Officer {
   id: string;
   name: string;
-  brand: string;
-  class: "R" | "S" | "GT";
-  price: number;
-  unlockedAtStreak: number;
-  baseSpecs: CarSpecs;
-  currentSpecs: CarSpecs;
-  maxSpecs: CarSpecs;
-  upgrades: CarUpgrades;
-  owned: boolean;
-  color: string; // Hex color for race rendering
-  shadowColor: string;
-  emoji: string;
-  accentColor: string;
-  description: string;
+  gender: 'Male' | 'Female';
+  styleName?: string; // e.g. "Xuande" for Liu Bei
+  factionId: string; // Faction aligning with
+  avatarStyle: AvatarStyle;
+  stats: OfficerStats;
+  traits: string[]; // Personality or special traits
+  skills: string[]; // Combat or tactical skills
+  biography: string;
+  custom?: boolean; // True if custom created
+  advice?: string; // Gemini generated dynamic strategic/tactical gameplay advice
+  promotionLevel?: number;
+  promotionTitle?: string;
 }
 
-export interface Track {
+export interface OfficerStats {
+  leadership: number; // LDR
+  force: number;      // FOR
+  intelligence: number; // INT
+  politics: number;   // POL
+  charisma: number;   // CHR
+}
+
+export interface AvatarStyle {
+  hairColor: string;
+  hairStyle: string;
+  armorColor: string;
+  accessory: string;
+  expression: string;
+  bgGradient: string;
+}
+
+export interface Faction {
   id: string;
   name: string;
-  location: string;
-  length: string; // e.g., "7.004 km"
-  corners: number;
-  difficulty: "Rookie" | "Amateur" | "Pro" | "Legend";
-  lapRecord: string;
-  recordHolder: string;
-  bgGradStart: string;
-  bgGradEnd: string;
-  segmentCount: number; // total steps of the pseudo-3D road
-  turnComplexity: number; // complexity of curve generations
+  ruler: string;
+  color: string; // Tailwind color class or hex
   description: string;
-  curbColorPrimary: string;
-  curbColorSecondary: string;
+  crest: string; // Emoji symbols or short crest words
 }
 
-export interface AIDriver {
-  name: string;
-  difficulty: number; // 0.5 to 1.2 skill scale
-  carId: string;
-  carName: string;
-  color: string;
-  position: number; // z position on track
-  lane: number; // offset from -1 to 1 representing horizontal position
-  speed: number;
-  lap: number;
-  finished: boolean;
-  finishTime?: string;
-  timeGap?: number;
+export interface CampaignScenario {
+  id: string;
+  title: string;
+  year: number;
+  description: string;
+  featuredFactions: string[];
+  victoryCondition: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
 }
 
-export interface SectorTime {
-  sector1: number | null;
-  sector2: number | null;
-  sector3: number | null;
+export interface RelationshipRelation {
+  fromOfficerId: string;
+  toOfficerId: string;
+  type: 'Sworn Brother' | 'Rival' | 'Spouse' | 'Lord' | 'Confidant' | 'Trust';
 }
-
-export interface RaceTelemetry {
-  speed: number;
-  rpm: number;
-  gear: number;
-  throttle: boolean;
-  brakes: boolean;
-  gForceX: number;
-  gForceY: number;
-  lap: number;
-  completedLaps: number;
-  currentLapTime: number;
-  lastLapTime: number | null;
-  bestLapTime: number | null;
-  currentSector: 1 | 2 | 3;
-  sectorTimes: {
-    1: number | null;
-    2: number | null;
-    3: number | null;
-  };
-}
-
-export type UpgradeCategory = "engine" | "drivetrain" | "aerodynamics" | "tyres";

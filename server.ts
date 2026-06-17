@@ -1,160 +1,288 @@
-import express from "express";
-import path from "path";
-import { createServer as createViteServer } from "vite";
+import express, { Request, Response } from 'express';
+import path from 'path';
+import http from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
+import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from "@google/genai";
-import dotenv from "dotenv";
+import { FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS } from './src/data';
+import { Officer, RelationshipRelation } from './src/types';
 
-dotenv.config();
+const app = express();
+app.use(express.json());
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const PORT = 3000;
 
-  app.use(express.json());
+// Shared server-side state for collaborative real-time sync
+let serverOfficers: Officer[] = [...FAMOUS_OFFICERS];
+let serverRelationships: RelationshipRelation[] = [...FAMOUS_RELATIONSHIPS];
 
-  // API Route for Gemini Race Engineer (with telemetry critique)
-  app.post("/api/race-engineer", async (req, res) => {
-    const { trackName = "track", carName = "car", speed = 0, sector = 1, lap = 1, trackPosition = 1, eventType = "telemetry", lapTimes = [], upgrades = {} } = req.body || {};
-    try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        // Fallback response with trackside immersion if API Key is missing.
-        let defaultFeedback = `Trackside Crew: "Copy that, watch the rumble strips on the exit."`;
-        let defaultAdvice = "Stay focused on conserving cornering speed.";
-
-        if (eventType === "crashed") {
-          defaultFeedback = `Trackside Crew: "Tough impact! Let's check the suspension damage. Get back on track when clear."`;
-        } else if (eventType === "won race") {
-          defaultFeedback = `Trackside Crew: "P1! What a drive! You absolutely dominated the circuit."`;
-        } else if (eventType === "perfect apex cornering") {
-          defaultFeedback = `Trackside Crew: "Exquisite apex, sector times look green. Keep feeding the throttle smoothly!"`;
-        } else if (eventType === "setup advice") {
-          defaultFeedback = `Trackside Crew: "For ${trackName}, upgrading the Drivetrain and Aerodynamics will maximize high-speed stability."`;
-        }
-
-        return res.json({
-          feedback: defaultFeedback,
-          advice: defaultAdvice + " (Configure your GEMINI_API_KEY in Secrets for live AI race engineering radio)."
-        });
+// Lazy initialization of Gemini
+function getGeminiClient(): GoogleGenAI {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY environment variable is missing. Configure it in the Secrets panel in AI Studio.');
+  }
+  return new GoogleGenAI({
+    apiKey: apiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
       }
-
-      const ai = new GoogleGenAI({
-        apiKey: apiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          }
-        }
-      });
-
-      const prompt = `You are a professional Formula 1 / GT3 Race Engineer (Crew Chief) in the style of Real Racing 3, speaking to your driver over the team radio.
-Current Context:
-Running on Licensed Track: ${trackName} (a real-world circuit: Spa-Francorchamps, Silverstone, Monza, Bathurst Mount Panorama, or Suzuka).
-Driving: ${carName} (e.g. Porsche 911 GT3 RS, Ferrari LaFerrari, McLaren P1, Aston Martin Valkyrie) with these car upgrades installed: ${JSON.stringify(upgrades || {})}.
-Telemetry info:
-- Speed: ${speed} km/h
-- Current Track Sector: ${sector}
-- Current Lap: ${lap}
-- Race Position: ${trackPosition}
-- Event Context: ${eventType} (This triggered the engineer communication, e.g. "crashed", "speeding through straight", "perfect apex cornering", "running wide", "won race", or "setup advice" requested in the garage).
-- History of lap times: ${JSON.stringify(lapTimes || [])}
-
-Instructions:
-- Give a highly immersive, authentic racing comment. Put yourself on the pit wall, watching live telemetry.
-- Refer to real-world features of the track if relevant (e.g., Eau Rouge or Blanchimont at Spa, Copse or Maggots-Becketts at Silverstone, Curva Grande or Parabolica at Monza, Dipper or Skyline at Bathurst).
-- Keep it highly professional, short, and realistic (max 2 sentences).
-- Avoid overly dramatic or generic AI hype. Use crisp motorsport jargon (e.g., oversteer, understeer, dirty air, tyre degradation, curb loading, sector split, trail braking, hitting the apex, short shifting).
-
-Please respond strictly in a single JSON block with "feedback" and "advice" fields. Example:
-{
-  "feedback": "Outstanding speed through Copse! Copied green in sector 1, keep pushing.",
-  "advice": "Apply light trail braking early to settle the nose into Maggots."
+    }
+  });
 }
-`;
 
-      // Highly robust fallback model chain with retry loop to shield from 503 High Demand errors
-      let response;
-      const modelsToTry = ["gemini-3.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
-      let lastError: any = null;
+// REST fallback APIs
+app.get("/api/health", (req: Request, res: Response) => {
+  res.json({
+    status: "ok",
+    hasApiKey: !!process.env.GEMINI_API_KEY,
+    time: new Date().toISOString(),
+    websocketUrl: `wss://${req.headers.host}`
+  });
+});
 
-      for (const model of modelsToTry) {
-        // Try up to 2 times for each model in case of transient network hiccups
-        for (let attempt = 1; attempt <= 2; attempt++) {
+// Create HTTP server
+const server = http.createServer(app);
+
+// Build WebSocket server
+const wss = new WebSocketServer({ server });
+
+// Clean connection pool and broadcasting
+function broadcast(message: any, excludeConnection?: WebSocket) {
+  const payload = JSON.stringify(message);
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN && client !== excludeConnection) {
+      client.send(payload);
+    }
+  });
+}
+
+wss.on('connection', (ws: WebSocket) => {
+  console.log('[WS] Client connected successfully.');
+
+  // Immediately send initial state to the newly connected user (idempotence setup)
+  ws.send(JSON.stringify({
+    type: 'init',
+    data: {
+      officers: serverOfficers,
+      relationships: serverRelationships
+    }
+  }));
+
+  ws.on('message', async (data: string) => {
+    try {
+      const msg = JSON.parse(data);
+      console.log(`[WS] Received message type: ${msg.type}`);
+
+      switch (msg.type) {
+        case 'add_officer': {
+          const newOfficer: Officer = msg.data;
+          const idx = serverOfficers.findIndex(o => o.id === newOfficer.id);
+          if (idx !== -1) {
+            serverOfficers[idx] = newOfficer;
+          } else {
+            serverOfficers.unshift(newOfficer);
+          }
+          // Broadcast update to all clients
+          broadcast({
+            type: 'officer_added',
+            data: newOfficer
+          });
+          break;
+        }
+
+        case 'delete_officer': {
+          const officerId = msg.data;
+          serverOfficers = serverOfficers.filter(o => o.id !== officerId);
+          serverRelationships = serverRelationships.filter(r => r.fromOfficerId !== officerId && r.toOfficerId !== officerId);
+          
+          broadcast({
+            type: 'officer_deleted',
+            data: {
+              officerId,
+              relationships: serverRelationships
+            }
+          });
+          break;
+        }
+
+        case 'add_relationship': {
+          const relation: RelationshipRelation = msg.data;
+          const exists = serverRelationships.some(r => 
+            (r.fromOfficerId === relation.fromOfficerId && r.toOfficerId === relation.toOfficerId) ||
+            (r.fromOfficerId === relation.toOfficerId && r.toOfficerId === relation.fromOfficerId)
+          );
+          if (!exists) {
+            serverRelationships.push(relation);
+            broadcast({
+              type: 'relationship_added',
+              data: relation
+            });
+          }
+          break;
+        }
+
+        case 'delete_relationship': {
+          const { fromOfficerId, toOfficerId } = msg.data;
+          serverRelationships = serverRelationships.filter(r => 
+            !(r.fromOfficerId === fromOfficerId && r.toOfficerId === toOfficerId) &&
+            !(r.fromOfficerId === toOfficerId && r.toOfficerId === fromOfficerId)
+          );
+          broadcast({
+            type: 'relationship_deleted',
+            data: { fromOfficerId, toOfficerId }
+          });
+          break;
+        }
+
+        case 'generate_bio': {
+          const { name, styleName, gender, factionName, stats, traits, skills, requestId } = msg.data;
           try {
-            response = await ai.models.generateContent({
-              model,
+            const ai = getGeminiClient();
+            const prompt = `你是一位精通《三国志》与三国历史的传奇传记撰写官。
+请为武将撰写一段生动、宏大、符合历史或传奇色彩的武将列传（个人传记），篇幅为3-4句话。
+请使用极高水准、典雅古风的中文进行书写，风格应与光荣特库摩的《三国志8》武将列传完美契合。
+
+武将信息细节：
+- 姓名：${name} ${styleName ? `（字：${styleName}）` : ""}
+- 性别：${gender === 'Male' ? '男' : '女'}
+- 所属势力 / 阵营：${factionName}
+- 五维属性 (0-100)：统帅 ${stats?.leadership}、武力 ${stats?.force}、智力 ${stats?.intelligence}、政治 ${stats?.politics}、魅力 ${stats?.charisma}
+- 特色人格特质：${traits?.join(", ") || "无"}
+- 战术战法技能：${skills?.join(", ") || "无"}
+
+请直接输出传记正文，严禁包含任何JSON包裹、无用的“列传：”前缀标签或版权署名说明。用充满英雄气概的古风书写！`;
+
+            const response = await ai.models.generateContent({
+              model: "gemini-3.5-flash",
               contents: prompt,
               config: {
-                responseMimeType: "application/json",
+                systemInstruction: "你是一位专门为光荣特库摩《三国志8》设计武将列传的历史叙事专家与游戏策划。",
+                temperature: 0.85,
               }
             });
-            if (response) {
-              break;
-            }
+
+            ws.send(JSON.stringify({
+              type: 'bio_generated',
+              data: {
+                requestId,
+                biography: response.text || "其生平淹没于滚滚历史洪流之中，其名未得彰显。"
+              }
+            }));
           } catch (err: any) {
-            lastError = err;
-            console.warn(`Attempt ${attempt} failed with model ${model}. Error:`, err?.message || err);
-            if (attempt < 2) {
-              // Wait 150ms before retrying on the same model
-              await new Promise(resolve => setTimeout(resolve, 150));
-            }
+            ws.send(JSON.stringify({
+              type: 'error',
+              data: {
+                requestId,
+                message: err.message || '通过 WebSocket 生成武将列传失败。'
+              }
+            }));
           }
+          break;
         }
-        if (response) break;
-      }
 
-      if (!response) {
-        throw lastError || new Error("All fallback models in the chain failed.");
-      }
+        case 'evaluate_strategy': {
+          const { officer, scenario, requestId } = msg.data;
+          try {
+            const ai = getGeminiClient();
+            const prompt = `为武将 ${officer.name} 在《三国志8》特定的战役剧本背景下，提供一份宏大的军事军师方针与议会谏言。
 
-      const responseText = response.text || "{}";
-      try {
-        const parsed = JSON.parse(responseText.trim());
-        res.json({
-          feedback: parsed.feedback || "Pit Wall: Sounding clear. Keep hitting those markers.",
-          advice: parsed.advice || "Focus on carrying speed through the mid-corner transitions."
-        });
-      } catch (err) {
-        res.json({
-          feedback: responseText,
-          advice: "Keep the throttle pinned out of the chicane."
-        });
-      }
-    } catch (error: any) {
-      // Gracefully handle Gemini API transient limits / high demand to keep user immersion flawless
-      console.log("Telemetry Radio Info: Gemini API offline or exhausted. Seamlessly activating high-fidelity offline telemetry feedback loop.");
-      
-      let fallbackFeedback = `Pit Wall: "Telemetry receiver active on ${trackName || "circuit"}. Signal strength 100%."`;
-      let fallbackAdvice = "Watch your tire temperatures and maintain a consistent slip angle.";
+武将基本细节：
+- 姓名：${officer.name} (${officer.styleName || "无字"})
+- 五维属性：统帅 (LDR) ${officer.stats?.leadership}、武力 (FOR) ${officer.stats?.force}、智力 (INT) ${officer.stats?.intelligence}、政治 (POL) ${officer.stats?.politics}、魅力 (CHR) ${officer.stats?.charisma}
+- 特质：${officer.traits?.join(", ")}
+- 战术战法技能：${officer.skills?.join(", ")}
+- 所属势力ID：${officer.factionId}
 
-      if (eventType === "crashed") {
-        fallbackFeedback = `Race Engineer: "Big impact! Let's check the steering and suspension alignment. Get back on track when clear."`;
-        fallbackAdvice = "Ensure no critical aerodynamic balance was lost in the gravel trap.";
-      } else if (eventType === "won race") {
-        fallbackFeedback = `Race Engineer: "P1! What a stellar campaign behind the wheel of the ${carName || "machine"}! Pure class!"`;
-        fallbackAdvice = "Excellent drive! Cool down the brakes and bring her back to the parc fermé.";
-      } else if (eventType === "perfect apex cornering") {
-        fallbackFeedback = `Race Engineer: "Fabulous apex! Sector splits are green. You're extracting maximum mechanical grip here."`;
-        fallbackAdvice = "Keep feeding the throttle smoothly as the steering wheel unwinds.";
-      } else if (eventType === "running wide") {
-        fallbackFeedback = `Race Engineer: "We notice you're pushing track limits. Ease off the throttle early to avoid understeer."`;
-        fallbackAdvice = "Try dragging the brake a split second longer to load the front tires.";
-      } else if (eventType === "speeding through straight") {
-        fallbackFeedback = `Race Engineer: "Great exit! Sector time is flying down the straight. Let's make this lap record count."`;
-        fallbackAdvice = "Look deep into the braking zone, identify your turn-in marker.";
-      } else if (eventType === "setup advice") {
-        fallbackFeedback = `Race Engineer: "For the unique speed curves at ${trackName || "this circuit"}, low-speed traction is paramount."`;
-        fallbackAdvice = "Consider upgrading your Drivetrain and Aerodynamics to optimize high-speed downforce and response.";
-      }
+剧本背景：${scenario.title} (公元 ${scenario.year} 年)
+- 剧本描述：${scenario.description}
+- 获胜判定标准：${scenario.victoryCondition}
 
-      res.json({
-        feedback: fallbackFeedback,
-        advice: fallbackAdvice
-      });
+提供一份格式化为易读 Markdown 的谏书方案。严格输出以下三个部分，并使用富有个性、令人振奋、符合《三国志8》特色系统的军师口吻书写：
+1. **天下局势分析**：简明扼要用两句话分析我们在开局城市和周围相邻敌对势力的地缘态势。
+2. **战场指挥战术指南**：具体讲解如何结合此武将的五维属性（统帅/武力/智力）与他拥有的战法特殊技（如 ${officer.skills?.join(", ")}）克敌制胜。
+3. **连携与社交关系网建议**：推荐 2 位适合与此武将义结金兰（结拜）、结婚或强力登用、笼络的武将对象，以便完美推进天下统一霸业。
+
+请确保回复内容非常考究，使用典雅的三国军事古风中文，不要掺杂英文游戏名词！`;
+
+            const response = await ai.models.generateContent({
+              model: "gemini-3.5-flash",
+              contents: prompt,
+              config: {
+                systemInstruction: "你是三国乱世军师帐中的大军师元帅。请交付最专业、最具三国沉浸感、排版完美的 Markdown 战术评测与天下大势分析论述。",
+                temperature: 0.75,
+              }
+            });
+
+            ws.send(JSON.stringify({
+              type: 'strategy_evaluated',
+              data: {
+                requestId,
+                advice: response.text || "军帅殿上无策，未能卜知天意。"
+              }
+            }));
+          } catch (err: any) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              data: {
+                requestId,
+                message: err.message || '军师府商议决策失败。'
+              }
+            }));
+          }
+          break;
+        }
+
+        case 'run_duel': {
+          const { off1, off2 } = msg.data;
+          const force1 = off1.stats.force + Math.floor(Math.random() * 15);
+          const force2 = off2.stats.force + Math.floor(Math.random() * 15);
+          
+          let winner = force1 > force2 ? off1 : off2;
+          let loser = force1 > force2 ? off2 : off1;
+          const winnerForce = force1 > force2 ? force1 : force2;
+          const loserForce = force1 > force2 ? force2 : force1;
+
+          const dialogueList = [
+            `“${winner.name}” 振臂咆哮，长枪急转格开重击，反手一记千钧横扫！“${loser.name}” 登时战马失前蹄，轰然坠于尘埃，举手认负！`,
+            `战场上火星狂飙，兵刃相接！“${winner.name}” 运出排山倒海般的蛮力，一刀将 “${loser.name}” 的武器震飞数丈，震悚全场！`,
+            `数十回合电光石火的激突！“${winner.name}” 越战越勇，将 “${loser.name}” 逼退得毫无还手余地。一记精妙绝伦的长戟背击锁定胜局！恭喜 “${winner.name}” 赢得天下无双的单挑胜利！`
+          ];
+          const chosenDialogue = dialogueList[Math.floor(Math.random() * dialogueList.length)];
+
+          const duelResult = {
+            winnerName: winner.name,
+            winnerForce,
+            loserName: loser.name,
+            loserForce,
+            dialogue: chosenDialogue,
+            time: new Date().toLocaleTimeString()
+          };
+
+          // Broadcast combat outcome to ALL connected clients so it shows on everyone's dashboard
+          broadcast({
+            type: 'duel_notification',
+            data: duelResult
+          });
+          break;
+        }
+
+        default:
+          console.warn(`[WS] Unknown message type: ${msg.type}`);
+      }
+    } catch (err) {
+      console.error('[WS] Error processing message:', err);
     }
   });
 
-  // Serve static assets in production, otherwise Vite dev server
+  ws.on('close', () => {
+    console.log('[WS] Client disconnected.');
+  });
+});
+
+// Vite Middleware integration for Full-Stack Development Mode
+async function start() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -162,6 +290,7 @@ Please respond strictly in a single JSON block with "feedback" and "advice" fiel
     });
     app.use(vite.middlewares);
   } else {
+    // Serve production static folder from /dist
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
@@ -169,9 +298,11 @@ Please respond strictly in a single JSON block with "feedback" and "advice" fiel
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`[ROTK 8 Server] Server listening on http://0.0.0.0:${PORT}`);
   });
 }
 
-startServer();
+start().catch((err) => {
+  console.error("Error booting service:", err);
+});

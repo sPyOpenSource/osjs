@@ -1,1233 +1,1455 @@
-import { useEffect, useRef, useState } from "react";
-import { Car, Track, UpgradeCategory } from "./types";
-import { INITIAL_CARS, INITIAL_TRACKS, getUpgradedCar, UPGRADE_LATEST_COSTS } from "./data";
-import RaceCanvas from "./components/RaceCanvas";
-import Showroom3D from "./components/Showroom3D";
+import React, { useState, useEffect, useRef } from 'react';
+import { Officer, Faction, CampaignScenario, RelationshipRelation, AvatarStyle } from './types';
+import { FACTIONS, FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS, SCENARIOS, AVAILABLE_SKILLS, AVAILABLE_TRAITS } from './data';
+import OfficerCard from './components/OfficerCard';
+import AvatarRenderer from './components/AvatarRenderer';
+import TacticalMap from './components/TacticalMap';
+import StartMenu from './components/StartMenu';
+import { playClashSound, playDrumSound } from './utils/audio';
 import { 
-  Trophy, 
-  Flame, 
-  Coins, 
-  Wrench, 
-  ShieldAlert, 
-  CheckCircle2, 
-  MapPin, 
+  Shield, 
+  Swords, 
+  Brain, 
+  Scroll, 
+  Sparkles, 
+  User, 
   Compass, 
-  Gauge, 
-  Activity, 
-  ShoppingBag, 
-  CornerDownRight, 
-  Radio, 
-  Play, 
-  HelpCircle,
-  Camera,
-  Trash2,
-  X,
-  User
-} from "lucide-react";
+  Heart, 
+  Map, 
+  UserPlus, 
+  HelpCircle, 
+  Search, 
+  Sliders, 
+  Filter, 
+  RefreshCw,
+  Award,
+  BookOpen,
+  Sword,
+  Target,
+  MessageCircle,
+  Users
+} from 'lucide-react';
 
 export default function App() {
-  // Career Wallet & Career Stats
-  const [credits, setCredits] = useState<number>(200000); // Starter credits Cr. 200,000
-  const [ownedCarIds, setOwnedCarIds] = useState<string[]>(["porsche_911"]);
-  const [bestLapTimes, setBestLapTimes] = useState<{ [trackId: string]: number }>({});
-  const [carsList, setCarsList] = useState<Car[]>(INITIAL_CARS);
-  const [streakCount, setStreakCount] = useState<number>(0);
-  const [totalRacesRan, setTotalRacesRan] = useState<number>(0);
-  const [allTimeTopSpeed, setAllTimeTopSpeed] = useState<number>(0);
+  // Application state
+  const [showStartMenu, setShowStartMenu] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [officers, setOfficers] = useState<Officer[]>(FAMOUS_OFFICERS);
+  const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
+  const [selectedScenario, setSelectedScenario] = useState<CampaignScenario>(SCENARIOS[0]);
+  const [activeTab, setActiveTab] = useState<'roster' | 'creator' | 'bonds' | 'map'>('roster');
+  
+  // Roster Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [factionFilter, setFactionFilter] = useState<string>('all');
+  const [selectedOfficer, setSelectedOfficer] = useState<Officer>(FAMOUS_OFFICERS[0]);
 
-  // Driver Profile metadata & Camera integration
-  const [driverName, setDriverName] = useState<string>("APEX RACER");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  // Strategy Advisor panel states
+  const [isConsultingAdvisor, setIsConsultingAdvisor] = useState(false);
+  const [advisorBrief, setAdvisorBrief] = useState<string>('');
+  const [hasServerConnection, setHasServerConnection] = useState<boolean | null>(null);
 
-  // Active Selections
-  const [selectedCarId, setSelectedCarId] = useState<string>("porsche_911");
-  const [selectedTrackId, setSelectedTrackId] = useState<string>("spa");
-  const [currentMenuTab, setCurrentMenuTab] = useState<"showroom" | "garage" | "tracks" | "career">("showroom");
-  const [difficulty, setDifficulty] = useState<"Rookie" | "Amateur" | "Pro" | "Legend">("Pro");
+  // Custom Officer Creator form state
+  const [createdCount, setCreatedCount] = useState(1);
+  const [customName, setCustomName] = useState('');
+  const [customStyleName, setCustomStyleName] = useState('');
+  const [customGender, setCustomGender] = useState<'Male' | 'Female'>('Male');
+  const [customFactionId, setCustomFactionId] = useState('shu');
+  
+  // Color hexes and strings for avatar dropdown selections
+  const HAIR_STYLES = [
+    { name: '帝王发簪', value: 'Topknot Imperial' },
+    { name: '朝堂进贤冠', value: 'Noble Court Crown' },
+    { name: '英武束发长髯', value: 'Long Bound Mane' },
+    { name: '儒雅名士纶巾', value: 'Scholar Jade Headdress' },
+    { name: '碧眼紫髯豪杰', value: 'Red-Bearded Sovereign' },
+    { name: '战神雉尾冠', value: 'Pheasant-Tail Ribbon' }
+  ];
 
-  // Active Race state machines
-  const [activeScreen, setActiveScreen] = useState<"lobby" | "racing" | "post_race">("lobby");
-  const [lastRaceOutcome, setLastRaceOutcome] = useState<{
-    position: number;
-    lapTimes: number[];
-    prizeEarned: number;
-    speedRecord: number;
-  } | null>(null);
+  const HAIR_COLORS = [
+    { name: '乌黑墨炭', value: '#171717' },
+    { name: '深蓝墨黛', value: '#0f172a' },
+    { name: '军政苍青', value: '#1e293b' },
+    { name: '烈火赤红', value: '#c2410c' },
+    { name: '雪落苍鬓', value: '#4b5563' }
+  ];
 
-  // Load career data upon initialization from browser local storage
+  const ARMOR_COLORS = [
+    { name: '翡翠绿 (蜀汉)', value: '#10b981' },
+    { name: '皇家蓝 (曹魏)', value: '#3b82f6' },
+    { name: '赤血红 (孙吴)', value: '#ef4444' },
+    { name: '无双紫 (吕布军)', value: '#a855f7' },
+    { name: '华贵金 (袁绍军)', value: '#eab308' },
+    { name: '名士白 (在野)', value: '#f8fafc' },
+    { name: '猛虎橙 (东吴)', value: '#fb923c' }
+  ];
+
+  const ACCESSORIES = [
+    { name: '金镶玉帝王冠', value: 'Golden Sovereign Crown' },
+    { name: '青龙偃月刀', value: 'Green Dragon Crescent Blade' },
+    { name: '诸葛白羽扇', value: 'Feather Daoist Fan' },
+    { name: '倚天佩剑', value: 'Engraved Commander Sword' },
+    { name: '空手 (无配饰)', value: 'None' }
+  ];
+
+  const EXPRESSIONS = [
+    { name: '温和儒雅', value: 'Warm Smiling' },
+    { name: '冷峻威仪', value: 'Cold Sovereign' },
+    { name: '洞悉天下', value: 'Brilliant Calm' },
+    { name: '狂怒咆哮', value: 'Fierce Roaring' },
+    { name: '沉着持重', value: 'Stately Guarded' }
+  ];
+
+  const GRADIENTS = [
+    { name: '碧玉竹林', value: 'from-emerald-950 to-teal-900' },
+    { name: '幽燕玄石', value: 'from-blue-950 to-indigo-950' },
+    { name: '赤壁烈焰', value: 'from-orange-950 to-red-950' },
+    { name: '九霄紫雷', value: 'from-purple-950 to-pink-950' }
+  ];
+
+  const [avatarHairStyle, setAvatarHairStyle] = useState(HAIR_STYLES[0].value);
+  const [avatarHairColor, setAvatarHairColor] = useState(HAIR_COLORS[0].value);
+  const [avatarArmorColor, setAvatarArmorColor] = useState(ARMOR_COLORS[0].value);
+  const [avatarAccessory, setAvatarAccessory] = useState(ACCESSORIES[0].value);
+  const [avatarExpression, setAvatarExpression] = useState(EXPRESSIONS[0].value);
+  const [avatarGradient, setAvatarGradient] = useState(GRADIENTS[0].value);
+
+  // Custom Stats State
+  const [statLeadership, setStatLeadership] = useState(70);
+  const [statForce, setStatForce] = useState(70);
+  const [statIntelligence, setStatIntelligence] = useState(70);
+  const [statPolitics, setStatPolitics] = useState(70);
+  const [statCharisma, setStatCharisma] = useState(70);
+
+  // Traits & Skills Selectors
+  const [selectedTraits, setSelectedTraits] = useState<string[]>([AVAILABLE_TRAITS[0]]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([AVAILABLE_SKILLS[0], AVAILABLE_SKILLS[1]]);
+
+  // Relationships tab creation helper
+  const [relFrom, setRelFrom] = useState('');
+  const [relTo, setRelTo] = useState('');
+  const [relType, setRelType] = useState<'Sworn Brother' | 'Rival' | 'Spouse' | 'Lord' | 'Confidant' | 'Trust'>('Sworn Brother');
+  const [combatOutcome, setCombatOutcome] = useState<string | null>(null);
+
+  // Real-time WebSockets synchronization
+  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const pendingRequestsRef = useRef<Record<string, {
+    resolve: (val: any) => void;
+    reject: (err: any) => void;
+  }>>({});
+
   useEffect(() => {
-    const cachedCredits = localStorage.getItem("rr3_credits");
-    const cachedOwnedCars = localStorage.getItem("rr3_owned_cars");
-    const cachedUpgrades = localStorage.getItem("rr3_car_upgrades");
-    const cachedLaps = localStorage.getItem("rr3_best_laps");
-    const cachedStreak = localStorage.getItem("rr3_streak");
-    const cachedTotalRaces = localStorage.getItem("rr3_total_races");
-    const cachedTopSpeed = localStorage.getItem("rr3_top_speed");
-    const cachedName = localStorage.getItem("rr3_driver_name");
-    const cachedAvatar = localStorage.getItem("rr3_avatar_url");
+    let socket: WebSocket | null = null;
+    let reconnectTimeout: any = null;
 
-    if (cachedCredits) setCredits(parseInt(cachedCredits));
-    if (cachedOwnedCars) setOwnedCarIds(JSON.parse(cachedOwnedCars));
-    if (cachedStreak) setStreakCount(parseInt(cachedStreak));
-    if (cachedTotalRaces) setTotalRacesRan(parseInt(cachedTotalRaces));
-    if (cachedTopSpeed) setAllTimeTopSpeed(parseInt(cachedTopSpeed));
-    if (cachedLaps) setBestLapTimes(JSON.parse(cachedLaps));
-    if (cachedName) setDriverName(cachedName);
-    if (cachedAvatar) setAvatarUrl(cachedAvatar);
+    function connect() {
+      setWsStatus('connecting');
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}`;
+      console.log(`[WS] Connecting to ${wsUrl}...`);
 
-    if (cachedUpgrades) {
-      const parsedUpgrades = JSON.parse(cachedUpgrades);
-      setCarsList(prev => prev.map(c => {
-        if (parsedUpgrades[c.id]) {
-          const upgraded = { ...c, upgrades: parsedUpgrades[c.id] };
-          return getUpgradedCar(upgraded);
+      socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => {
+        console.log('[WS] Connected to live Three Kingdoms tactical server!');
+        setWsStatus('connected');
+        setHasServerConnection(true);
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          console.log('[WS] Message received from host:', msg.type);
+
+          switch (msg.type) {
+            case 'init': {
+              const { officers: initialOfficers, relationships: initialRelationships } = msg.data;
+              setOfficers(initialOfficers);
+              setRelationships(initialRelationships);
+              // Set initial selected officer safely if none selected yet or selected one is reset
+              if (initialOfficers.length > 0) {
+                setSelectedOfficer(current => {
+                  if (!current || !initialOfficers.some(o => o.id === current.id)) {
+                    return initialOfficers[0];
+                  }
+                  return current;
+                });
+              }
+              break;
+            }
+
+            case 'officer_added': {
+              const newOfficer = msg.data;
+              setOfficers(prev => {
+                const existingIdx = prev.findIndex(o => o.id === newOfficer.id);
+                if (existingIdx !== -1) {
+                  // Update in-place
+                  const updated = [...prev];
+                  updated[existingIdx] = newOfficer;
+                  return updated;
+                }
+                return [newOfficer, ...prev];
+              });
+              setSelectedOfficer(current => current && current.id === newOfficer.id ? newOfficer : current);
+              break;
+            }
+
+            case 'officer_deleted': {
+              const { officerId, relationships: updatedRels } = msg.data;
+              setOfficers(prev => prev.filter(o => o.id !== officerId));
+              setRelationships(updatedRels);
+              setSelectedOfficer(current => {
+                if (current && current.id === officerId) {
+                  return FAMOUS_OFFICERS[0];
+                }
+                return current;
+              });
+              break;
+            }
+
+            case 'relationship_added': {
+              const newRel = msg.data;
+              setRelationships(prev => {
+                const exists = prev.some(r => 
+                  (r.fromOfficerId === newRel.fromOfficerId && r.toOfficerId === newRel.toOfficerId) ||
+                  (r.fromOfficerId === newRel.toOfficerId && r.toOfficerId === newRel.fromOfficerId)
+                );
+                if (exists) return prev;
+                return [...prev, newRel];
+              });
+              break;
+            }
+
+            case 'relationship_deleted': {
+              const { fromOfficerId, toOfficerId } = msg.data;
+              setRelationships(prev => prev.filter(r => 
+                !(r.fromOfficerId === fromOfficerId && r.toOfficerId === toOfficerId) &&
+                !(r.fromOfficerId === toOfficerId && r.toOfficerId === fromOfficerId)
+              ));
+              break;
+            }
+
+            case 'bio_generated': {
+              const { requestId, biography } = msg.data;
+              const pending = pendingRequestsRef.current[requestId];
+              if (pending) {
+                pending.resolve(biography);
+                delete pendingRequestsRef.current[requestId];
+              }
+              break;
+            }
+
+            case 'strategy_evaluated': {
+              const { requestId, advice } = msg.data;
+              const pending = pendingRequestsRef.current[requestId];
+              if (pending) {
+                pending.resolve(advice);
+                delete pendingRequestsRef.current[requestId];
+              }
+              break;
+            }
+
+            case 'duel_notification': {
+              const result = msg.data;
+              setCombatOutcome(`⚔️ 武将单挑战报：【${result.winnerName}】(武力值 ${result.winnerForce}) 击败了 【${result.loserName}】(武力值 ${result.loserForce})！\n\n战场细节描写：${result.dialogue}`);
+              if (soundEnabled) {
+                playClashSound();
+              }
+              break;
+            }
+
+            case 'error': {
+              const { requestId, message } = msg.data;
+              const pending = pendingRequestsRef.current[requestId];
+              if (pending) {
+                pending.reject(new Error(message));
+                delete pendingRequestsRef.current[requestId];
+              }
+              break;
+            }
+          }
+        } catch (err) {
+          console.error('[WS] Failed to parse payload:', err);
         }
-        return c;
-      }));
-    }
-  }, []);
+      };
 
-  // Camera capture lifecycle stream management
-  useEffect(() => {
-    if (isCameraActive) {
-      setCameraError(null);
-      navigator.mediaDevices.getUserMedia({
-        video: { width: 320, height: 320, facingMode: "user" },
-        audio: false
-      })
-      .then((stream) => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(e => console.warn("Camera play start offset handled:", e));
-        }
-      })
-      .catch((err) => {
-        console.error("Camera capture initialization error: ", err);
-        setCameraError("Camera access denied or device busy. Please ensure permission is granted.");
-        setIsCameraActive(false);
-      });
-    } else {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-      }
+      socket.onclose = () => {
+        console.warn('[WS] Socket disconnected. Reconnecting in 3s...');
+        setWsStatus('disconnected');
+        setHasServerConnection(false);
+        reconnectTimeout = setTimeout(connect, 3000);
+      };
+
+      socket.onerror = (err) => {
+        console.error('[WS] Error caught:', err);
+        socket?.close();
+      };
+
+      setWs(socket);
     }
+
+    connect();
 
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
+      if (socket) {
+        socket.onclose = null;
+        socket.close();
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
       }
     };
-  }, [isCameraActive]);
+  }, []);
 
-  // Auto-fullscreen state observer for optimal simulator immersion
+  // Promise-based WebSocket dispatch helpers
+  const requestBioAI = (officer: Officer, matchedFaction: Faction): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        reject(new Error("军师殿 WebSocket 链接已掉线，等连通后再重试。"));
+        return;
+      }
+      const requestId = `bio-${Date.now()}-${Math.random()}`;
+      pendingRequestsRef.current[requestId] = { resolve, reject };
+
+      ws.send(JSON.stringify({
+        type: 'generate_bio',
+        data: {
+          requestId,
+          name: officer.name,
+          styleName: officer.styleName,
+          gender: officer.gender,
+          factionName: matchedFaction.name,
+          stats: officer.stats,
+          traits: officer.traits,
+          skills: officer.skills
+        }
+      }));
+    });
+  };
+
+  const requestStrategyAdvisor = (officer: Officer, scenario: CampaignScenario): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        reject(new Error("军事天盘连网已阻断，暂时无法觐见军师。"));
+        return;
+      }
+      const requestId = `strat-${Date.now()}-${Math.random()}`;
+      pendingRequestsRef.current[requestId] = { resolve, reject };
+
+      ws.send(JSON.stringify({
+        type: 'evaluate_strategy',
+        data: {
+          requestId,
+          officer,
+          scenario
+        }
+      }));
+    });
+  };
+
+  // Sync selected advisor details when officer selection changes
   useEffect(() => {
-    if (activeScreen === "racing") {
-      const elem = document.documentElement;
-      try {
-        if (elem.requestFullscreen) {
-          elem.requestFullscreen().catch((err) => {
-            console.warn("Fullscreen request failed / blocked by iframe context:", err);
-          });
-        } else if ((elem as any).webkitRequestFullscreen) {
-          (elem as any).webkitRequestFullscreen();
-        } else if ((elem as any).msRequestFullscreen) {
-          (elem as any).msRequestFullscreen();
-        }
-      } catch (err) {
-        console.warn("Fullscreen activation exception:", err);
-      }
-    } else {
-      try {
-        const doc = document as any;
-        const isFullscreen = !!(
-          document.fullscreenElement ||
-          doc.webkitFullscreenElement ||
-          doc.msFullscreenElement
-        );
-        if (isFullscreen) {
-          if (document.exitFullscreen) {
-            document.exitFullscreen().catch(() => {});
-          } else if (doc.webkitExitFullscreen) {
-            doc.webkitExitFullscreen();
-          } else if (doc.msExitFullscreen) {
-            doc.msExitFullscreen();
-          }
-        }
-      } catch (err) {
-        console.warn("Fullscreen deactivation exception:", err);
-      }
+    setAdvisorBrief('');
+  }, [selectedOfficer, selectedScenario]);
+
+  // Handle generating AI strategic feedback
+  const handleConsultWarCouncil = async () => {
+    setIsConsultingAdvisor(true);
+    try {
+      const advice = await requestStrategyAdvisor(selectedOfficer, selectedScenario);
+      setAdvisorBrief(advice);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || '大军师处连接遇阻，请检查您是否已在 Secrets Panel 中设置了 GEMINI_API_KEY，且开发服务器正常就绪。');
+    } finally {
+      setIsConsultingAdvisor(false);
     }
-  }, [activeScreen]);
-
-  // Sync game statistics to client browser persistence local storage
-  const syncCareerData = (
-    newCredits: number,
-    newOwnedIds: string[],
-    newCars: Car[],
-    newLaps?: { [trackId: string]: number },
-    newStreak?: number,
-    newRaces?: number,
-    newTopSpeed?: number
-  ) => {
-    localStorage.setItem("rr3_credits", newCredits.toString());
-    localStorage.setItem("rr3_owned_cars", JSON.stringify(newOwnedIds));
-    
-    // Extract simply upgrades levels to minimize cache overhead
-    const upgradeMap: { [key: string]: any } = {};
-    newCars.forEach(c => {
-      upgradeMap[c.id] = c.upgrades;
-    });
-    localStorage.setItem("rr3_car_upgrades", JSON.stringify(upgradeMap));
-
-    if (newLaps) localStorage.setItem("rr3_best_laps", JSON.stringify(newLaps));
-    if (newStreak !== undefined) localStorage.setItem("rr3_streak", newStreak.toString());
-    if (newRaces !== undefined) localStorage.setItem("rr3_total_races", newRaces.toString());
-    if (newTopSpeed !== undefined) localStorage.setItem("rr3_top_speed", newTopSpeed.toString());
   };
 
-  // Helper retrieval references
-  const activeCar = carsList.find(c => c.id === selectedCarId) || carsList[0];
-  const activeTrack = INITIAL_TRACKS.find(t => t.id === selectedTrackId) || INITIAL_TRACKS[0];
-
-  // Purchase Supercar Showroom handling
-  const handlePurchaseCar = (car: Car) => {
-    if (credits < car.price) return;
-    
-    const upgradedCredits = credits - car.price;
-    const updatedOwnedIds = [...ownedCarIds, car.id];
-    
-    setCredits(upgradedCredits);
-    setOwnedCarIds(updatedOwnedIds);
-    
-    // Unlock and state update
-    const updatedCars = carsList.map(c => c.id === car.id ? { ...c, owned: true } : c);
-    setCarsList(updatedCars);
-
-    syncCareerData(upgradedCredits, updatedOwnedIds, updatedCars);
+  // Preset randomizer for stats
+  const randomizeStats = () => {
+    setStatLeadership(Math.floor(Math.random() * 65) + 35);
+    setStatForce(Math.floor(Math.random() * 65) + 35);
+    setStatIntelligence(Math.floor(Math.random() * 65) + 35);
+    setStatPolitics(Math.floor(Math.random() * 65) + 35);
+    setStatCharisma(Math.floor(Math.random() * 65) + 35);
   };
 
-  // Invest upgrades in dynamic car mechanics
-  const handleUpgradeCategory = (category: UpgradeCategory) => {
-    const currentLevel = activeCar.upgrades[category];
-    if (currentLevel >= 4) return; // capped maximum
+  // Randomized creator templates
+  const applyTemplate = (type: 'warrior' | 'tactician' | 'monarch') => {
+    if (type === 'warrior') {
+      setCustomGender('Male');
+      setStatLeadership(88);
+      setStatForce(98);
+      setStatIntelligence(45);
+      setStatPolitics(30);
+      setStatCharisma(75);
+      setAvatarHairStyle('Long Bound Mane');
+      setAvatarHairColor('#171717');
+      setAvatarArmorColor('#fb923c');
+      setAvatarAccessory('Green Dragon Crescent Blade');
+      setAvatarExpression('Fierce Roaring');
+      setSelectedTraits(['军神 (以无双霸道震慑周围低统帅敌军并强行开启单挑)']);
+      setSelectedSkills(['突击 (造成恐怖的近战冲撞伤害)', '单挑 (开启惊心动魄的1对1武将武艺对决)', '奇袭 (穿越丛林灌木发动奔袭，无视城墙防守防线)']);
+    } else if (type === 'tactician') {
+      setCustomGender('Female');
+      setStatLeadership(72);
+      setStatForce(35);
+      setStatIntelligence(99);
+      setStatPolitics(92);
+      setStatCharisma(88);
+      setAvatarHairStyle('Scholar Jade Headdress');
+      setAvatarHairColor('#1e293b');
+      setAvatarArmorColor('#f8fafc');
+      setAvatarAccessory('Feather Daoist Fan');
+      setAvatarExpression('Brilliant Calm');
+      setSelectedTraits(['卧龙 (策略消耗大幅降低，且免受计略乾坤)', '神算 (奇门陷阱与火计策略之成功率、杀伤力大幅增强)']);
+      setSelectedSkills(['火计 (点燃目标区域地格，火焰随风方向蔓延)', '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)', '治疗 (恢复重伤士兵的编制数并激发高昂士气)']);
+    } else { // Monarch
+      setCustomGender('Male');
+      setStatLeadership(90);
+      setStatForce(71);
+      setStatIntelligence(84);
+      setStatPolitics(89);
+      setStatCharisma(96);
+      setAvatarHairStyle('Noble Court Crown');
+      setAvatarHairColor('#0f172a');
+      setAvatarArmorColor('#3b82f6');
+      setAvatarAccessory('Engraved Commander Sword');
+      setAvatarExpression('Cold Sovereign');
+      setSelectedTraits(['仁德 (提升声望与信赖程度)', '雄心 (提升个人武将统御及兵力募集上限)']);
+      setSelectedSkills(['挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)', '铁壁 (短时间内进入物理与计谋免疫的无敌状态)']);
+    }
+  };
 
-    const cost = UPGRADE_LATEST_COSTS[currentLevel];
-    if (credits < cost) return;
+  const handleCreateOfficer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customName.trim()) {
+      alert('请输入起立武将名字！');
+      return;
+    }
 
-    const upgradedCredits = credits - cost;
-    const upgradedCarLevels = {
-      ...activeCar.upgrades,
-      [category]: currentLevel + 1
+    const newOfficer: Officer = {
+      id: `custom-${createdCount}-${Date.now()}`,
+      name: customName,
+      gender: customGender,
+      styleName: customStyleName.trim() || undefined,
+      factionId: customFactionId,
+      avatarStyle: {
+        hairColor: avatarHairColor,
+        hairStyle: avatarHairStyle,
+        armorColor: avatarArmorColor,
+        accessory: avatarAccessory,
+        expression: avatarExpression,
+        bgGradient: avatarGradient
+      },
+      stats: {
+        leadership: statLeadership,
+        force: statForce,
+        intelligence: statIntelligence,
+        politics: statPolitics,
+        charisma: statCharisma
+      },
+      traits: selectedTraits,
+      skills: selectedSkills,
+      biography: `在公元 ${selectedScenario.title} 的乱世大潮中，高举义旗、挺身而出的杰出原创群雄首领。其卓越的统御与兵法修为堪称一时之俊杰。`,
+      custom: true
     };
 
-    const updatedCars = carsList.map(c => {
-      if (c.id === activeCar.id) {
-        const withLevels = { ...c, upgrades: upgradedCarLevels };
-        return getUpgradedCar(withLevels);
-      }
-      return c;
-    });
-
-    setCredits(upgradedCredits);
-    setCarsList(updatedCars);
-    syncCareerData(upgradedCredits, ownedCarIds, updatedCars);
-  };
-
-  // Capture user photo from the active media camera stream
-  const handleCapture = () => {
-    if (!videoRef.current) return;
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = 300;
-      canvas.height = 300;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        // Mirror the image horizontally for a natural reflection feel
-        ctx.translate(300, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(videoRef.current, 0, 0, 300, 300);
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-        setAvatarUrl(dataUrl);
-        localStorage.setItem("rr3_avatar_url", dataUrl);
-        
-        // Disable the active camera stream gracefully
-        setIsCameraActive(false);
-      }
-    } catch (err) {
-      console.error("Camera photo snapping failed: ", err);
-    }
-  };
-
-  // Erase the photo and clear client persistence storage
-  const handleDeletePhoto = () => {
-    setAvatarUrl(null);
-    localStorage.removeItem("rr3_avatar_url");
-  };
-
-  // Handle callback upon race completion
-  const handleRaceComplete = (data: { position: number; lapTimes: number[]; prizeEarned: number; speedRecord: number }) => {
-    setLastRaceOutcome(data);
-    
-    // Updates career credits
-    const finalCredits = credits + data.prizeEarned;
-    setCredits(finalCredits);
-
-    // Updates top speeds achieved
-    let currentTopSpeed = allTimeTopSpeed;
-    if (data.speedRecord > allTimeTopSpeed) {
-      currentTopSpeed = data.speedRecord;
-      setAllTimeTopSpeed(data.speedRecord);
-    }
-
-    // Update streaks and races ran counter
-    const racesCount = totalRacesRan + 1;
-    setTotalRacesRan(racesCount);
-
-    let streakVal = streakCount;
-    if (data.position <= 2) {
-      streakVal += 1;
-      setStreakCount(streakVal);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'add_officer',
+        data: newOfficer
+      }));
     } else {
-      streakVal = 0; // split streak
-      setStreakCount(0);
+      setOfficers(prev => [newOfficer, ...prev]);
     }
-
-    // Verify track record lap times
-    const updatedBestLap = { ...bestLapTimes };
-    const fastestLap = Math.min(...data.lapTimes);
-    if (!bestLapTimes[selectedTrackId] || fastestLap < bestLapTimes[selectedTrackId]) {
-      updatedBestLap[selectedTrackId] = fastestLap;
-      setBestLapTimes(updatedBestLap);
-    }
-
-    syncCareerData(finalCredits, ownedCarIds, carsList, updatedBestLap, streakVal, racesCount, currentTopSpeed);
-    setActiveScreen("post_race");
+    
+    setCreatedCount(prev => prev + 1);
+    setSelectedOfficer(newOfficer);
+    
+    // Reset Form Input
+    setCustomName('');
+    setCustomStyleName('');
+    setActiveTab('roster');
   };
+
+  const handleDeleteOfficer = (id: string) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'delete_officer',
+        data: id
+      }));
+    } else {
+      setOfficers(prev => prev.filter(o => o.id !== id));
+      setRelationships(prev => prev.filter(r => r.fromOfficerId !== id && r.toOfficerId !== id));
+      if (selectedOfficer && selectedOfficer.id === id) {
+        setSelectedOfficer(FAMOUS_OFFICERS[0]);
+      }
+    }
+  };
+
+  const handleCreateRelationship = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!relFrom || !relTo || relFrom === relTo) {
+      alert('Select two unique officers to link!');
+      return;
+    }
+
+    // Check duplicate
+    const exists = relationships.some(r => 
+      (r.fromOfficerId === relFrom && r.toOfficerId === relTo) ||
+      (r.fromOfficerId === relTo && r.toOfficerId === relFrom)
+    );
+
+    if (exists) {
+      alert('这两位名将之间已经存在现成的战术连带或情感羁绊网络！');
+      return;
+    }
+
+    const newRel: RelationshipRelation = {
+      fromOfficerId: relFrom,
+      toOfficerId: relTo,
+      type: relType
+    };
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'add_relationship',
+        data: newRel
+      }));
+    } else {
+      setRelationships(prev => [...prev, newRel]);
+    }
+  };
+
+  const handleBreakRelationship = (fromId: string, toId: string) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'delete_relationship',
+        data: { fromOfficerId: fromId, toOfficerId: toId }
+      }));
+    } else {
+      setRelationships(prev => prev.filter(r => 
+        !(r.fromOfficerId === fromId && r.toOfficerId === toId) &&
+        !(r.fromOfficerId === toId && r.toOfficerId === fromId)
+      ));
+    }
+  };
+
+  // Simple Duel Simulator trigger
+  const runBattleDuelSim = (off1: Officer, off2: Officer) => {
+    if (!off1 || !off2) return;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'run_duel',
+        data: { off1, off2 }
+      }));
+    } else {
+      const force1 = off1.stats.force + Math.floor(Math.random() * 15);
+      const force2 = off2.stats.force + Math.floor(Math.random() * 15);
+      
+      let dialogue = '';
+      let winner = off1;
+      let loser = off2;
+
+      if (force1 > force2) {
+         winner = off1;
+         loser = off2;
+      } else {
+         winner = off2;
+         loser = off1;
+      }
+
+      dialogue = `${winner.name} 挥舞神兵，避开防线，破空一击直捣 ${loser.name} 空门。“${winner.name}” 在战场单挑坐标格中夺得压倒性大胜！`;
+      setCombatOutcome(`⚔️ 【自研离线单挑结果】: 赢家：${winner.name} (单挑后武力 ${winner.stats.force}) 击败了 输家：${loser.name} (单挑后武力 ${loser.stats.force})！\n\n战场细节自摹：${dialogue}`);
+      if (soundEnabled) {
+        playClashSound();
+      }
+    }
+  };
+
+  // Helper toggle traits
+  const toggleTrait = (trait: string) => {
+    if (selectedTraits.includes(trait)) {
+      setSelectedTraits(prev => prev.filter(t => t !== trait));
+    } else {
+      if (selectedTraits.length >= 3) {
+        alert('一个武将最多只能掌握3个特质个性。');
+        return;
+      }
+      setSelectedTraits(prev => [...prev, trait]);
+    }
+  };
+
+  // Helper toggle skills
+  const toggleSkill = (skill: string) => {
+    if (selectedSkills.includes(skill)) {
+      setSelectedSkills(prev => prev.filter(s => s !== skill));
+    } else {
+      if (selectedSkills.length >= 4) {
+        alert('一个武将最多只能掌握4个战技技能。');
+        return;
+      }
+      setSelectedSkills(prev => [...prev, skill]);
+    }
+  };
+
+  // Filter & Search roster
+  const filteredOfficers = officers.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (item.styleName && item.styleName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      item.biography.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFaction = factionFilter === 'all' || item.factionId === factionFilter;
+    return matchesSearch && matchesFaction;
+  });
+
+  // Render markdown with high visual fidelity custom parser
+  const renderAdviceMarkdown = (text: string) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    return lines.map((line, idx) => {
+      // Heading level 2 or 3
+      if (line.trim().startsWith('###')) {
+        return <h4 key={idx} className="text-sm font-bold text-amber-200 mt-4 mb-2 uppercase font-serif tracking-wide">{line.replace('###', '').trim()}</h4>;
+      }
+      if (line.trim().startsWith('##') || line.trim().startsWith('**')) {
+        const cleanText = line.replace(/##|\*\*/g, '').trim();
+        return <h3 key={idx} className="text-base font-bold text-amber-400 mt-5 mb-2.5 font-serif border-b border-amber-950/40 pb-1 flex items-center gap-1.5">{cleanText}</h3>;
+      }
+      // List item
+      if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
+        const itemText = line.replace(/^[-*]\s*/, '').trim();
+        // Look for internal bolding like - **Sima Yi**: Text...
+        const boldMatch = itemText.match(/^\*\*(.*?)\*\*:(.*)/);
+        if (boldMatch) {
+          return (
+            <li key={idx} className="ml-4 list-none text-xs text-slate-300 mb-1.5 flex items-start gap-1.5">
+              <span className="text-amber-500 mt-1">✦</span>
+              <span>
+                <strong className="text-amber-200">{boldMatch[1]}</strong>: {boldMatch[2]}
+              </span>
+            </li>
+          );
+        }
+        return (
+          <li key={idx} className="ml-4 list-none text-xs text-slate-300 mb-1.5 flex items-start gap-1.5">
+            <span className="text-amber-500 mt-1">✦</span>
+            <span>{itemText}</span>
+          </li>
+        );
+      }
+      if (line.trim() === '') return <div key={idx} className="h-2"></div>;
+      // Normal paragraph
+      return <p key={idx} className="text-xs text-slate-300 leading-relaxed mb-2.5">{line}</p>;
+    });
+  };
+
+  if (showStartMenu) {
+    return (
+      <StartMenu
+        scenarios={SCENARIOS}
+        selectedScenario={selectedScenario}
+        onSelectScenario={(sc) => setSelectedScenario(sc)}
+        onEnterApp={(tab) => {
+          setActiveTab(tab);
+          setShowStartMenu(false);
+        }}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => setSoundEnabled(!soundEnabled)}
+      />
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#0c0c0e] text-white flex flex-col antialiased font-sans relative overflow-x-hidden">
-      {/* BACKGROUND ACCENT (GRID) */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none geometric-grid" style={{ zIndex: 0 }}></div>
+    <div className="min-h-screen flex flex-col font-sans selection:bg-amber-500/30 selection:text-amber-200">
       
-      {/* 1. COMPREHENSIVE LOBBY SCREEN (DASHBOARD) */}
-      {activeScreen === "lobby" && (
-        <div className="flex-1 flex flex-col z-10">
+      {/* Top Medieval Sovereign Header */}
+      <header className="relative border-b border-slate-800 bg-slate-950 px-6 py-6 overflow-hidden shadow-2xl">
+        <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-red-500"></div>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="text-xl px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 font-serif tracking-widest rounded-lg">
+                VIII
+              </span>
+              <h1 className="text-2xl md:text-3xl font-serif font-black tracking-widest text-slate-50 uppercase flex items-center gap-2">
+                三国志 8
+              </h1>
+            </div>
+            <p className="text-xs text-slate-400 mt-1.5 font-mono max-w-2xl leading-relaxed">
+              招募史实与自立名将，自由配置五维属性与独特特质，缔结合契绊或宿怨机制，更有服务端 Gemini AI 军师亲授天下大势与破敌妙策。
+            </p>
+          </div>
+
+          <div className="flex gap-2.5 items-center bg-slate-900 border border-slate-800 rounded-xl p-2 md:self-center">
+            <button
+              id="btn-return-start"
+              onClick={() => setShowStartMenu(true)}
+              className="px-3 py-1 text-[11px] font-sans font-bold text-amber-500 hover:text-amber-400 border border-amber-500/20 hover:border-amber-500/40 bg-amber-950/20 hover:bg-amber-950/40 rounded-lg active:scale-95 transition-all mr-1 flex items-center gap-1 cursor-pointer"
+            >
+              🏯 返回开始界面
+            </button>
+            <span className="text-[11px] font-mono text-slate-400 px-2 border-l border-slate-800 pl-2">军事天盘连线：</span>
+            {wsStatus === 'connecting' ? (
+              <span className="text-[11px] text-amber-500 flex items-center gap-1 animate-pulse">
+                <RefreshCw size={11} className="animate-spin" /> 星曜校准中...
+              </span>
+            ) : wsStatus === 'connected' ? (
+              <span className="text-[11.5px] text-emerald-400 bg-emerald-950/30 px-2.5 py-0.5 rounded-lg border border-emerald-950/80 font-mono flex items-center gap-1.5 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                实时军政中枢直通
+              </span>
+            ) : (
+              <span className="text-[11.5px] text-rose-400 bg-rose-950/20 px-2.5 py-0.5 rounded-lg border border-rose-950 font-mono inline-flex items-center gap-1.5" title="Attempting reconnection... Make sure the dev server is active.">
+                ● 离线沙盘模式
+              </span>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Main Workspace Grid Router (Roster / Creator / Relationships Simulator) */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* Left Section (Column span 8): Primary action and selection board */}
+        <section className="lg:col-span-8 flex flex-col gap-6">
           
-          {/* Dashboard Header Profile Indicators */}
-          <div className="border-b border-white/10 bg-gradient-to-r from-[#1a1a1c] to-[#0c0c0e]/95 sticky top-0 z-30 backdrop-blur-md px-8 py-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
-            <div className="flex items-center gap-6">
-              <div className="w-10 h-10 bg-yellow-500 flex items-center justify-center font-black text-black text-xl italic tracking-tighter select-none shadow-[0_0_15px_rgba(234,179,8,0.3)] shrink-0">
-                RR
-              </div>
-              <div>
-                <h1 className="text-xl font-black uppercase tracking-wider text-white italic">REAL RACING 3D</h1>
-                <p className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Licensed GT & Hypercar Motorsport</p>
-              </div>
+          {/* Navigation Control Toolbar */}
+          <div className="bg-slate-950 p-2 rounded-2xl border border-slate-900 flex justify-between items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-1 p-1 bg-slate-900 rounded-xl border border-slate-800/80">
+              <button
+                id="tab-roster"
+                onClick={() => setActiveTab('roster')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'roster' 
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Users size={12} /> 麾下名将录
+              </button>
+              <button
+                id="tab-creator"
+                onClick={() => setActiveTab('creator')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'creator' 
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <UserPlus size={12} /> 自立武将登用
+              </button>
+              <button
+                id="tab-bonds"
+                onClick={() => setActiveTab('bonds')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'bonds' 
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Heart size={14} /> 人际关系与单挑
+              </button>
+              <button
+                id="tab-map"
+                onClick={() => setActiveTab('map')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'map' 
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Map size={12} /> 沙盘天盘地图
+              </button>
             </div>
 
-            {/* Wallet Cash Balance and Driver Badge Streaks */}
-            <div className="flex items-center gap-6 flex-wrap">
-              {/* Driver Header Profile Info Link */}
-              <div 
-                onClick={() => setCurrentMenuTab("career")} 
-                className="flex items-center gap-3 cursor-pointer group hover:bg-white/5 px-3 py-1 border-l border-white/10 h-10 transition-all select-none"
-                title="View Driver Profile"
-              >
-                {avatarUrl ? (
-                  <img 
-                    src={avatarUrl} 
-                    alt="Driver Avatar" 
-                    referrerPolicy="no-referrer"
-                    className="w-8 h-8 rounded-none border border-yellow-500 object-cover shadow-[0_0_8px_rgba(234,179,8,0.25)]" 
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-none border border-white/20 bg-white/5 flex items-center justify-center font-bold text-[10px] text-gray-400 font-mono">
-                    <User className="w-3.5 h-3.5 text-gray-450 group-hover:text-yellow-500 transition-colors" />
-                  </div>
-                )}
-                <div className="text-left hidden sm:block">
-                  <span className="block text-[8px] text-gray-400 font-bold uppercase tracking-wider leading-none">DRIVER</span>
-                  <span className="block text-xs font-black uppercase text-yellow-500 tracking-tight leading-none mt-1 group-hover:text-white transition-all font-sans font-medium">
-                    {driverName}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end border-l border-white/10 pl-6 h-10 justify-center">
-                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">WALLET Balance</span>
-                <span className="text-lg font-mono tracking-tight text-emerald-400 font-bold">Cr. {credits.toLocaleString()}</span>
-              </div>
-
-              <div className="flex flex-col items-end border-l border-white/10 pl-6 h-10 justify-center">
-                <span className="text-[10px] text-yellow-500/85 font-bold uppercase tracking-wider">Victory Streak</span>
-                <span className="text-lg font-mono tracking-tight text-yellow-500 font-bold italic">{streakCount} RACES</span>
-              </div>
-
-              <div className="flex flex-col items-end border-l border-white/10 pl-6 h-10 justify-center pr-2">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Events</span>
-                <span className="text-lg font-mono tracking-tight text-white font-bold">{totalRacesRan} COMPLETED</span>
-              </div>
+            <div className="text-xs text-slate-400 font-mono px-3">
+              当前剧本年份: <strong className="text-amber-400">公元 {selectedScenario.year} 年</strong>
             </div>
           </div>
 
-          {/* Core Applet Workspace Navigation */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-12">
-            
-            {/* Left Nav menu rail */}
-            <div className="lg:col-span-3 border-r border-white/10 bg-[#121215] p-6 flex flex-col gap-6 justify-between rounded-none">
-              <div className="flex flex-col gap-2">
-                <p className="text-[10px] font-black tracking-widest text-gray-450 uppercase px-3 font-mono">GARAGE COMMANDS</p>
-                
-                <button
-                  onClick={() => setCurrentMenuTab("showroom")}
-                  className={`w-full text-left px-5 py-3.5 rounded-none text-xs font-black tracking-wider uppercase transition-all flex items-center justify-between border italic ${
-                    currentMenuTab === "showroom" 
-                    ? "bg-white/5 border-l-4 border-l-yellow-500 border-t-white/10 border-r-white/10 border-b-white/10 text-yellow-450 shadow-[0_0_15px_rgba(234,179,8,0.08)]" 
-                    : "text-gray-450 hover:text-white hover:bg-white/5 border-white/10"
-                  }`}
-                >
-                  <span className="flex items-center gap-3">
-                    <ShoppingBag className="w-4 h-4" /> SUPERCAR SHOWROOM
-                  </span>
-                  <span className="text-[10px] bg-black/40 text-gray-400 px-2.5 py-0.5 rounded-none border border-white/10">
-                    {carsList.filter(c => c.owned).length}/{carsList.length}
-                  </span>
-                </button>
+          {/* Tab 1: Officer Roster */}
+          {activeTab === 'roster' && (
+            <div className="flex flex-col gap-5">
+              
+              {/* Filter controls */}
+              <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col md:flex-row gap-4 justify-between items-center">
+                <div className="relative w-full md:w-64">
+                  <Search size={14} className="absolute left-3 top-3.5 text-slate-500" />
+                  <input
+                    id="search-officers"
+                    type="text"
+                    placeholder="搜姓名、字号、技能特质或列传..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl pl-9 pr-4 py-2.5 text-xs focus:outline-none focus:border-slate-700 transition-colors"
+                  />
+                </div>
 
-                <button
-                  onClick={() => setCurrentMenuTab("garage")}
-                  className={`w-full text-left px-5 py-3.5 rounded-none text-xs font-black tracking-wider uppercase transition-all flex items-center justify-between border italic ${
-                    currentMenuTab === "garage" 
-                    ? "bg-white/5 border-l-4 border-l-yellow-500 border-t-white/10 border-r-white/10 border-b-white/10 text-yellow-450 shadow-[0_0_15px_rgba(234,179,8,0.08)]" 
-                    : "text-gray-450 hover:text-white hover:bg-white/5 border-white/10"
-                  }`}
-                >
-                  <span className="flex items-center gap-3">
-                    <Wrench className="w-4 h-4" /> UPGRADE WORKSHOP
+                <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                  <span className="text-slate-400 text-xs font-mono shrink-0 flex items-center gap-1.5">
+                    <Filter size={12} /> 筛选所属阵营:
                   </span>
-                  {activeCar.owned && (
-                    <span className="text-[10px] text-yellow-500 font-mono font-bold">
-                      LVL {(Object.values(activeCar.upgrades) as number[]).reduce((a, b) => a + b, 0)}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setCurrentMenuTab("tracks")}
-                  className={`w-full text-left px-5 py-3.5 rounded-none text-xs font-black tracking-wider uppercase transition-all flex items-center justify-between border italic ${
-                    currentMenuTab === "tracks" 
-                    ? "bg-white/5 border-l-4 border-l-yellow-500 border-t-white/10 border-r-white/10 border-b-white/10 text-yellow-450 shadow-[0_0_15px_rgba(234,179,8,0.08)]" 
-                    : "text-gray-450 hover:text-white hover:bg-white/5 border-white/10"
-                  }`}
-                >
-                  <span className="flex items-center gap-3">
-                    <Compass className="w-4 h-4" /> WORLD CIRCUITS
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setCurrentMenuTab("career")}
-                  className={`w-full text-left px-5 py-3.5 rounded-none text-xs font-black tracking-wider uppercase transition-all flex items-center justify-between border italic ${
-                    currentMenuTab === "career" 
-                    ? "bg-white/5 border-l-4 border-l-yellow-500 border-t-white/10 border-r-white/10 border-b-white/10 text-yellow-450 shadow-[0_0_15px_rgba(234,179,8,0.08)]" 
-                    : "text-gray-450 hover:text-white hover:bg-white/5 border-white/10"
-                  }`}
-                >
-                  <span className="flex items-center gap-3">
-                    <Activity className="w-4 h-4" /> CAREER STATISTICS
-                  </span>
-                </button>
+                  <div className="flex gap-1">
+                    {[
+                      { id: 'all', name: '不限势力' },
+                      ...FACTIONS
+                    ].map(f => (
+                      <button
+                        id={`btn-faction-filter-${f.id}`}
+                        key={f.id}
+                        onClick={() => setFactionFilter(f.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all border shrink-0 ${
+                          factionFilter === f.id 
+                            ? 'bg-slate-800 text-slate-200 border-slate-600' 
+                            : 'bg-slate-950/40 text-slate-400 border-transparent hover:border-slate-900 hover:text-slate-300'
+                        }`}
+                      >
+                        {f.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              {/* Launcher HUD segment */}
-              <div className="p-5 rounded-none bg-[#16161a] border border-white/10 space-y-4 mt-8 lg:mt-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-ping shadow-[0_0_8px_rgba(234,179,8,1)]" />
-                  <span className="text-[10px] font-mono tracking-widest text-yellow-500 font-black uppercase">READY TO LAUNCH</span>
-                </div>
-                <div>
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider">SELECTED TEAM PLATFORM:</h4>
-                  <p className="text-sm text-white font-extrabold tracking-wide uppercase mt-1 italic">{activeCar.brand} {activeCar.name}</p>
-                  <p className="text-[10px] font-mono text-gray-400 mt-1">at {activeTrack.name}</p>
-                </div>
-                
-                <button
-                  onClick={() => {
-                    if (!activeCar.owned) {
-                      setCurrentMenuTab("showroom");
-                      return;
-                    }
-                    setActiveScreen("racing");
-                  }}
-                  className={`w-full py-4 rounded-none font-black uppercase tracking-wider text-xs italic transition-all flex items-center justify-center gap-3 cursor-pointer ${
-                    activeCar.owned 
-                    ? "bg-yellow-500 hover:bg-yellow-400 text-black shadow-[px_rgba(234,179,8,0.30)] shadow-[0_0_15px_rgba(234,179,8,0.25)] duration-150" 
-                    : "bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed"
-                  }`}
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" /> 
-                  {activeCar.owned ? "ENTER CUP RACE" : "BUY VEHICLE TO ENROLL"}
-                </button>
+              {/* Grid database Roster */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {filteredOfficers.length > 0 ? (
+                  filteredOfficers.map(off => (
+                    <OfficerCard
+                      key={off.id}
+                      officer={off}
+                      onEdit={(updated) => {
+                        setOfficers(prev => prev.map(o => o.id === updated.id ? updated : o));
+                        setSelectedOfficer(updated);
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                           ws.send(JSON.stringify({
+                            type: 'add_officer',
+                            data: updated
+                          }));
+                        }
+                      }}
+                      onDelete={handleDeleteOfficer}
+                      onSelectForStrategy={(selected) => setSelectedOfficer(selected)}
+                      isSelectableForStrategy={true}
+                      onGenerateBio={(tgt) => {
+                        const matchedFaction = FACTIONS.find(f => f.id === tgt.factionId) || FACTIONS[FACTIONS.length - 1];
+                        return requestBioAI(tgt, matchedFaction);
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div className="col-span-1 md:col-span-2 text-center py-12 bg-slate-900/10 border border-slate-900 border-dashed rounded-2xl">
+                    <User size={24} className="text-slate-600 mx-auto mb-2" />
+                    <p className="text-sm text-slate-400 font-medium">在这片乱世天盘的坐标格段，未能寻到任何出仕武将。</p>
+                    <p className="text-xs text-slate-500 mt-1">请尝试清除搜索字或变更所属势力分类。</p>
+                  </div>
+                )}
               </div>
             </div>
+          )}
 
-            {/* Right hand dynamic pane */}
-            <div className="lg:col-span-9 p-8 bg-[#0c0c0e] overflow-y-auto max-h-[calc(100vh-130px)] z-10">
+          {/* Tab 2: Custom Officer Creator */}
+          {activeTab === 'creator' && (
+            <form onSubmit={handleCreateOfficer} className="bg-slate-950 rounded-2xl border border-slate-900 p-6 flex flex-col gap-6">
               
-                {/* A. SUPERCAR SHOWROOM TAB */}
-                {currentMenuTab === "showroom" && (
-                  <div className="space-y-6 animate-view-fade">
+              <div className="flex justify-between items-center border-b border-slate-900 pb-4">
+                <div>
+                  <h2 className="text-lg font-serif font-bold text-slate-200 uppercase tracking-wider">自立群雄名将幕府</h2>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">对属性进行完全自定义、一键套用经典模板，并实时预览武将画像。</p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    id="btn-template-warrior"
+                    type="button"
+                    onClick={() => applyTemplate('warrior')}
+                    className="px-2.5 py-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono text-slate-300 rounded transition-colors"
+                  >
+                    ⚔️ 悍勇猛将
+                  </button>
+                  <button
+                    id="btn-template-tactician"
+                    type="button"
+                    onClick={() => applyTemplate('tactician')}
+                    className="px-2.5 py-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono text-slate-300 rounded transition-colors"
+                  >
+                    🎓 治世谋臣
+                  </button>
+                  <button
+                    id="btn-template-monarch"
+                    type="button"
+                    onClick={() => applyTemplate('monarch')}
+                    className="px-2.5 py-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono text-slate-300 rounded transition-colors"
+                  >
+                    👑 仁德英豪
+                  </button>
+                </div>
+              </div>
+
+              {/* Creator Main content grid */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                
+                {/* Visual live Avatar Generator panel */}
+                <div className="md:col-span-4 flex flex-col items-center gap-4 bg-slate-900/40 p-5 rounded-2xl border border-slate-900 min-h-[300px]">
+                  <span className="text-xs font-mono text-slate-400 block tracking-widest uppercase">丹青画像</span>
+                  
+                  <AvatarRenderer 
+                    style={{
+                      hairColor: avatarHairColor,
+                      hairStyle: avatarHairStyle,
+                      armorColor: avatarArmorColor,
+                      accessory: avatarAccessory,
+                      expression: avatarExpression,
+                      bgGradient: avatarGradient
+                    }} 
+                    size={160} 
+                  />
+
+                  <div className="w-full space-y-3 mt-2">
+                    {/* Background Selector */}
                     <div>
-                      <h2 className="text-2xl font-black uppercase text-white tracking-wide italic leading-none">SUPERCAR SHOWROOM</h2>
-                      <p className="text-xs text-gray-400 mt-2 font-mono uppercase tracking-wider">Browse licensed championship GT platforms and select active weapon for the grid.</p>
+                      <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">画卷背景</label>
+                      <select
+                        id="select-gradient"
+                        value={avatarGradient}
+                        onChange={(e) => setAvatarGradient(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-2 focus:outline-none"
+                      >
+                        {GRADIENTS.map(g => (
+                          <option key={g.value} value={g.value}>{g.name}</option>
+                        ))}
+                      </select>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Left: Car cards selector */}
-                      <div className="space-y-4">
-                        {carsList.map(car => (
-                          <div
-                            key={car.id}
-                            onClick={() => setSelectedCarId(car.id)}
-                            className={`p-5 rounded-none border transition-all cursor-pointer flex items-center justify-between ${
-                              selectedCarId === car.id 
-                              ? "bg-[#16161a] border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.1)]" 
-                              : "bg-black/40 border-white/10 hover:bg-[#16161a]/60 hover:border-white/20"
+                    {/* Expression Selector */}
+                    <div>
+                      <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">神态之姿</label>
+                      <select
+                        id="select-expression"
+                        value={avatarExpression}
+                        onChange={(e) => setAvatarExpression(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-2 focus:outline-none"
+                      >
+                        {EXPRESSIONS.map(e => (
+                          <option key={e.value} value={e.value}>{e.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form fields & Sliders panel */}
+                <div className="md:col-span-8 flex flex-col gap-5">
+                  
+                  {/* Biography Identifiers */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-mono text-slate-400 block mb-1">武将姓名</label>
+                      <input
+                        id="input-custom-name"
+                        type="text"
+                        placeholder="例如：马超"
+                        value={customName}
+                        onChange={(e) => setCustomName(e.target.value)}
+                        required
+                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-mono text-slate-400 block mb-1">字号 / 表字</label>
+                      <input
+                        id="input-style-name"
+                        type="text"
+                        placeholder="例如：孟起"
+                        value={customStyleName}
+                        onChange={(e) => setCustomStyleName(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-slate-700"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-mono text-slate-400 block mb-1">性别</label>
+                      <div className="flex gap-2">
+                        {['Male', 'Female'].map(g => (
+                          <button
+                            id={`btn-gender-${g}`}
+                            key={g}
+                            type="button"
+                            onClick={() => setCustomGender(g as any)}
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                              customGender === g 
+                                ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold' 
+                                : 'bg-slate-950 border-slate-800 text-slate-400'
                             }`}
                           >
-                            <div className="flex items-center gap-4">
-                              {/* Vector color accent profile circle */}
-                              <div 
-                                className="w-12 h-12 rounded-none flex items-center justify-center font-bold text-xl relative overflow-hidden border border-white/15"
-                                style={{ backgroundColor: car.color }}
-                              >
-                                <span className="absolute bottom-1 right-1 text-xs drop-shadow-md">{car.emoji}</span>
-                              </div>
-                              <div className="text-left">
-                                <span className="text-[9px] font-mono tracking-widest font-extrabold uppercase px-2 py-0.5 rounded-none bg-black/55 text-white border border-white/10">
-                                  CLASS {car.class}
-                                </span>
-                                <h3 className="text-sm font-black text-white uppercase tracking-wider mt-1.5">{car.brand} {car.name}</h3>
-                              </div>
-                            </div>
-
-                            <div className="text-right font-mono">
-                              {car.owned ? (
-                                <span className="text-[10px] text-yellow-500 font-black tracking-wider flex items-center gap-1.5 italic">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-yellow-500" /> SELECTED
-                                </span>
-                              ) : (
-                                <div>
-                                  <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">PRICE TAG</p>
-                                  <p className="text-sm font-black text-yellow-550 leading-none mt-1">Cr. {car.price.toLocaleString()}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                            {g === 'Female' ? '女' : '男'}
+                          </button>
                         ))}
                       </div>
+                    </div>
 
-                      {/* Right: Technical specification sheets & active preview */}
-                      <div className="p-6 rounded-none bg-[#121215] border border-white/10 flex flex-col justify-between">
-                        <div className="space-y-5">
-                          {/* Active showroom interactive 3D model */}
-                          <div className="h-56 rounded-none bg-black/60 border border-white/10 relative flex flex-col items-center justify-center overflow-hidden">
-                            <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
-                              <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse" />
-                              <span className="text-[9px] font-mono tracking-widest text-[#eab308] font-black uppercase">Active Studio 3D Visualizer</span>
-                            </div>
-                            
-                            <Showroom3D car={activeCar} />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <h3 className="text-lg font-black text-white uppercase tracking-wider italic">{activeCar.brand} {activeCar.name}</h3>
-                            <p className="text-xs text-gray-400 leading-relaxed font-sans">{activeCar.description}</p>
-                          </div>
-
-                          {/* Dynamic Specification bar metrics comparison */}
-                          <div className="space-y-4 pt-4 border-t border-white/10">
-                            
-                            {/* Top Speed Spec */}
-                            <div className="space-y-2 font-mono text-xs">
-                              <div className="flex justify-between items-center text-gray-400">
-                                <span className="text-[10px] uppercase font-bold tracking-wider">TOP SPEED</span>
-                                <span className="text-white font-black">{activeCar.currentSpecs.topSpeed} KM/H</span>
-                              </div>
-                              <div className="h-1.5 bg-white/10 w-full flex gap-0.5">
-                                <div 
-                                  className="h-full bg-yellow-500" 
-                                  style={{ width: `${(activeCar.currentSpecs.topSpeed / 550) * 100}%` }}
-                                />
-                                <div className="h-full bg-white/5 flex-1" />
-                              </div>
-                            </div>
-
-                            {/* Acceleration */}
-                            <div className="space-y-2 font-mono text-xs">
-                              <div className="flex justify-between items-center text-gray-400">
-                                <span className="text-[10px] uppercase font-bold tracking-wider">ACCELERATION (0-100 KM/H)</span>
-                                <span className="text-white font-black">{activeCar.currentSpecs.acceleration} SEC</span>
-                              </div>
-                              <div className="h-1.5 bg-white/10 w-full flex gap-0.5">
-                                {/* Acceleration maps value downwards (lower is better, e.g. 1.7 sec is closer to max) */}
-                                <div 
-                                  className="h-full bg-white" 
-                                  style={{ width: `${(3.5 / activeCar.currentSpecs.acceleration) * 100}%` }}
-                                />
-                                <div className="h-full bg-white/5 flex-1" />
-                              </div>
-                            </div>
-
-                            {/* Lateral Grip */}
-                            <div className="space-y-2 font-mono text-xs">
-                              <div className="flex justify-between items-center text-gray-400">
-                                <span className="text-[10px] uppercase font-bold tracking-wider">LATERAL CORNERING GRIP</span>
-                                <span className="text-white font-black">{activeCar.currentSpecs.grip.toFixed(2)} G</span>
-                              </div>
-                              <div className="h-1.5 bg-white/10 w-full flex gap-0.5">
-                                <div 
-                                  className="h-full bg-yellow-500" 
-                                  style={{ width: `${(activeCar.activeGrip || activeCar.currentSpecs.grip / 3.29) * 100}%` }}
-                                />
-                                <div className="h-full bg-white/5 flex-1" />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Interactive owned/unlocked button purchase option */}
-                        <div className="pt-6 border-t border-white/10 mt-6 md:mt-2 bg-[#18181c] p-4.5 rounded-none border border-white/5 flex items-center justify-between">
-                          {activeCar.owned ? (
-                            <span className="w-full text-center text-[10px] font-mono font-black tracking-widest text-[#22c55e] flex items-center justify-center gap-1.5 bg-emerald-950/20 py-3 rounded-none border border-emerald-500/30 uppercase italic">
-                              <CheckCircle2 className="w-4 h-4" /> COMPLETED OWNERSHIP
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => handlePurchaseCar(activeCar)}
-                              disabled={credits < activeCar.price}
-                              className={`w-full py-4.5 rounded-none font-black uppercase tracking-wider text-xs italic transition-all text-center cursor-pointer flex items-center justify-center gap-2 ${
-                                credits >= activeCar.price 
-                                ? "bg-yellow-500 hover:bg-yellow-400 text-black shadow-[0_0_15px_rgba(234,179,8,0.25)]" 
-                                : "bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed"
-                              }`}
-                            >
-                              <Coins className="w-4 h-4" /> PURCHASE PLATFORM (Cr. {activeCar.price.toLocaleString()})
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                    <div>
+                      <label className="text-xs font-mono text-slate-400 block mb-1">出仕效忠势力</label>
+                      <select
+                        id="select-custom-faction"
+                        value={customFactionId}
+                        onChange={(e) => setCustomFactionId(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-slate-700"
+                      >
+                        {FACTIONS.map(f => (
+                          <option key={f.id} value={f.id}>{f.crest} - {f.name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                )}
 
-                {/* B. UPGRADE GARAGE STATION TAB */}
-                {currentMenuTab === "garage" && (
-                  <div className="space-y-6 animate-view-fade">
+                  {/* Appearance customizations */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-900/20 p-4 rounded-xl border border-slate-900">
                     <div>
-                      <h2 className="text-2xl font-black uppercase text-white tracking-wide italic leading-none">UPGRADE WORKSHOP</h2>
-                      <p className="text-xs text-gray-400 mt-2 font-mono uppercase tracking-wider">Install genuine factory engine packages, aero wings, and high-compound racing slicks.</p>
+                      <label className="text-[10px] font-mono text-slate-400 block mb-1 uppercase">画卷冠发</label>
+                      <select
+                        id="select-hair-style"
+                        value={avatarHairStyle}
+                        onChange={(e) => setAvatarHairStyle(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-1.5 focus:outline-none"
+                      >
+                        {HAIR_STYLES.map(h => (
+                          <option key={h.value} value={h.value}>{h.name}</option>
+                        ))}
+                      </select>
                     </div>
 
-                    {!activeCar.owned ? (
-                      <div className="p-8 rounded-none bg-black/40 border border-white/10 text-center flex flex-col items-center justify-center">
-                        <ShieldAlert className="w-11 h-11 text-yellow-500 mb-3 animate-pulse" />
-                        <h4 className="text-base font-black uppercase text-white tracking-wider italic">CHASSIS NOT OWNED</h4>
-                        <p className="text-xs text-gray-400 max-w-sm mt-1 mb-5">You must first acquire ownership of the active scorecard {activeCar.brand} {activeCar.name} in the Showroom to calibrate custom parts.</p>
-                        <button
-                          onClick={() => setCurrentMenuTab("showroom")}
-                          className="px-6 py-3.5 rounded-none bg-yellow-500 font-black uppercase text-xs tracking-widest text-black hover:bg-yellow-400 cursor-pointer italic shadow-[0_0_15px_rgba(234,179,8,0.2)] duration-150"
-                        >
-                          Go to Showroom
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        
-                        {/* Custom parts selection column */}
-                        <div className="lg:col-span-2 space-y-4">
-                          {[
-                            { 
-                              id: "engine" as UpgradeCategory, 
-                              name: "STAGE II MOTOR REPROGRAM", 
-                              detail: "Increases direct horsepower output and top speed cap parameters.", 
-                              perf: "+ Top Speed, + Acceleration" 
-                            },
-                            { 
-                              id: "drivetrain" as UpgradeCategory, 
-                              name: "LIGHT GEAR TRANSMISSION", 
-                              detail: "Shaves off milliseconds from dual-clutch transmission shifts.", 
-                              perf: "++ Acceleration" 
-                            },
-                            { 
-                              id: "aerodynamics" as UpgradeCategory, 
-                              name: "DOWNDRAFT REAR WING", 
-                              detail: "Utilizes active vector spoiler angles to maximize high-speed turn grip.", 
-                              perf: "++ Lateral Grip, + Top Speed" 
-                            },
-                            { 
-                              id: "tyres" as UpgradeCategory, 
-                              name: "ZERO COMPROMISE RACING SLICKS", 
-                              detail: "Ultra-sticky soft compound rubber compounds to lock braking marking zones.", 
-                              perf: "++ Lateral Grip, - Braking Distance" 
-                            }
-                          ].map(part => {
-                            const level = activeCar.upgrades[part.id];
-                            const isCapped = level >= 4;
-                            const cost = isCapped ? 0 : UPGRADE_LATEST_COSTS[level];
+                    <div>
+                      <label className="text-[10px] font-mono text-slate-400 block mb-1 uppercase">须发色泽</label>
+                      <select
+                        id="select-hair-color"
+                        value={avatarHairColor}
+                        onChange={(e) => setAvatarHairColor(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-1.5 focus:outline-none"
+                      >
+                        {HAIR_COLORS.map(c => (
+                          <option key={c.value} value={c.value}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                            return (
-                              <div
-                                key={part.id}
-                                className="bg-[#121215] border border-white/10 p-5 rounded-none flex items-center justify-between gap-4 select-none"
-                              >
-                                <div className="space-y-1.5 text-left">
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-[9px] font-mono font-black tracking-widest text-yellow-500 uppercase">
-                                      {part.id} upgrade
-                                    </span>
-                                    <div className="flex gap-1.5">
-                                      {Array.from({ length: 4 }).map((_, idx) => (
-                                        <div
-                                          key={idx}
-                                          className={`w-4 h-1 border ${
-                                            idx < level 
-                                              ? "bg-yellow-500 border-yellow-400" 
-                                              : "bg-black border-white/5"
-                                          }`}
-                                        />
-                                      ))}
-                                    </div>
-                                  </div>
-                                  <h4 className="text-sm font-black text-white tracking-wider uppercase leading-none">{part.name}</h4>
-                                  <p className="text-[11px] text-gray-400 leading-normal max-w-md">{part.detail}</p>
-                                  <span className="inline-block text-[9px] font-mono font-black tracking-wider text-[#10b981] bg-[#16161a] px-2.5 py-1 rounded-none border border-white/10 uppercase">
-                                    {part.perf}
-                                  </span>
-                                </div>
+                    <div>
+                      <label className="text-[10px] font-mono text-slate-400 block mb-1 uppercase">甲胄战袍色</label>
+                      <select
+                        id="select-armor-color"
+                        value={avatarArmorColor}
+                        onChange={(e) => setAvatarArmorColor(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-1.5 focus:outline-none"
+                      >
+                        {ARMOR_COLORS.map(c => (
+                          <option key={c.value} value={c.value}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                                <div className="text-right flex flex-col items-end gap-2 shrink-0">
-                                  {isCapped ? (
-                                    <span className="text-[10px] font-mono font-black tracking-widest text-[#eab308] flex items-center gap-1 bg-[#1a1815] px-3 py-2 rounded-none border border-yellow-500/20 italic">
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-[#eab308]" /> MAXIMUM
-                                    </span>
-                                  ) : (
-                                    <button
-                                      onClick={() => handleUpgradeCategory(part.id)}
-                                      disabled={credits < cost}
-                                      className={`px-5 py-3 rounded-none font-black uppercase text-xs tracking-wider italic transition-all cursor-pointer ${
-                                        credits >= cost 
-                                          ? "bg-yellow-500 hover:bg-yellow-400 text-black shadow-[0_0_15px_rgba(234,179,8,0.2)]" 
-                                          : "bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed"
-                                      }`}
-                                    >
-                                      BUY (Cr. {cost.toLocaleString()})
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Visual Spec outcome comparison board */}
-                        <div className="p-6 rounded-none bg-[#121215] border border-white/10 flex flex-col justify-between font-mono">
-                          <div>
-                            <h3 className="text-[9px] font-black tracking-widest text-gray-400 uppercase mb-4 flex items-center gap-1.5 leading-none">
-                              📈 MECHANICAL OUTPUT SPECIFICATIONS
-                            </h3>
-                            
-                            <div className="space-y-3">
-                              <div className="p-3 bg-black/40 rounded-none border border-white/10 flex justify-between items-center text-xs">
-                                <span className="text-gray-450 font-sans text-[11px] uppercase tracking-wider font-semibold">VELOCITY SPEC:</span>
-                                <div className="text-right font-bold">
-                                  <span className="text-gray-500 line-through mr-2">{activeCar.baseSpecs.topSpeed}</span>
-                                  <span className="text-white">{activeCar.currentSpecs.topSpeed} km/h</span>
-                                </div>
-                              </div>
-
-                              <div className="p-3 bg-black/40 rounded-none border border-white/10 flex justify-between items-center text-xs">
-                                <span className="text-gray-450 font-sans text-[11px] uppercase tracking-wider font-semibold">LAUNCH TIME (0-100):</span>
-                                <div className="text-right font-bold">
-                                  <span className="text-gray-500 line-through mr-2">{activeCar.baseSpecs.acceleration}s</span>
-                                  <span className="text-emerald-400">{activeCar.currentSpecs.acceleration}s</span>
-                                </div>
-                              </div>
-
-                              <div className="p-3 bg-black/40 rounded-none border border-white/10 flex justify-between items-center text-xs">
-                                <span className="text-gray-450 font-sans text-[11px] uppercase tracking-wider font-semibold">CORNER G-FORCE:</span>
-                                <div className="text-right font-bold">
-                                  <span className="text-gray-500 line-through mr-2">{activeCar.baseSpecs.grip}G</span>
-                                  <span className="text-yellow-500">{activeCar.currentSpecs.grip.toFixed(2)}G</span>
-                                </div>
-                              </div>
-
-                              <div className="p-3 bg-black/40 rounded-none border border-white/10 flex justify-between items-center text-xs">
-                                <span className="text-gray-450 font-sans text-[11px] uppercase tracking-wider font-semibold">BRAKING DECELERATION:</span>
-                                <div className="text-right font-bold">
-                                  <span className="text-gray-500 line-through mr-2">{activeCar.baseSpecs.braking}m</span>
-                                  <span className="text-amber-500">{activeCar.currentSpecs.braking}m</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="p-4 rounded-none bg-black/60 border border-white/5 text-[11px] text-left leading-relaxed text-gray-400 mt-6 lg:mt-2 font-sans flex items-start gap-2.5">
-                            <Radio className="w-5 h-5 text-yellow-500 shrink-0" />
-                            <p>
-                              Track telemetry systems are simulated on real-world GT ratios. Increasing lateral G-force grip significantly helps maintain drift momentum on sweeping curves.
-                            </p>
-                          </div>
-                        </div>
-
-                      </div>
-                    )}
+                    <div className="sm:col-span-3">
+                      <label className="text-[10px] font-mono text-slate-400 block mb-1 uppercase">手持专属神兵武器</label>
+                      <select
+                        id="select-accessory"
+                        value={avatarAccessory}
+                        onChange={(e) => setAvatarAccessory(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-1.5 focus:outline-none"
+                      >
+                        {ACCESSORIES.map(a => (
+                          <option key={a.value} value={a.value}>{a.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                )}
 
-                {/* C. CIRCUITS TRACK LAB TAB */}
-                {currentMenuTab === "tracks" && (
-                  <div className="space-y-6 animate-view-fade">
-                    <div>
-                      <h2 className="text-2xl font-black uppercase text-white tracking-wide italic leading-none">LICENSED RACING TRACKS</h2>
-                      <p className="text-xs text-gray-400 mt-2 font-mono uppercase tracking-wider">Select standard locations. Each circuit maintains independent track record times.</p>
+                  {/* Attributes Panel Creator Sliders */}
+                  <div className="space-y-3.5 pt-2">
+                    <div className="flex justify-between items-center bg-slate-900/10 border-b border-slate-900 pb-1.5">
+                      <span className="text-xs font-mono font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                        <Sliders size={12} /> 武将五维属性值自配
+                      </span>
+                      <button
+                        id="btn-randomize-stats"
+                        type="button"
+                        onClick={randomizeStats}
+                        className="text-[10px] text-amber-400 hover:text-amber-300 inline-flex items-center gap-1 font-mono transition-all"
+                      >
+                        <RefreshCw size={10} /> 骰点随机生成属性
+                      </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Left: Circuit lists */}
-                      <div className="space-y-4">
-                        {INITIAL_TRACKS.map(track => {
-                          const isBest = bestLapTimes[track.id];
-                          return (
-                            <div
-                              key={track.id}
-                              onClick={() => setSelectedTrackId(track.id)}
-                              className={`p-4.5 rounded-none border transition-all cursor-pointer flex items-center justify-between ${
-                                selectedTrackId === track.id 
-                                ? "bg-yellow-500/10 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.1)]" 
-                                : "bg-[#121215] border-white/10 hover:bg-[#16161a]"
-                              }`}
-                            >
-                              <div className="flex items-center gap-4 text-left">
-                                <div className="w-10 h-10 rounded-none bg-black border border-white/10 flex items-center justify-center font-mono font-black text-white uppercase text-xs shrink-0">
-                                  {track.id.substring(0, 3)}
-                                </div>
-                                <div>
-                                  <h3 className="text-sm font-black text-white uppercase tracking-wider leading-none">{track.name}</h3>
-                                  <p className="text-[10px] font-mono text-yellow-500 mt-1 uppercase tracking-widest">{track.location}</p>
-                                </div>
-                              </div>
-
-                              <div className="text-right font-mono text-xs shrink-0">
-                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">DISTANCE</p>
-                                <p className="text-white font-bold mt-0.5 uppercase">{track.length}</p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Right: Track map metrics / lap records */}
-                      <div className="p-6 rounded-none bg-[#121215] border border-white/10 flex flex-col justify-between">
-                        <div className="space-y-5">
-                          <div className="h-44 rounded-none bg-black/40 border border-white/10 flex items-center justify-center relative overflow-hidden">
-                            <div className="absolute top-3 left-3 flex items-center gap-2">
-                              <MapPin className="w-3.5 h-3.5 text-yellow-500" />
-                              <span className="text-[9px] font-mono tracking-widest text-gray-400 font-bold uppercase">{activeTrack.location}</span>
-                            </div>
-
-                            {/* Canvas outline simulation of real world loop maps */}
-                            <svg className="w-2/3 max-h-36 opacity-40 filter drop-shadow-[0_0_8px_rgba(234,179,8,0.2)]" viewBox="0 0 200 200">
-                              <path 
-                                d={
-                                  activeTrack.id === "spa" 
-                                    ? "M 40 40 C 80 40 100 80 120 40 C 140 20 180 50 160 120 L 140 160 L 60 150 L 20 100 Z" 
-                                    : activeTrack.id === "monza" 
-                                    ? "M 20 100 L 180 100 C 190 140 170 170 100 170 L 60 170 L 20 120 Z" 
-                                    : activeTrack.id === "silverstone"
-                                    ? "M 50 20 L 150 20 Q 180 60 160 110 L 120 160 Q 80 140 40 150 Z"
-                                    : activeTrack.id === "bathurst"
-                                    ? "M 20 120 L 120 120 L 180 100 C 160 50 80 40 40 80 Z"
-                                    : "M 40 40 C 90 20 160 50 160 120 C 120 160 80 120 40 150 Z"
-                                } 
-                                fill="none" 
-                                stroke="#eab308" 
-                                strokeWidth="4" 
-                                strokeLinecap="round"
-                              />
-                            </svg>
-
-                            <p className="absolute bottom-3 text-[9px] font-mono text-gray-500 uppercase tracking-widest">GPS RADAR DIAGRAM</p>
-                          </div>
-
-                          <div className="space-y-1.5 text-left">
-                            <h3 className="text-base font-black text-white uppercase tracking-widest">{activeTrack.name}</h3>
-                            <p className="text-xs text-gray-400 leading-relaxed font-sans">{activeTrack.description}</p>
-                          </div>
-
-                          {/* Historical timings */}
-                          <div className="grid grid-cols-2 gap-4 text-xs font-mono pt-4 border-t border-white/10">
-                            <div className="bg-black/50 p-3 rounded-none border border-white/5 text-left">
-                              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-none">LAP RECORD</p>
-                              <p className="text-sm font-black text-yellow-500 mt-1">{activeTrack.lapRecord}</p>
-                              <p className="text-[9px] text-gray-500 font-sans mt-0.5 uppercase tracking-wide">{activeTrack.recordHolder}</p>
-                            </div>
-
-                            <div className="bg-black/50 p-3 rounded-none border border-white/5 text-left">
-                              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-none">PERSONAL BEST</p>
-                              <p className="text-sm font-black text-emerald-400 mt-1">
-                                {bestLapTimes[activeTrack.id] 
-                                  ? `${bestLapTimes[activeTrack.id].toFixed(3)}s` 
-                                  : "NO TIME SET"}
-                              </p>
-                              <p className="text-[9px] text-gray-500 font-sans mt-0.5 uppercase tracking-wide">GT class target</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="pt-6 border-t border-white/10 mt-6 flex justify-between items-center bg-black/40 p-4 rounded-none">
-                          <CheckCircle2 className="w-5 h-5 text-yellow-500" />
-                          <span className="text-[10px] font-mono font-black text-gray-350 uppercase tracking-wider">
-                            LOCATED AT: {activeTrack.location} • TARGETING LAP
+                    {[
+                      { label: '统帅率 (LDR)', state: statLeadership, setter: setStatLeadership, icon: Shield, desc: '兵力上限、行军速度、防御坚韧与战术抗性' },
+                      { label: '武艺力 (FOR)', state: statForce, setter: setStatForce, icon: Swords, desc: '白刃物理杀伤伤害、战技爆发与个人单挑胜率' },
+                      { label: '智略率 (INT)', state: statIntelligence, setter: setStatIntelligence, icon: Brain, desc: '奇袭秘计概率、陷阱与火计杀伤力、智谋抵挡' },
+                      { label: '政治度 (POL)', state: statPolitics, setter: setStatPolitics, icon: Scroll, desc: '屯田金米产量、内政筑城科研速度与同盟外交说服' },
+                      { label: '魅力值 (CHR)', state: statCharisma, setter: setStatCharisma, icon: Sparkles, desc: '人才召纳速度、名将好感上升与战阵士气维持' }
+                    ].map((st, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex justify-between text-xs font-mono">
+                          <span className="text-slate-300 inline-flex items-center gap-1.5">
+                            <st.icon size={12} className="text-amber-500/80" /> {st.label}
                           </span>
+                          <span className="text-amber-400 font-bold">{st.state}</span>
                         </div>
+                        <input
+                          id={`slider-stat-${idx}`}
+                          type="range"
+                          min="10"
+                          max="100"
+                          value={st.state}
+                          onChange={(e) => st.setter(parseInt(e.target.value))}
+                          className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                        />
+                        <span className="text-[10px] text-slate-500 block leading-none font-mono">{st.desc}</span>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                )}
 
-                {/* D. CAREER COMPREHENSIVE TIMELINE TAB */}
-                {currentMenuTab === "career" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-view-fade">
-                    {/* Career Summary details lists */}
-                    <div className="p-6 rounded-none bg-[#121215] border border-white/10 space-y-6 text-left">
-                      <div className="flex justify-between items-center border-b border-white/10 pb-4">
-                        <h2 className="text-2xl font-black uppercase text-white tracking-wide italic leading-none">DRIVER PROFILE</h2>
-                        <span className="text-[9px] font-mono bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-2 py-0.5 uppercase tracking-widest font-bold">GT-LICENTIATED</span>
-                      </div>
+                </div>
+              </div>
 
-                      {/* HIGH-FIDELITY DRIVER IDENTITY LICENSE CARD */}
-                      <div className="bg-black/50 border border-white/10 p-5 rounded-none relative overflow-hidden flex flex-col sm:flex-row gap-5 items-center">
-                        {/* Golden Racing Grid Accent overlay */}
-                        <div className="absolute top-0 right-0 w-16 h-16 bg-yellow-500/5 rotate-45 transform translate-x-8 -translate-y-8 pointer-events-none"></div>
-
-                        {/* Interactive Photo Box */}
-                        <div className="relative group shrink-0">
-                          <div className="w-24 h-24 bg-neutral-950 border-2 border-yellow-500/80 shadow-[0_0_15px_rgba(234,179,8,0.15)] flex flex-col items-center justify-center overflow-hidden relative">
-                            {avatarUrl ? (
-                              <>
-                                <img 
-                                  src={avatarUrl} 
-                                  alt="Captured Driver" 
-                                  referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover"
-                                />
-                                {/* Quick deletion trigger */}
-                                <button 
-                                  type="button"
-                                  onClick={handleDeletePhoto}
-                                  className="absolute top-1 right-1 bg-red-650 hover:bg-red-600 text-white p-1 rounded-none shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                  title="Clear Image"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </>
-                            ) : (
-                              <div className="flex flex-col items-center justify-center p-2 text-center text-gray-500 select-none">
-                                <User className="w-8 h-8 text-white/10 mb-1" />
-                                <span className="text-[8px] font-mono tracking-wider font-bold">NO TELEMETRY</span>
-                              </div>
-                            )}
-
-                            {/* Camera Active Preview Live Feed Overlay */}
-                            {isCameraActive && (
-                              <div className="absolute inset-0 bg-black z-10 flex items-center justify-center">
-                                <video 
-                                  ref={videoRef} 
-                                  autoPlay 
-                                  playsInline 
-                                  muted
-                                  className="w-full h-full object-cover scale-x-[-1]"
-                                />
-                                {/* Crosshair graphics */}
-                                <div className="absolute inset-2 border border-dashed border-yellow-500/40 pointer-events-none"></div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Quick camera triggers overlay/badge */}
-                          <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 flex items-center gap-1 z-20">
-                            {!isCameraActive ? (
-                              <button
-                                type="button"
-                                onClick={() => setIsCameraActive(true)}
-                                className="bg-yellow-500 hover:bg-yellow-400 text-black font-black font-mono text-[9px] px-2 py-1 flex items-center gap-1 tracking-wider uppercase transition-all shadow-md select-none whitespace-nowrap border-0 cursor-pointer"
-                              >
-                                <Camera className="w-3 h-3 text-black" /> CAMERA
-                              </button>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={handleCapture}
-                                  className="bg-emerald-500 hover:bg-emerald-400 text-white font-black font-mono text-[9px] px-2 py-1 flex items-center gap-1 tracking-wider uppercase transition-all shadow-md select-none border-0 cursor-pointer"
-                                >
-                                  SNAP
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setIsCameraActive(false)}
-                                  className="bg-red-500 hover:bg-red-400 text-white font-black font-mono text-[9px] px-1.5 py-1 flex items-center transition-all shadow-md select-none border-0 cursor-pointer"
-                                  title="Cancel"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Interactive metadata details */}
-                        <div className="flex-1 w-full space-y-3.5 text-center sm:text-left">
-                          <div>
-                            <span className="block text-[8px] text-gray-500 font-mono font-black uppercase tracking-widest">DRIVING IDENTIFICATION CODE</span>
-                            <div className="flex items-center gap-2 mt-1 justify-center sm:justify-start">
-                              <input 
-                                type="text"
-                                value={driverName}
-                                onChange={(e) => {
-                                  const name = e.target.value.toUpperCase().slice(0, 18);
-                                  setDriverName(name);
-                                  localStorage.setItem("rr3_driver_name", name);
-                                }}
-                                className="bg-[#161619] border border-white/15 px-2.5 py-1 text-xs font-black text-white focus:outline-none focus:border-yellow-500/80 uppercase font-sans tracking-wide w-full max-w-[180px] italic placeholder-gray-600"
-                                placeholder="DRIVER NAME"
-                                maxLength={18}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] font-mono text-left bg-black/30 p-2.5 border border-white/5">
-                            <div>
-                              <span className="text-gray-500 font-bold block text-[8px]">PILOT CLASS:</span>
-                              <span className="text-yellow-500 font-extrabold text-[10px]">A-LICENSE SPECIALIST</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 font-bold block text-[8px]">GT CATEGORY:</span>
-                              <span className="text-white font-extrabold text-[10px]">HYPERCAR ELITE</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 font-bold block text-[8px]">REGISTRY ID:</span>
-                              <span className="text-gray-300 text-[10px]">GTX-2026-APEX</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 font-bold block text-[8px]">STATUS:</span>
-                              <span className="text-emerald-450 font-bold animate-pulse text-[10px]">● TELEMETRY ONLINE</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Display permission error if camera cannot load */}
-                      {cameraError && (
-                        <div className="bg-red-950/40 border border-red-500/20 p-3 text-[11px] text-red-300 font-mono text-left flex items-start gap-2.5 leading-relaxed">
-                          <ShieldAlert className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
-                          <div>
-                            <span className="font-extrabold text-red-200 block uppercase text-[9px] tracking-wider font-sans">CAMERA DRIVER NOT INITIALIZED</span>
-                            <span>{cameraError}</span>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="grid grid-cols-2 gap-4 font-mono text-center">
-                        <div className="bg-black/40 p-4 rounded-none border border-white/5">
-                          <p className="text-[9px] font-bold text-gray-450 uppercase tracking-wider">CARS UNLOCKED</p>
-                          <p className="text-xl font-black text-yellow-500 mt-1">
-                            {ownedCarIds.length} / {carsList.length}
-                          </p>
-                        </div>
-
-                        <div className="bg-black/40 p-4 rounded-none border border-white/5">
-                          <p className="text-[9px] font-bold text-gray-450 uppercase tracking-wider">SPEED RECORD</p>
-                          <p className="text-xl font-black text-yellow-500 mt-1">
-                            {allTimeTopSpeed ? `${allTimeTopSpeed} km/h` : "---"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Progress checklist */}
-                      <div className="space-y-3 font-sans text-xs">
-                        <h4 className="text-[9px] font-mono tracking-widest text-gray-400 uppercase font-black">CAREER LANDMARKS</h4>
-                        
-                        <div className="flex items-center gap-3 p-3 bg-black/40 rounded-none border border-white/5">
-                          <CheckCircle2 className="w-4 h-4 text-yellow-500 shrink-0" />
-                          <p className="text-gray-300 leading-normal">Starter Licence: Complete Spa Qualifying Circuit parameters.</p>
-                        </div>
-
-                        <div className="flex items-center gap-3 p-3 bg-black/40 rounded-none border border-white/5">
-                          <CheckCircle2 className={`w-4 h-4 shrink-0 ${ownedCarIds.length >= 2 ? "text-yellow-500" : "text-white/15"}`} />
-                          <p className="text-gray-300 leading-normal">Hypercar Collector: Acquire a second licensed vehicle from active Showroom.</p>
-                        </div>
-
-                        <div className="flex items-center gap-3 p-3 bg-black/40 rounded-none border border-white/5">
-                          <CheckCircle2 className={`w-4 h-4 shrink-0 ${allTimeTopSpeed >= 400 ? "text-yellow-500" : "text-white/15"}`} />
-                          <p className="text-gray-300 leading-normal">Speedbreaker Elite: Cross 400 km/h hypercar speed threshold index.</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Fun crew chief telemetry insight */}
-                    <div className="p-6 rounded-none bg-[#121215] border border-white/10 flex flex-col justify-between text-left">
-                      <div className="space-y-4">
-                        <h3 className="text-[9px] font-black tracking-widest text-gray-400 uppercase flex items-center gap-1.5 font-mono">
-                          <Radio className="w-4 h-4 text-emerald-400" /> TEAM CHIEF INTERCOM
-                        </h3>
-                        <div className="h-28 rounded-none bg-black/50 border border-white/5 p-4 flex items-start gap-3">
-                          <Radio className="w-5 h-5 text-yellow-500 animate-pulse mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-[10px] font-mono text-gray-400 uppercase leading-none font-bold">Radio Transceiver live</p>
-                            <p className="text-xs font-mono text-gray-300 mt-2.5 italic leading-relaxed">
-                              "Looking at telemetry, your tire compound kits are crucial to shave off tenths of a second on technical sectors. Check out the Upgrade station."
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Racing high records */}
-                        <div className="space-y-2 text-xs font-mono text-left">
-                          <h4 className="text-[9px] font-black tracking-widest text-gray-400 uppercase">TRACK RECORD TIMES ACHIEVED</h4>
-                          {Object.keys(bestLapTimes).map(id => {
-                            const track = INITIAL_TRACKS.find(t => t.id === id);
-                            return (
-                              <div key={id} className="flex justify-between p-2.5 rounded-none bg-black/40 border border-white/5">
-                                <span className="uppercase font-bold text-gray-400 text-[11px]">{track?.name || id}</span>
-                                <span className="text-yellow-500 font-bold">{bestLapTimes[id].toFixed(3)}s</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="text-[9px] font-mono text-gray-500 uppercase mt-4 tracking-wider">
-                        UPDATED TELEMETRY UTC SYSTEM: 2026-06-12 12:26:05
-                      </div>
-                    </div>
+              {/* Traits & Skills check board */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-900">
+                <div>
+                  <span className="text-xs font-mono font-semibold text-slate-300 block mb-2">个性特质选择 (最多选取 3 项)</span>
+                  <div className="grid grid-cols-1 gap-1.5 max-h-[170px] overflow-y-auto pr-1 bg-slate-950 p-3 rounded-xl border border-slate-900">
+                    {AVAILABLE_TRAITS.map(tr => {
+                      const isSelected = selectedTraits.includes(tr);
+                      return (
+                        <button
+                          id={`btn-trait-${tr.split('(')[0].trim().split('（')[0].trim()}`}
+                          key={tr}
+                          type="button"
+                          onClick={() => toggleTrait(tr)}
+                          className={`text-left p-1.5 rounded text-[11px] font-mono transition-all flex items-center justify-between ${
+                            isSelected 
+                              ? 'bg-amber-950/40 text-amber-300 border border-amber-900/60' 
+                              : 'bg-slate-900/30 text-slate-400 border border-transparent hover:border-slate-800'
+                          }`}
+                        >
+                          <span>{tr}</span>
+                          {isSelected && <span className="text-amber-400 font-bold">✓</span>}
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
 
+                <div>
+                  <span className="text-xs font-mono font-semibold text-slate-300 block mb-2">战术战法技能选择 (最多选取 4 项)</span>
+                  <div className="grid grid-cols-1 gap-1.5 max-h-[170px] overflow-y-auto pr-1 bg-slate-950 p-3 rounded-xl border border-slate-900">
+                    {AVAILABLE_SKILLS.map(sk => {
+                      const isSelected = selectedSkills.includes(sk);
+                      return (
+                        <button
+                          id={`btn-skill-${sk.split('(')[0].trim().split('（')[0].trim()}`}
+                          key={sk}
+                          type="button"
+                          onClick={() => toggleSkill(sk)}
+                          className={`text-left p-1.5 rounded text-[11px] font-mono transition-all flex items-center justify-between ${
+                            isSelected 
+                              ? 'bg-sky-950/40 text-sky-400 border border-sky-900/50' 
+                              : 'bg-slate-900/30 text-slate-400 border border-transparent hover:border-slate-800'
+                          }`}
+                        >
+                          <span>{sk}</span>
+                          {isSelected && <span className="text-sky-450 font-bold">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
 
-          </div>
-        )}
+              {/* Submit Button */}
+              <button
+                id="btn-submit-officer"
+                type="submit"
+                className="mt-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 text-xs font-black uppercase tracking-widest py-3.5 px-6 rounded-xl transition-all shadow-md inline-flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <UserPlus size={14} /> 登用此武将，令其入仕参战！
+              </button>
 
-      {/* 2. REAL RACING DUAL CORE SIMULATOR LAYER */}
-      {activeScreen === "racing" && (
-        <div className="flex-1 w-full h-full">
-          <RaceCanvas
-            currentCar={activeCar}
-            currentTrack={activeTrack}
-            difficulty={difficulty}
-            onRaceFinished={handleRaceComplete}
-            onExit={() => setActiveScreen("lobby")}
-          />
-        </div>
-      )}
+            </form>
+          )}
 
-      {/* 3. POST-RACE HUD TELEMETRY REPORT SUMMARY */}
-      {activeScreen === "post_race" && lastRaceOutcome && (
-        <div className="flex-1 bg-slate-950 flex flex-col items-center justify-center p-6 bg-[radial-gradient(#1a1a1e_1px,transparent_1px)] [background-size:16px_16px]">
-          <div className="w-full max-w-2xl bg-[#0c0c0e] border border-white/10 rounded-none p-8 relative space-y-6 animate-view-fade">
-            
-            {/* Victory / Podium graphical crown representation */}
-            <div className="text-center font-sans space-y-2">
-              <div className="w-14 h-14 rounded-none bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 flex items-center justify-center text-2xl mx-auto">
-                🏆
-              </div>
-              <h2 className="text-2xl font-black uppercase text-white tracking-widest mt-3 italic">RACE CLASSIFICATION</h2>
-              <p className="text-[10px] font-mono text-yellow-500 mt-1 uppercase tracking-widest">Circuit Arena: {activeTrack.name}</p>
-            </div>
-
-            {/* Standing positioning */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2 border-b border-white/5">
+          {/* Tab 3: Interactive Relationship Simulator & Duels */}
+          {activeTab === 'bonds' && (
+            <div className="flex flex-col gap-6">
               
-              {/* Placement credentials */}
-              <div className="p-4.5 bg-black/40 rounded-none border border-white/15 border-l-[3.5px] border-l-yellow-500 text-left">
-                <p className="text-[9px] font-mono text-gray-400 uppercase tracking-widest leading-none">PLACEMENT RESULT</p>
-                <div className="flex items-baseline gap-2 mt-2">
-                  <span className="text-4xl font-black font-mono text-yellow-500 tracking-wide">
-                    P{lastRaceOutcome.position}
-                  </span>
-                  <span className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">OUT OF 6 RACERS</span>
-                </div>
-                <div className="mt-3 text-xs flex justify-between text-gray-300 font-mono">
-                  <span>PAYOUT BALANCE:</span>
-                  <span className="text-emerald-400 font-black">Cr. +{lastRaceOutcome.prizeEarned.toLocaleString()}</span>
-                </div>
+              {/* Dynamic oath bonding forge */}
+              <div className="bg-slate-950 border border-slate-900 rounded-2xl p-6">
+                <h3 className="text-base font-serif font-black uppercase tracking-wider text-amber-400 mb-1 flex items-center gap-1.5">
+                  <Award size={16} /> 人性情仇纽带锻造工坊
+                </h3>
+                <p className="text-xs text-slate-400 font-mono mb-4">在此编织与缔结桃园义结金兰、宿敌血仇、联姻爱侣，追踪乱世情仇对大军师出谋决策的作用影响。</p>
+
+                <form onSubmit={handleCreateRelationship} className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                  <div>
+                    <label className="text-xs font-mono text-slate-400 block mb-1">第一位名将</label>
+                    <select
+                      id="select-rel-from"
+                      value={relFrom}
+                      onChange={(e) => setRelFrom(e.target.value)}
+                      required
+                      className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs"
+                    >
+                      <option value="">请选择武将</option>
+                      {officers.map(o => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-mono text-slate-400 block mb-1">缔结关系类型</label>
+                    <select
+                      id="select-rel-type"
+                      value={relType}
+                      onChange={(e) => setRelType(e.target.value as any)}
+                      className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs font-mono"
+                    >
+                      <option value="Sworn Brother">金兰结义 🤝</option>
+                      <option value="Rival">生平宿敌 ⚡</option>
+                      <option value="Spouse">金玉良缘 💍</option>
+                      <option value="Lord">君臣效忠 👑</option>
+                      <option value="Confidant">莫逆红颜 🎭</option>
+                      <option value="Trust">至信之交 ⭐</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-mono text-slate-400 block mb-1">第二位名将</label>
+                    <select
+                      id="select-rel-to"
+                      value={relTo}
+                      onChange={(e) => setRelTo(e.target.value)}
+                      required
+                      className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs"
+                    >
+                      <option value="">请选择武将</option>
+                      {officers.map(o => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    id="btn-forge-bond"
+                    type="submit"
+                    className="bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold py-2 px-4 rounded-xl border border-slate-700 transition cursor-pointer"
+                  >
+                    锻造连带纽带
+                  </button>
+                </form>
               </div>
 
-              {/* Lap recording details */}
-              <div className="p-4.5 bg-black/40 rounded-none border border-white/15 border-l-[3.5px] border-l-yellow-500 text-left font-mono">
-                <p className="text-[9px] font-mono text-gray-400 uppercase tracking-widest leading-none">FASTEST LAP REPORT</p>
-                <p className="text-2xl font-black text-white mt-2">
-                  {Math.min(...lastRaceOutcome.lapTimes).toFixed(3)}s
+              {/* Active list representation of bounds */}
+              <div className="bg-slate-950 border border-slate-900 rounded-2xl p-6">
+                <span className="text-xs font-mono text-slate-450 block tracking-widest uppercase mb-4 text-slate-400">当前历史天盘演武的名将情仇网络</span>
+                
+                {relationships.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {relationships.map((rel, idx) => {
+                      const off1 = officers.find(o => o.id === rel.fromOfficerId);
+                      const off2 = officers.find(o => o.id === rel.toOfficerId);
+                      
+                      if (!off1 || !off2) return null;
+
+                      return (
+                        <div key={idx} className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col justify-between gap-3">
+                          <div className="flex justify-between items-center gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-serif text-slate-200 text-sm">{off1.name}</span>
+                              <span className="text-[10px] text-slate-500 font-mono">({off1.stats.force} 武力)</span>
+                            </div>
+                            
+                            <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] font-mono">
+                              {rel.type === 'Sworn Brother' ? '金兰结义' : rel.type === 'Rival' ? '生平宿敌' : rel.type === 'Spouse' ? '金玉良缘' : rel.type === 'Lord' ? '主臣效忠' : rel.type === 'Confidant' ? '莫逆红颜' : '至信之交'}
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              <span className="font-serif text-slate-200 text-sm">{off2.name}</span>
+                              <span className="text-[10px] text-slate-500 font-mono">({off2.stats.force} 武力)</span>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center bg-slate-950/40 p-1 rounded-lg border border-slate-950">
+                            {/* Simulation buttons */}
+                            <button
+                              id={`btn-duel-sim-${idx}`}
+                              onClick={() => runBattleDuelSim(off1, off2)}
+                              className="text-[10px] text-sky-400 hover:text-sky-305 text-sky-300 font-semibold px-2 py-1 flex items-center gap-1 active:scale-95 transition cursor-pointer"
+                            >
+                              ⚔️ 挥军阵前单挑
+                            </button>
+
+                            <button
+                              id={`btn-sever-bond-${idx}`}
+                              onClick={() => handleBreakRelationship(off1.id, off2.id)}
+                              className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold px-2 py-1 active:scale-95 transition cursor-pointer"
+                            >
+                              斩断羁绊情仇
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-xs text-slate-500">
+                    天盘羁绊中枢目前尚未连结任何人际纽带名录。快在上方熔炉缔结吧！
+                  </div>
+                )}
+              </div>
+
+              {/* Battle result box if active */}
+              {combatOutcome && (
+                <div className="bg-amber-950/20 border border-amber-500/30 text-slate-300 p-5 rounded-2xl">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-mono font-bold text-amber-400">沙盘两军武将阵前对局单挑演义日志</span>
+                    <button
+                      id="btn-clear-outcome"
+                      onClick={() => setCombatOutcome(null)}
+                      className="text-[10px] text-slate-400 hover:text-slate-200 cursor-pointer"
+                    >
+                      清空日志
+                    </button>
+                  </div>
+                  <pre className="text-xs font-mono whitespace-pre-wrap leading-relaxed text-slate-200 bg-slate-950 p-4 rounded-xl border border-slate-900">
+                    {combatOutcome}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 4: Tactical Map Simulation */}
+          {activeTab === 'map' && (
+            <TacticalMap 
+              selectedScenario={selectedScenario} 
+              officers={officers} 
+              onSelectOfficer={(off) => {
+                setSelectedOfficer(off);
+              }} 
+              soundEnabled={soundEnabled}
+            />
+          )}
+
+        </section>
+
+        {/* Right Section (Column span 4): Selected Officer Core and Strategy Advisor Council */}
+        <section className="lg:col-span-4 flex flex-col gap-6">
+          
+          {/* Selected Officer Spotlight focus */}
+          <div className="bg-slate-950 p-5 rounded-2xl border border-slate-900">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-slate-400 block mb-4">当前聚焦群雄真容</span>
+            
+            <div className="flex items-center gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-900">
+              <AvatarRenderer style={selectedOfficer.avatarStyle} size={84} />
+              
+              <div>
+                <h3 className="font-serif text-lg font-bold text-slate-100 leading-snug">
+                  {selectedOfficer.name}
+                </h3>
+                {selectedOfficer.styleName && (
+                  <span className="text-xs text-slate-400 font-mono">&#12298;{selectedOfficer.styleName}&#12299;</span>
+                )}
+                
+                <p className="text-[11px] text-slate-400 mt-1">
+                  活跃于 <strong className="text-amber-500 font-mono font-semibold">{selectedScenario.year} 年【{selectedScenario.title}】</strong>
                 </p>
-                <div className="mt-2 text-[11px] flex justify-between text-gray-450 uppercase">
-                  <span>LAP 1 TIME:</span>
-                  <span className="text-gray-300 font-semibold">{lastRaceOutcome.lapTimes[0]?.toFixed(3)}s</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Core Grand Advisory Chamber */}
+          <div className="bg-slate-950 rounded-2xl border border-slate-900 overflow-hidden flex flex-col">
+            
+            {/* Advisor Cover Image header with beautiful deep gradient styling */}
+            <div className="p-5 bg-gradient-to-r from-emerald-950 to-indigo-950 border-b border-slate-900 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full border border-teal-500/30 flex items-center justify-center bg-teal-950 overflow-hidden">
+                  <span className="text-base">🪶</span>
                 </div>
-                <div className="text-[11px] flex justify-between text-gray-450 uppercase">
-                  <span>LAP 2 TIME:</span>
-                  <span className="text-gray-300 font-semibold">{lastRaceOutcome.lapTimes[1]?.toFixed(3)}s</span>
+                <div>
+                  <h3 className="text-sm font-serif font-black uppercase text-teal-300 tracking-wider">中军帐军机处</h3>
+                  <p className="text-[10px] text-slate-400 font-mono">卧龙孔明大军师专属 AI</p>
                 </div>
               </div>
 
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" title="War Council Ready"></span>
             </div>
 
-            {/* AI Strategic Advice from Crew Chief */}
-            <div className="p-4.5 bg-black/40 border border-white/10 rounded-none text-left flex items-start gap-3.5">
-              <div className="p-2.5 rounded-none bg-yellow-500/10 text-yellow-500 border border-yellow-500/15 shrink-0">
-                <Radio className="w-5 h-5 animate-pulse" />
+            <div className="p-5 flex-1 flex flex-col justify-between gap-5 min-h-[350px]">
+              
+              {/* Dynamic briefing output */}
+              <div className="flex-1 bg-slate-950/80 rounded-xl p-4 border border-slate-900 max-h-[450px] overflow-y-auto">
+                {isConsultingAdvisor ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+                    <RefreshCw size={24} className="text-amber-400 animate-spin" />
+                    <div>
+                      <p className="text-xs text-slate-300 font-mono font-medium">诸葛孔明正夜观星象、调兵遣将中...</p>
+                      <p className="text-[10px] text-slate-500 mt-1 italic font-sans">&quot;为将者，当知天文，识地理，晓阴阳，明八卦，知兵势。&quot;</p>
+                    </div>
+                  </div>
+                ) : advisorBrief ? (
+                  <div className="prose prose-invert prose-xs">
+                    {renderAdviceMarkdown(advisorBrief)}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-slate-500">
+                    <MessageCircle size={32} className="text-slate-705 mb-2.5 text-slate-700" />
+                    <p className="text-xs font-medium text-slate-400">中军帐军机处目前一片肃静。</p>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      请点击下方【请大军师为当前名将亲授锦囊】。军师将针对 {selectedOfficer.name} 及其在 【{selectedScenario.title}】 时期的宿命局势，为您研判推演宏图战略。
+                    </p>
+                  </div>
+                )}
               </div>
-              <div className="space-y-1">
-                <span className="text-[9px] font-mono tracking-widest text-[#eab308] font-black uppercase leading-none">AI Race Engineer Telemetry Review</span>
-                <p className="text-xs font-mono text-gray-300 italic leading-normal">
-                  "Solid feedback out there on the curbs of {activeTrack.name}. Reached top velocity of {lastRaceOutcome.speedRecord} km/h in the {activeCar.name}. Check the upgrade bay to refine the suspension compound kits."
-                </p>
-              </div>
-            </div>
 
-            {/* Call to actions */}
-            <div className="pt-2 flex justify-end gap-3 font-sans">
+              {/* Strategy Invoke Button */}
               <button
-                onClick={() => {
-                  setActiveScreen("racing");
-                }}
-                className="px-6 py-3.5 rounded-none bg-white/5 hover:bg-white/10 text-gray-250 font-black uppercase text-xs tracking-wider border border-white/10 cursor-pointer italic duration-150"
+                id="btn-evaluate-strategy-brief"
+                onClick={handleConsultWarCouncil}
+                disabled={isConsultingAdvisor}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-widest transition duration-300 shadow-md flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
-                Re-Race Circuit
+                <Compass size={14} className={isConsultingAdvisor ? 'animate-spin' : ''} />
+                {isConsultingAdvisor ? '锦囊研判修纂中...' : `请大军师为 ${selectedOfficer.name} 亲授妙计`}
               </button>
-              <button
-                onClick={() => {
-                  setActiveScreen("lobby");
-                  setCurrentMenuTab("garage");
-                }}
-                className="px-6 py-3.5 rounded-none bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase text-xs tracking-widest cursor-pointer italic shadow-[0_0_15px_rgba(234,179,8,0.23)] duration-150"
-              >
-                Go to Workshop
-              </button>
+
             </div>
 
           </div>
+
+          {/* Quick FAQ info block */}
+          <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-900 text-xs text-slate-400 space-y-1.5 leading-relaxed font-mono">
+            <div className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1">
+              <HelpCircle size={12} className="text-amber-500" />
+              <span>三国志8 辅助器军机要策 FAQ</span>
+            </div>
+            <p className="text-[11px]">✦ 五维属性加权：【统帅】极大地主导兵力规模上限与阵前基础城防抵抗；【智力】能看破大雾陷阱并识破诸葛亮之流的离间诡计；【武力】则对个人白刃伤害与阵前斩首胜率有极其重要的抵抗。</p>
+            <p className="text-[11px]">✦ 人脉羁绊：武将间若处于“金兰结义”或“金玉良缘”等至交情谊，两军在沙盘天盘中产生战技合力共鸣的连击概率会飙涨。</p>
+          </div>
+
+        </section>
+
+      </main>
+
+      {/* Footer copyright */}
+      <footer className="bg-slate-950 py-6 border-t border-slate-900 mt-auto text-center text-xs text-slate-500 font-mono">
+        <div className="max-w-7xl mx-auto px-6">
+          <p>三国志 8 战术辅助模拟器 — 采用 React、Tailwind CSS V4 精雕细琢，内置服务端 Gemini AI 云脑深度研判。</p>
+          <p className="mt-1 text-[10px] text-slate-600">本辅助工具纯属粉丝同人创作，不含任何商业游戏受版权保护的原始资源，生成和定制的名将及演义细节均源于公开的三国古籍传说知识。</p>
         </div>
-      )}
+      </footer>
 
     </div>
   );

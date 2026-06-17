@@ -1,6 +1,6 @@
 {
-  "name": "Three Kingdoms 8 Companion",
-  "description": "An interactive companion for Romance of the Three Kingdoms 8. Generate and customize officers, write custom biographies using Gemini AI, and simulate tactical strategies blockades, and relationships.",
+  "name": "Battlefield Tactics",
+  "description": "An immersive 3D retro first-person shooter (FPS) combat arena with smooth raycasting, multi-weapon loadouts, real-time minimap, and synthesized audio.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

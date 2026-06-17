@@ -1,1454 +1,1558 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Officer, Faction, CampaignScenario, RelationshipRelation, AvatarStyle } from './types';
-import { FACTIONS, FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS, SCENARIOS, AVAILABLE_SKILLS, AVAILABLE_TRAITS } from './data';
-import OfficerCard from './components/OfficerCard';
-import AvatarRenderer from './components/AvatarRenderer';
-import TacticalMap from './components/TacticalMap';
-import StartMenu from './components/StartMenu';
-import { playClashSound, playDrumSound } from './utils/audio';
-import { 
-  Shield, 
-  Swords, 
-  Brain, 
-  Scroll, 
-  Sparkles, 
-  User, 
-  Compass, 
-  Heart, 
-  Map, 
-  UserPlus, 
-  HelpCircle, 
-  Search, 
-  Sliders, 
-  Filter, 
-  RefreshCw,
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Volume2,
+  VolumeX,
+  RotateCcw,
+  HelpCircle,
+  Play,
   Award,
-  BookOpen,
-  Sword,
+  Gamepad2,
+  ArrowBigUp,
+  ArrowBigDown,
+  ArrowBigLeft,
+  ArrowBigRight,
   Target,
-  MessageCircle,
-  Users
-} from 'lucide-react';
+  Trophy,
+  Shield,
+  Activity,
+  Heart,
+  Zap,
+  Info
+} from "lucide-react";
+import { PlayerState, Enemy, Weapon, LevelConfig, Particle, GameLog, RemotePlayer } from "./types";
+import { LEVELS, initEnemiesForLevel } from "./utils/levelGenerator";
+import {
+  setMuted,
+  getMuted,
+  playPistol,
+  playShotgun,
+  playPlasma,
+  playSelect,
+  playStep,
+  playExplosion,
+  playOof,
+  playPickup,
+  playEnemyAlert,
+  playVictory,
+  playDefeat,
+  playHealthPickup,
+  playAmmoPickup,
+  playShieldPickup,
+  playOutOfAmmo,
+  playChatNotification,
+  playPeerFired,
+  playTeleport
+} from "./utils/audio";
+
+import RaycasterScreen from "./components/RaycasterScreen";
+import RadarMap from "./components/RadarMap";
+import WeaponSelector from "./components/WeaponSelector";
+import BattleLogs from "./components/BattleLogs";
+
+// Initialize Weapons loadouts
+const INITIAL_WEAPONS: Weapon[] = [
+  {
+    id: "pistol",
+    name: "GAUSS-PISTOL C12",
+    ammo: 99,
+    maxAmmo: 99,
+    damage: 15,
+    range: 15,
+    fireRate: 280,
+    recoil: 4,
+    burstSize: 1,
+    sound: "pistol",
+    emoji: "🔫",
+    accuracy: 0.08,
+  },
+  {
+    id: "shotgun",
+    name: "FLAK-SHOTGUN S8",
+    ammo: 15,
+    maxAmmo: 15,
+    damage: 45,
+    range: 6,
+    fireRate: 850,
+    recoil: 14,
+    burstSize: 1,
+    sound: "shotgun",
+    emoji: "💥",
+    accuracy: 0.18,
+  },
+  {
+    id: "plasma",
+    name: "PLASMA PULSAR M4",
+    ammo: 100,
+    maxAmmo: 100,
+    damage: 8,
+    range: 18,
+    fireRate: 110,
+    recoil: 2,
+    burstSize: 1,
+    sound: "plasma",
+    emoji: "🔮",
+    accuracy: 0.12,
+  },
+];
+
+interface Powerup {
+  id: string;
+  x: number;
+  y: number;
+  type: "HEALTH" | "AMMO" | "SHIELD";
+  emoji: string;
+  color: string;
+}
 
 export default function App() {
-  // Application state
-  const [showStartMenu, setShowStartMenu] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(false);
-  const [officers, setOfficers] = useState<Officer[]>(FAMOUS_OFFICERS);
-  const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
-  const [selectedScenario, setSelectedScenario] = useState<CampaignScenario>(SCENARIOS[0]);
-  const [activeTab, setActiveTab] = useState<'roster' | 'creator' | 'bonds' | 'map'>('roster');
-  
-  // Roster Filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [factionFilter, setFactionFilter] = useState<string>('all');
-  const [selectedOfficer, setSelectedOfficer] = useState<Officer>(FAMOUS_OFFICERS[0]);
+  // Game Screen Phase Control: "INTRO" | "PLAYING" | "GAMEOVER" | "LEVEL_COMPLETE" | "VICTORY_ALL"
+  const [gameState, setGameState] = useState<"INTRO" | "PLAYING" | "GAMEOVER" | "LEVEL_COMPLETE" | "VICTORY_ALL">("INTRO");
+  const [currentLevelId, setCurrentLevelId] = useState<string>("facility");
+  const [showTutorial, setShowTutorial] = useState<boolean>(true);
+  const [scanlines, setScanlines] = useState<boolean>(true);
+  const [reticle, setReticle] = useState<string>("scope");
+  const [mutedState, setMutedState] = useState<boolean>(true);
+  const [isReloading, setIsReloading] = useState<boolean>(false);
+  const isReloadingRef = useRef<boolean>(false);
 
-  // Strategy Advisor panel states
-  const [isConsultingAdvisor, setIsConsultingAdvisor] = useState(false);
-  const [advisorBrief, setAdvisorBrief] = useState<string>('');
-  const [hasServerConnection, setHasServerConnection] = useState<boolean | null>(null);
+  // Player State
+  const [player, setPlayer] = useState<PlayerState>(() => {
+    const lvl = LEVELS.facility;
+    return {
+      x: lvl.playerStartX,
+      y: lvl.playerStartY,
+      dirX: Math.cos(lvl.playerStartAngle),
+      dirY: Math.sin(lvl.playerStartAngle),
+      planeX: -Math.sin(lvl.playerStartAngle) * 0.66,
+      planeY: Math.cos(lvl.playerStartAngle) * 0.66,
+      angle: lvl.playerStartAngle,
+      health: 100,
+      maxHealth: 100,
+      shield: 50,
+      maxShield: 100,
+      score: 0,
+      kills: 0,
+      currentWeaponIndex: 0,
+      weapons: JSON.parse(JSON.stringify(INITIAL_WEAPONS)),
+      isFiring: false,
+      fireTimer: 0,
+      isTakingDamage: false,
+      damageTimer: 0,
+      currentLevelId: "facility",
+    };
+  });
 
-  // Custom Officer Creator form state
-  const [createdCount, setCreatedCount] = useState(1);
-  const [customName, setCustomName] = useState('');
-  const [customStyleName, setCustomStyleName] = useState('');
-  const [customGender, setCustomGender] = useState<'Male' | 'Female'>('Male');
-  const [customFactionId, setCustomFactionId] = useState('shu');
-  
-  // Color hexes and strings for avatar dropdown selections
-  const HAIR_STYLES = [
-    { name: '帝王发簪', value: 'Topknot Imperial' },
-    { name: '朝堂进贤冠', value: 'Noble Court Crown' },
-    { name: '英武束发长髯', value: 'Long Bound Mane' },
-    { name: '儒雅名士纶巾', value: 'Scholar Jade Headdress' },
-    { name: '碧眼紫髯豪杰', value: 'Red-Bearded Sovereign' },
-    { name: '战神雉尾冠', value: 'Pheasant-Tail Ribbon' }
-  ];
+  // Dynamic Elements State
+  const [enemies, setEnemies] = useState<Enemy[]>([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [powerups, setPowerups] = useState<Powerup[]>([]);
+  const [logs, setLogs] = useState<GameLog[]>([]);
 
-  const HAIR_COLORS = [
-    { name: '乌黑墨炭', value: '#171717' },
-    { name: '深蓝墨黛', value: '#0f172a' },
-    { name: '军政苍青', value: '#1e293b' },
-    { name: '烈火赤红', value: '#c2410c' },
-    { name: '雪落苍鬓', value: '#4b5563' }
-  ];
+  // Keyboard references tracking for high responsiveness
+  const keysPressed = useRef<Set<string>>(new Set());
+  const gameLoopRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number>(0);
+  const playerRef = useRef<PlayerState | null>(null);
 
-  const ARMOR_COLORS = [
-    { name: '翡翠绿 (蜀汉)', value: '#10b981' },
-    { name: '皇家蓝 (曹魏)', value: '#3b82f6' },
-    { name: '赤血红 (孙吴)', value: '#ef4444' },
-    { name: '无双紫 (吕布军)', value: '#a855f7' },
-    { name: '华贵金 (袁绍军)', value: '#eab308' },
-    { name: '名士白 (在野)', value: '#f8fafc' },
-    { name: '猛虎橙 (东吴)', value: '#fb923c' }
-  ];
+  // WebSocket and Co-op variables
+  const [otherPlayers, setOtherPlayers] = useState<RemotePlayer[]>([]);
+  const [wsStatus, setWsStatus] = useState<"connecting" | "connected" | "disconnected">("disconnected");
+  const [customName, setCustomName] = useState<string>(() => {
+    return localStorage.getItem("coop_player_name") || `Marine-${Math.floor(Math.random() * 899) + 100}`;
+  });
+  const [customColor, setCustomColor] = useState<string>(() => {
+    return localStorage.getItem("coop_player_color") || "#06b6d4";
+  });
 
-  const ACCESSORIES = [
-    { name: '金镶玉帝王冠', value: 'Golden Sovereign Crown' },
-    { name: '青龙偃月刀', value: 'Green Dragon Crescent Blade' },
-    { name: '诸葛白羽扇', value: 'Feather Daoist Fan' },
-    { name: '倚天佩剑', value: 'Engraved Commander Sword' },
-    { name: '空手 (无配饰)', value: 'None' }
-  ];
+  const wsRef = useRef<WebSocket | null>(null);
+  const playerIdRef = useRef<string>(() => "p-" + Math.random().toString(36).substring(2, 9));
+  const lastWsUpdateRef = useRef<number>(0);
 
-  const EXPRESSIONS = [
-    { name: '温和儒雅', value: 'Warm Smiling' },
-    { name: '冷峻威仪', value: 'Cold Sovereign' },
-    { name: '洞悉天下', value: 'Brilliant Calm' },
-    { name: '狂怒咆哮', value: 'Fierce Roaring' },
-    { name: '沉着持重', value: 'Stately Guarded' }
-  ];
-
-  const GRADIENTS = [
-    { name: '碧玉竹林', value: 'from-emerald-950 to-teal-900' },
-    { name: '幽燕玄石', value: 'from-blue-950 to-indigo-950' },
-    { name: '赤壁烈焰', value: 'from-orange-950 to-red-950' },
-    { name: '九霄紫雷', value: 'from-purple-950 to-pink-950' }
-  ];
-
-  const [avatarHairStyle, setAvatarHairStyle] = useState(HAIR_STYLES[0].value);
-  const [avatarHairColor, setAvatarHairColor] = useState(HAIR_COLORS[0].value);
-  const [avatarArmorColor, setAvatarArmorColor] = useState(ARMOR_COLORS[0].value);
-  const [avatarAccessory, setAvatarAccessory] = useState(ACCESSORIES[0].value);
-  const [avatarExpression, setAvatarExpression] = useState(EXPRESSIONS[0].value);
-  const [avatarGradient, setAvatarGradient] = useState(GRADIENTS[0].value);
-
-  // Custom Stats State
-  const [statLeadership, setStatLeadership] = useState(70);
-  const [statForce, setStatForce] = useState(70);
-  const [statIntelligence, setStatIntelligence] = useState(70);
-  const [statPolitics, setStatPolitics] = useState(70);
-  const [statCharisma, setStatCharisma] = useState(70);
-
-  // Traits & Skills Selectors
-  const [selectedTraits, setSelectedTraits] = useState<string[]>([AVAILABLE_TRAITS[0]]);
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([AVAILABLE_SKILLS[0], AVAILABLE_SKILLS[1]]);
-
-  // Relationships tab creation helper
-  const [relFrom, setRelFrom] = useState('');
-  const [relTo, setRelTo] = useState('');
-  const [relType, setRelType] = useState<'Sworn Brother' | 'Rival' | 'Spouse' | 'Lord' | 'Confidant' | 'Trust'>('Sworn Brother');
-  const [combatOutcome, setCombatOutcome] = useState<string | null>(null);
-
-  // Real-time WebSockets synchronization
-  const [ws, setWs] = useState<WebSocket | null>(null);
-  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
-  const pendingRequestsRef = useRef<Record<string, {
-    resolve: (val: any) => void;
-    reject: (err: any) => void;
-  }>>({});
-
+  // Sync references to bypass closures in animation loop
   useEffect(() => {
-    let socket: WebSocket | null = null;
-    let reconnectTimeout: any = null;
+    playerRef.current = player;
+  }, [player]);
 
-    function connect() {
-      setWsStatus('connecting');
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}`;
-      console.log(`[WS] Connecting to ${wsUrl}...`);
+  // Weapon tracer sparks factory for remote peer weapons firing
+  const spawnLaserTracerParticles = (px: number, py: number, angle: number) => {
+    createMuzzleGasParticles(px, py, angle);
 
-      socket = new WebSocket(wsUrl);
+    const list: Particle[] = [];
+    const cosVal = Math.cos(angle);
+    const sinVal = Math.sin(angle);
+    
+    // Spawn digital projectile sparks along the visual bullet tracer line
+    for (let d = 0.5; d < 6.0; d += 0.8) {
+      const tx = px + cosVal * d;
+      const ty = py + sinVal * d;
+      
+      list.push({
+        id: `trc-${Date.now()}-${Math.random()}-${d}`,
+        x: tx,
+        y: ty,
+        vx: (Math.random() - 0.5) * 0.005,
+        vy: (Math.random() - 0.5) * 0.005,
+        color: "#22d3ee",
+        size: 1.8,
+        alpha: 0.85,
+        life: 12,
+      });
+    }
+    setParticles((prev) => [...prev, ...list]);
+  };
 
-      socket.onopen = () => {
-        console.log('[WS] Connected to live Three Kingdoms tactical server!');
-        setWsStatus('connected');
-        setHasServerConnection(true);
+  // Setup Live WebSocket Network synchronization loop
+  useEffect(() => {
+    let active = true;
+    let reconnectTimeout: number | any = null;
+
+    const connectWS = () => {
+      if (!active) return;
+      if (wsRef.current) return;
+
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const host = window.location.host;
+      const wsUrl = `${protocol}//${host}/ws`;
+
+      setWsStatus("connecting");
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        if (!active) {
+          ws.close();
+          return;
+        }
+        setWsStatus("connected");
+        
+        // Initial handshake to register player in specific arena quadrant
+        const currentP = playerRef.current || player;
+        const initialPayload = {
+          id: playerIdRef.current,
+          name: customName,
+          color: customColor,
+          x: currentP.x,
+          y: currentP.y,
+          dirX: currentP.dirX,
+          dirY: currentP.dirY,
+          angle: currentP.angle,
+          health: currentP.health,
+          score: currentP.score,
+          kills: currentP.kills,
+          currentWeaponIndex: currentP.currentWeaponIndex,
+          levelId: currentP.currentLevelId,
+        };
+        ws.send(JSON.stringify({ type: "join", payload: initialPayload }));
       };
 
-      socket.onmessage = (event) => {
+      ws.onmessage = (event) => {
+        if (!active) return;
         try {
-          const msg = JSON.parse(event.data);
-          console.log('[WS] Message received from host:', msg.type);
+          const data = JSON.parse(event.data);
+          const { type, payload } = data;
 
-          switch (msg.type) {
-            case 'init': {
-              const { officers: initialOfficers, relationships: initialRelationships } = msg.data;
-              setOfficers(initialOfficers);
-              setRelationships(initialRelationships);
-              // Set initial selected officer safely if none selected yet or selected one is reset
-              if (initialOfficers.length > 0) {
-                setSelectedOfficer(current => {
-                  if (!current || !initialOfficers.some(o => o.id === current.id)) {
-                    return initialOfficers[0];
-                  }
-                  return current;
-                });
-              }
+          switch (type) {
+            case "welcome": {
+              // Synchronize the current online squad list
+              const peersList = payload.players.filter((p: any) => p.id !== playerIdRef.current);
+              setOtherPlayers(peersList);
               break;
             }
-
-            case 'officer_added': {
-              const newOfficer = msg.data;
-              setOfficers(prev => {
-                const existingIdx = prev.findIndex(o => o.id === newOfficer.id);
-                if (existingIdx !== -1) {
-                  // Update in-place
-                  const updated = [...prev];
-                  updated[existingIdx] = newOfficer;
-                  return updated;
+            case "player:joined": {
+              setOtherPlayers((prev) => {
+                if (prev.some((p) => p.id === payload.id)) {
+                  return prev.map((p) => (p.id === payload.id ? payload : p));
                 }
-                return [newOfficer, ...prev];
+                return [...prev, payload];
               });
-              setSelectedOfficer(current => current && current.id === newOfficer.id ? newOfficer : current);
+              addLog(`🛰️ CO-OP LINK: ${payload.name.toUpperCase()} SECURED Quadrant`, "system");
               break;
             }
-
-            case 'officer_deleted': {
-              const { officerId, relationships: updatedRels } = msg.data;
-              setOfficers(prev => prev.filter(o => o.id !== officerId));
-              setRelationships(updatedRels);
-              setSelectedOfficer(current => {
-                if (current && current.id === officerId) {
-                  return FAMOUS_OFFICERS[0];
+            case "player:updated": {
+              setOtherPlayers((prev) => {
+                const exists = prev.some((p) => p.id === payload.id);
+                if (exists) {
+                  return prev.map((p) => (p.id === payload.id ? payload : p));
                 }
-                return current;
+                return [...prev, payload];
               });
               break;
             }
-
-            case 'relationship_added': {
-              const newRel = msg.data;
-              setRelationships(prev => {
-                const exists = prev.some(r => 
-                  (r.fromOfficerId === newRel.fromOfficerId && r.toOfficerId === newRel.toOfficerId) ||
-                  (r.fromOfficerId === newRel.toOfficerId && r.toOfficerId === newRel.fromOfficerId)
+            case "player:left": {
+              const leavingId = payload.id;
+              setOtherPlayers((prev) => {
+                const leavingPeer = prev.find((p) => p.id === leavingId);
+                if (leavingPeer) {
+                  addLog(`🛰️ CO-OP LINK LOST: ${leavingPeer.name.toUpperCase()} departed quadrant`, "system");
+                }
+                return prev.filter((p) => p.id !== leavingId);
+              });
+              break;
+            }
+            case "player:fired": {
+              const { originX, originY, angle } = payload;
+              spawnLaserTracerParticles(originX, originY, angle);
+              playPeerFired();
+              
+              setOtherPlayers((prev) =>
+                prev.map((p) => (p.id === payload.id ? { ...p, isFiring: true } : p))
+              );
+              setTimeout(() => {
+                setOtherPlayers((prev) =>
+                  prev.map((p) => (p.id === payload.id ? { ...p, isFiring: false } : p))
                 );
-                if (exists) return prev;
-                return [...prev, newRel];
-              });
+              }, 110);
               break;
             }
-
-            case 'relationship_deleted': {
-              const { fromOfficerId, toOfficerId } = msg.data;
-              setRelationships(prev => prev.filter(r => 
-                !(r.fromOfficerId === fromOfficerId && r.toOfficerId === toOfficerId) &&
-                !(r.fromOfficerId === toOfficerId && r.toOfficerId === fromOfficerId)
-              ));
-              break;
-            }
-
-            case 'bio_generated': {
-              const { requestId, biography } = msg.data;
-              const pending = pendingRequestsRef.current[requestId];
-              if (pending) {
-                pending.resolve(biography);
-                delete pendingRequestsRef.current[requestId];
+            case "chat:message": {
+              const { sender, message, isSystem } = payload;
+              addLog(`${sender}: ${message}`, isSystem ? "system" : "chat");
+              if (!isSystem) {
+                playChatNotification();
               }
               break;
             }
-
-            case 'strategy_evaluated': {
-              const { requestId, advice } = msg.data;
-              const pending = pendingRequestsRef.current[requestId];
-              if (pending) {
-                pending.resolve(advice);
-                delete pendingRequestsRef.current[requestId];
-              }
-              break;
-            }
-
-            case 'duel_notification': {
-              const result = msg.data;
-              setCombatOutcome(`⚔️ 武将单挑战报：【${result.winnerName}】(武力值 ${result.winnerForce}) 击败了 【${result.loserName}】(武力值 ${result.loserForce})！\n\n战场细节描写：${result.dialogue}`);
-              if (soundEnabled) {
-                playClashSound();
-              }
-              break;
-            }
-
-            case 'error': {
-              const { requestId, message } = msg.data;
-              const pending = pendingRequestsRef.current[requestId];
-              if (pending) {
-                pending.reject(new Error(message));
-                delete pendingRequestsRef.current[requestId];
-              }
+            case "pickup:consumed": {
+              const { pickupId, collectedBy } = payload;
+              setPowerups((prev) => prev.filter((pu) => pu.id !== pickupId));
+              addLog(`🔋 ALLY SECURED SOURCE: ${collectedBy.toUpperCase()} retrieved powerup`, "system");
               break;
             }
           }
         } catch (err) {
-          console.error('[WS] Failed to parse payload:', err);
+          console.error("WS Parse Packet Error:", err);
         }
       };
 
-      socket.onclose = () => {
-        console.warn('[WS] Socket disconnected. Reconnecting in 3s...');
-        setWsStatus('disconnected');
-        setHasServerConnection(false);
-        reconnectTimeout = setTimeout(connect, 3000);
+      ws.onclose = () => {
+        setWsStatus("disconnected");
+        wsRef.current = null;
+        setOtherPlayers([]);
+        // Exponential backoff auto-reconnect trigger
+        reconnectTimeout = setTimeout(connectWS, 4000);
       };
 
-      socket.onerror = (err) => {
-        console.error('[WS] Error caught:', err);
-        socket?.close();
+      ws.onerror = () => {
+        setWsStatus("disconnected");
+        if (wsRef.current) {
+          wsRef.current.close();
+        }
       };
+    };
 
-      setWs(socket);
-    }
-
-    connect();
+    connectWS();
 
     return () => {
-      if (socket) {
-        socket.onclose = null;
-        socket.close();
+      active = false;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
       }
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
+    };
+  }, [customName, customColor]);
+
+  const activeLevel = LEVELS[currentLevelId] || LEVELS.facility;
+
+  // Add Terminal combat telemetry details
+  const addLog = (message: string, type: GameLog["type"] = "combat") => {
+    const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const logId = `log-${Math.random().toString(36).substring(2, 6)}`;
+    const newLog: GameLog = {
+      id: logId,
+      timestamp,
+      message,
+      type,
+    };
+    setLogs((prev) => [newLog, ...prev].slice(0, 40));
+  };
+
+  // Trigger synthesized audio mute preference
+  const toggleMute = () => {
+    const newVal = !mutedState;
+    setMutedState(newVal);
+    setMuted(newVal);
+    playSelect();
+  };
+
+  // Setup Key and Window listeners
+  const fireRef = useRef<() => void>(() => {});
+  const reloadRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      keysPressed.current.add(key);
+      
+      // Prevent browser scroll behaviors for navigation arrows or spacebar
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(e.key)) {
+        e.preventDefault();
       }
+
+      // SPACE or ENTER fires weapons
+      if (e.key === " " || e.key === "Enter") {
+        fireRef.current();
+      }
+
+      // KEY R triggered manual ammunition reload cycle
+      if (key === "r") {
+        reloadRef.current();
+      }
+
+      // 1, 2, 3 selection keys for active weaponry swaps
+      if (["1", "2", "3"].includes(key)) {
+        const weaponIdx = parseInt(key) - 1;
+        if (playerRef.current && weaponIdx < playerRef.current.weapons.length) {
+          selectWeapon(weaponIdx);
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keysPressed.current.delete(e.key.toLowerCase());
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
     };
   }, []);
 
-  // Promise-based WebSocket dispatch helpers
-  const requestBioAI = (officer: Officer, matchedFaction: Faction): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        reject(new Error("军师殿 WebSocket 链接已掉线，等连通后再重试。"));
-        return;
-      }
-      const requestId = `bio-${Date.now()}-${Math.random()}`;
-      pendingRequestsRef.current[requestId] = { resolve, reject };
-
-      ws.send(JSON.stringify({
-        type: 'generate_bio',
-        data: {
-          requestId,
-          name: officer.name,
-          styleName: officer.styleName,
-          gender: officer.gender,
-          factionName: matchedFaction.name,
-          stats: officer.stats,
-          traits: officer.traits,
-          skills: officer.skills
-        }
-      }));
-    });
-  };
-
-  const requestStrategyAdvisor = (officer: Officer, scenario: CampaignScenario): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        reject(new Error("军事天盘连网已阻断，暂时无法觐见军师。"));
-        return;
-      }
-      const requestId = `strat-${Date.now()}-${Math.random()}`;
-      pendingRequestsRef.current[requestId] = { resolve, reject };
-
-      ws.send(JSON.stringify({
-        type: 'evaluate_strategy',
-        data: {
-          requestId,
-          officer,
-          scenario
-        }
-      }));
-    });
-  };
-
-  // Sync selected advisor details when officer selection changes
-  useEffect(() => {
-    setAdvisorBrief('');
-  }, [selectedOfficer, selectedScenario]);
-
-  // Handle generating AI strategic feedback
-  const handleConsultWarCouncil = async () => {
-    setIsConsultingAdvisor(true);
-    try {
-      const advice = await requestStrategyAdvisor(selectedOfficer, selectedScenario);
-      setAdvisorBrief(advice);
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || '大军师处连接遇阻，请检查您是否已在 Secrets Panel 中设置了 GEMINI_API_KEY，且开发服务器正常就绪。');
-    } finally {
-      setIsConsultingAdvisor(false);
-    }
-  };
-
-  // Preset randomizer for stats
-  const randomizeStats = () => {
-    setStatLeadership(Math.floor(Math.random() * 65) + 35);
-    setStatForce(Math.floor(Math.random() * 65) + 35);
-    setStatIntelligence(Math.floor(Math.random() * 65) + 35);
-    setStatPolitics(Math.floor(Math.random() * 65) + 35);
-    setStatCharisma(Math.floor(Math.random() * 65) + 35);
-  };
-
-  // Randomized creator templates
-  const applyTemplate = (type: 'warrior' | 'tactician' | 'monarch') => {
-    if (type === 'warrior') {
-      setCustomGender('Male');
-      setStatLeadership(88);
-      setStatForce(98);
-      setStatIntelligence(45);
-      setStatPolitics(30);
-      setStatCharisma(75);
-      setAvatarHairStyle('Long Bound Mane');
-      setAvatarHairColor('#171717');
-      setAvatarArmorColor('#fb923c');
-      setAvatarAccessory('Green Dragon Crescent Blade');
-      setAvatarExpression('Fierce Roaring');
-      setSelectedTraits(['军神 (以无双霸道震慑周围低统帅敌军并强行开启单挑)']);
-      setSelectedSkills(['突击 (造成恐怖的近战冲撞伤害)', '单挑 (开启惊心动魄的1对1武将武艺对决)', '奇袭 (穿越丛林灌木发动奔袭，无视城墙防守防线)']);
-    } else if (type === 'tactician') {
-      setCustomGender('Female');
-      setStatLeadership(72);
-      setStatForce(35);
-      setStatIntelligence(99);
-      setStatPolitics(92);
-      setStatCharisma(88);
-      setAvatarHairStyle('Scholar Jade Headdress');
-      setAvatarHairColor('#1e293b');
-      setAvatarArmorColor('#f8fafc');
-      setAvatarAccessory('Feather Daoist Fan');
-      setAvatarExpression('Brilliant Calm');
-      setSelectedTraits(['卧龙 (策略消耗大幅降低，且免受计略乾坤)', '神算 (奇门陷阱与火计策略之成功率、杀伤力大幅增强)']);
-      setSelectedSkills(['火计 (点燃目标区域地格，火焰随风方向蔓延)', '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)', '治疗 (恢复重伤士兵的编制数并激发高昂士气)']);
-    } else { // Monarch
-      setCustomGender('Male');
-      setStatLeadership(90);
-      setStatForce(71);
-      setStatIntelligence(84);
-      setStatPolitics(89);
-      setStatCharisma(96);
-      setAvatarHairStyle('Noble Court Crown');
-      setAvatarHairColor('#0f172a');
-      setAvatarArmorColor('#3b82f6');
-      setAvatarAccessory('Engraved Commander Sword');
-      setAvatarExpression('Cold Sovereign');
-      setSelectedTraits(['仁德 (提升声望与信赖程度)', '雄心 (提升个人武将统御及兵力募集上限)']);
-      setSelectedSkills(['挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)', '铁壁 (短时间内进入物理与计谋免疫的无敌状态)']);
-    }
-  };
-
-  const handleCreateOfficer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customName.trim()) {
-      alert('请输入起立武将名字！');
-      return;
-    }
-
-    const newOfficer: Officer = {
-      id: `custom-${createdCount}-${Date.now()}`,
-      name: customName,
-      gender: customGender,
-      styleName: customStyleName.trim() || undefined,
-      factionId: customFactionId,
-      avatarStyle: {
-        hairColor: avatarHairColor,
-        hairStyle: avatarHairStyle,
-        armorColor: avatarArmorColor,
-        accessory: avatarAccessory,
-        expression: avatarExpression,
-        bgGradient: avatarGradient
-      },
-      stats: {
-        leadership: statLeadership,
-        force: statForce,
-        intelligence: statIntelligence,
-        politics: statPolitics,
-        charisma: statCharisma
-      },
-      traits: selectedTraits,
-      skills: selectedSkills,
-      biography: `在公元 ${selectedScenario.title} 的乱世大潮中，高举义旗、挺身而出的杰出原创群雄首领。其卓越的统御与兵法修为堪称一时之俊杰。`,
-      custom: true
-    };
-
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'add_officer',
-        data: newOfficer
-      }));
-    } else {
-      setOfficers(prev => [newOfficer, ...prev]);
-    }
+  // Initialize Level structures
+  const loadLevel = (levelId: string, resetStats: boolean = false) => {
+    const level = LEVELS[levelId] || LEVELS.facility;
     
-    setCreatedCount(prev => prev + 1);
-    setSelectedOfficer(newOfficer);
-    
-    // Reset Form Input
-    setCustomName('');
-    setCustomStyleName('');
-    setActiveTab('roster');
-  };
+    // Spawn randomized safe-distance positions
+    const spawns = initEnemiesForLevel(levelId);
+    const mappedEnemies: Enemy[] = spawns.map((s) => {
+      let hp = 35;
+      let speed = 0.025;
+      let scoreValue = 150;
+      let avatar = "🤖";
+      let color = "#22d3ee";
+      let damage = 4;
 
-  const handleDeleteOfficer = (id: string) => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'delete_officer',
-        data: id
-      }));
-    } else {
-      setOfficers(prev => prev.filter(o => o.id !== id));
-      setRelationships(prev => prev.filter(r => r.fromOfficerId !== id && r.toOfficerId !== id));
-      if (selectedOfficer && selectedOfficer.id === id) {
-        setSelectedOfficer(FAMOUS_OFFICERS[0]);
-      }
-    }
-  };
-
-  const handleCreateRelationship = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!relFrom || !relTo || relFrom === relTo) {
-      alert('Select two unique officers to link!');
-      return;
-    }
-
-    // Check duplicate
-    const exists = relationships.some(r => 
-      (r.fromOfficerId === relFrom && r.toOfficerId === relTo) ||
-      (r.fromOfficerId === relTo && r.toOfficerId === relFrom)
-    );
-
-    if (exists) {
-      alert('这两位名将之间已经存在现成的战术连带或情感羁绊网络！');
-      return;
-    }
-
-    const newRel: RelationshipRelation = {
-      fromOfficerId: relFrom,
-      toOfficerId: relTo,
-      type: relType
-    };
-
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'add_relationship',
-        data: newRel
-      }));
-    } else {
-      setRelationships(prev => [...prev, newRel]);
-    }
-  };
-
-  const handleBreakRelationship = (fromId: string, toId: string) => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'delete_relationship',
-        data: { fromOfficerId: fromId, toOfficerId: toId }
-      }));
-    } else {
-      setRelationships(prev => prev.filter(r => 
-        !(r.fromOfficerId === fromId && r.toOfficerId === toId) &&
-        !(r.fromOfficerId === toId && r.toOfficerId === fromId)
-      ));
-    }
-  };
-
-  // Simple Duel Simulator trigger
-  const runBattleDuelSim = (off1: Officer, off2: Officer) => {
-    if (!off1 || !off2) return;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'run_duel',
-        data: { off1, off2 }
-      }));
-    } else {
-      const force1 = off1.stats.force + Math.floor(Math.random() * 15);
-      const force2 = off2.stats.force + Math.floor(Math.random() * 15);
-      
-      let dialogue = '';
-      let winner = off1;
-      let loser = off2;
-
-      if (force1 > force2) {
-         winner = off1;
-         loser = off2;
-      } else {
-         winner = off2;
-         loser = off1;
+      if (s.type === "SOLDIER") {
+        hp = 65;
+        speed = 0.038;
+        scoreValue = 300;
+        avatar = "🤖";
+        color = "#eab308";
+        damage = 8;
+      } else if (s.type === "CYBER_DEMON") {
+        hp = 220;
+        speed = 0.018;
+        scoreValue = 1000;
+        avatar = "👹";
+        color = "#ef4444";
+        damage = 18;
       }
 
-      dialogue = `${winner.name} 挥舞神兵，避开防线，破空一击直捣 ${loser.name} 空门。“${winner.name}” 在战场单挑坐标格中夺得压倒性大胜！`;
-      setCombatOutcome(`⚔️ 【自研离线单挑结果】: 赢家：${winner.name} (单挑后武力 ${winner.stats.force}) 击败了 输家：${loser.name} (单挑后武力 ${loser.stats.force})！\n\n战场细节自摹：${dialogue}`);
-      if (soundEnabled) {
-        playClashSound();
-      }
-    }
-  };
+      return {
+        id: s.id,
+        type: s.type,
+        x: s.x,
+        y: s.y,
+        health: hp,
+        maxHealth: hp,
+        speed,
+        state: "IDLE",
+        stateTimer: 0,
+        damage,
+        scoreValue,
+        radius: 0.35,
+        avatar,
+        color,
+        isHitFlash: false,
+      };
+    });
 
-  // Helper toggle traits
-  const toggleTrait = (trait: string) => {
-    if (selectedTraits.includes(trait)) {
-      setSelectedTraits(prev => prev.filter(t => t !== trait));
-    } else {
-      if (selectedTraits.length >= 3) {
-        alert('一个武将最多只能掌握3个特质个性。');
-        return;
-      }
-      setSelectedTraits(prev => [...prev, trait]);
-    }
-  };
+    // Spawn randomized localized powerups on level empty areas
+    const powerupSpecs: { type: "HEALTH" | "AMMO" | "SHIELD"; emoji: string; color: string }[] = [
+      { type: "HEALTH", emoji: "➕", color: "#10b981" },
+      { type: "AMMO", emoji: "⚡", color: "#eab308" },
+      { type: "SHIELD", emoji: "🛡️", color: "#3b82f6" },
+    ];
 
-  // Helper toggle skills
-  const toggleSkill = (skill: string) => {
-    if (selectedSkills.includes(skill)) {
-      setSelectedSkills(prev => prev.filter(s => s !== skill));
-    } else {
-      if (selectedSkills.length >= 4) {
-        alert('一个武将最多只能掌握4个战技技能。');
-        return;
-      }
-      setSelectedSkills(prev => [...prev, skill]);
-    }
-  };
-
-  // Filter & Search roster
-  const filteredOfficers = officers.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (item.styleName && item.styleName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      item.biography.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFaction = factionFilter === 'all' || item.factionId === factionFilter;
-    return matchesSearch && matchesFaction;
-  });
-
-  // Render markdown with high visual fidelity custom parser
-  const renderAdviceMarkdown = (text: string) => {
-    if (!text) return null;
-    const lines = text.split('\n');
-    return lines.map((line, idx) => {
-      // Heading level 2 or 3
-      if (line.trim().startsWith('###')) {
-        return <h4 key={idx} className="text-sm font-bold text-amber-200 mt-4 mb-2 uppercase font-serif tracking-wide">{line.replace('###', '').trim()}</h4>;
-      }
-      if (line.trim().startsWith('##') || line.trim().startsWith('**')) {
-        const cleanText = line.replace(/##|\*\*/g, '').trim();
-        return <h3 key={idx} className="text-base font-bold text-amber-400 mt-5 mb-2.5 font-serif border-b border-amber-950/40 pb-1 flex items-center gap-1.5">{cleanText}</h3>;
-      }
-      // List item
-      if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
-        const itemText = line.replace(/^[-*]\s*/, '').trim();
-        // Look for internal bolding like - **Sima Yi**: Text...
-        const boldMatch = itemText.match(/^\*\*(.*?)\*\*:(.*)/);
-        if (boldMatch) {
-          return (
-            <li key={idx} className="ml-4 list-none text-xs text-slate-300 mb-1.5 flex items-start gap-1.5">
-              <span className="text-amber-500 mt-1">✦</span>
-              <span>
-                <strong className="text-amber-200">{boldMatch[1]}</strong>: {boldMatch[2]}
-              </span>
-            </li>
-          );
+    const powerupList: Powerup[] = [];
+    const grid = level.wallGrid;
+    let attempts = 0;
+    while (powerupList.length < 4 && attempts < 100) {
+      attempts++;
+      const rx = Math.floor(Math.random() * (grid[0].length - 2)) + 1;
+      const ry = Math.floor(Math.random() * (grid.length - 2)) + 1;
+      if (grid[ry][rx] === 0) {
+        // Safe check so they don't block the player or exit gates
+        const isNearPlayer = Math.abs(rx - level.playerStartX) < 1.5 && Math.abs(ry - level.playerStartY) < 1.5;
+        const alreadyHas = powerupList.some((p) => Math.floor(p.x) === rx && Math.floor(p.y) === ry);
+        if (!isNearPlayer && !alreadyHas) {
+          const spec = powerupSpecs[Math.floor(Math.random() * powerupSpecs.length)];
+          powerupList.push({
+            id: `pwr-${powerupList.length}-${Math.random().toString(36).substring(2, 4)}`,
+            x: rx + 0.5,
+            y: ry + 0.5,
+            ...spec,
+          });
         }
-        return (
-          <li key={idx} className="ml-4 list-none text-xs text-slate-300 mb-1.5 flex items-start gap-1.5">
-            <span className="text-amber-500 mt-1">✦</span>
-            <span>{itemText}</span>
-          </li>
+      }
+    }
+
+    // Set Level configuration states
+    setCurrentLevelId(levelId);
+    setEnemies(mappedEnemies);
+    setPowerups(powerupList);
+    setParticles([]);
+    setPlayer((prev) => ({
+      ...prev,
+      x: level.playerStartX,
+      y: level.playerStartY,
+      dirX: Math.cos(level.playerStartAngle),
+      dirY: Math.sin(level.playerStartAngle),
+      planeX: -Math.sin(level.playerStartAngle) * 0.66,
+      planeY: Math.cos(level.playerStartAngle) * 0.66,
+      angle: level.playerStartAngle,
+      currentLevelId: levelId,
+      weapons: resetStats ? JSON.parse(JSON.stringify(INITIAL_WEAPONS)) : prev.weapons,
+      health: resetStats ? 100 : Math.max(prev.health, 50),
+      shield: resetStats ? 50 : Math.max(prev.shield, 30),
+      score: resetStats ? 0 : prev.score,
+      kills: resetStats ? 0 : prev.kills,
+    }));
+
+    // Notify peer clients about level shift
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "room:change",
+        payload: {
+          levelId,
+          x: level.playerStartX,
+          y: level.playerStartY,
+          angle: level.playerStartAngle,
+        }
+      }));
+    }
+
+    setLogs([]);
+    addLog(`LOADED ARENA: "${level.name}" [Difficulty: ${level.difficulty}]`, "level");
+    addLog(level.description, "system");
+    addLog("Tactical HUD Operational. Use W/A/S/D to slide and steer.", "system");
+    
+    // Play alert & music chimes
+    playEnemyAlert();
+  };
+
+  // Launch fresh game from splash menu screen
+  const handleStartGame = () => {
+    setGameState("PLAYING");
+    loadLevel("facility", true);
+  };
+
+  // Reload current level trigger
+  const handleResetLevel = () => {
+    loadLevel(currentLevelId, true);
+    setGameState("PLAYING");
+  };
+
+  // Player shoot action handling
+  const handleFireWeapon = () => {
+    // Rely on fresh reference states
+    const curPlayer = playerRef.current;
+    if (!curPlayer || gameState !== "PLAYING" || curPlayer.isFiring) return;
+
+    if (isReloadingRef.current) {
+      addLog(`⚙️ WEAPON SYSTEM RELOADING! PLEASE STAND BY...`, "system");
+      return;
+    }
+
+    const curWeapon = curPlayer.weapons[curPlayer.currentWeaponIndex];
+    if (curWeapon.ammo <= 0) {
+      addLog(`⚠️ MUNITIONS DEPLETED! NEED TO SELECT DIFFERENT WEAPON PACKS`, "ammo");
+      playOutOfAmmo();
+      return;
+    }
+
+    // Spend ammunition clip
+    setPlayer((prev) => {
+      const copyWeapons = [...prev.weapons];
+      copyWeapons[prev.currentWeaponIndex].ammo = Math.max(0, copyWeapons[prev.currentWeaponIndex].ammo - 1);
+      return {
+        ...prev,
+        weapons: copyWeapons,
+        isFiring: true,
+      };
+    });
+
+    // Play procedural synthesized blast tone
+    if (curWeapon.sound === "pistol") playPistol();
+    else if (curWeapon.sound === "shotgun") playShotgun();
+    else if (curWeapon.sound === "plasma") playPlasma();
+
+    // Spawn animated visual bullet eject debris particles!
+    createMuzzleGasParticles(curPlayer.x, curPlayer.y, curPlayer.angle);
+
+    // Broadcast firing to co-op squad peers
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "fire",
+        payload: {
+          weaponId: curWeapon.id,
+          originX: curPlayer.x,
+          originY: curPlayer.y,
+          angle: curPlayer.angle,
+        }
+      }));
+    }
+
+    // Solve damage hit calculations straight down looking projection inside FOV
+    // Bullet tracing down Center column of view projection (0 screen offset)
+    setEnemies((prevEnemies) => {
+      let targetEnemy: Enemy | null = null;
+      let minDepth = Infinity;
+      let targetIndex = -1;
+
+      prevEnemies.forEach((enemy, idx) => {
+        if (enemy.health <= 0) return;
+
+        // Relative coordinate transform matrix calculation
+        const dx = enemy.x - curPlayer.x;
+        const dy = enemy.y - curPlayer.y;
+
+        const invDet = 1.0 / (curPlayer.planeX * curPlayer.dirY - curPlayer.dirX * curPlayer.planeY);
+        const transformX = invDet * (curPlayer.dirY * dx - curPlayer.dirX * dy);
+        const transformY = invDet * (-curPlayer.planeY * dx + curPlayer.planeX * dy); // depth
+
+        // If in front of player
+        if (transformY > 0.1) {
+          // Check screen horizontal alignment constraint
+          const alignment = Math.abs(transformX / transformY);
+          
+          // Verify alignment with weapon fire spread/accuracy margins and screen visibility
+          if (alignment < curWeapon.accuracy && transformY < curWeapon.range) {
+            if (transformY < minDepth) {
+              minDepth = transformY;
+              targetEnemy = enemy;
+              targetIndex = idx;
+            }
+          }
+        }
+      });
+
+      // Issue hit registered impacts
+      if (targetEnemy && targetIndex !== -1) {
+        const hitted: Enemy = targetEnemy;
+        const nextHp = Math.max(0, hitted.health - curWeapon.damage);
+        const isDead = nextHp <= 0;
+
+        // Create spark impacts at target coords
+        createSparks(hitted.x, hitted.y, hitted.type === "DRONE" ? "#e11d48" : "#fbbf24");
+
+        // Flash log details
+        if (isDead) {
+          // Killed notification
+          setTimeout(() => {
+            addLog(`⚡ DESTROYED: Rogue Hostile Units [${hitted.type}]! +${hitted.scoreValue} PTS`, "kill");
+            playExplosion();
+            
+            // Accrue score logs
+            setPlayer((prev) => ({
+              ...prev,
+              score: prev.score + hitted.scoreValue,
+              kills: prev.kills + 1,
+            }));
+          }, 40);
+        } else {
+          // Regular damage impact log details
+          addLog(`💥 Shot registered on ${hitted.type}. Damage: -${curWeapon.damage} HP`, "combat");
+        }
+
+        // Return updated list of enemies
+        return prevEnemies.map((e, idx) =>
+          idx === targetIndex
+            ? {
+                ...e,
+                health: nextHp,
+                state: nextHp <= 0 ? "DEAD" : "HURT",
+                isHitFlash: true,
+              }
+            : e
         );
-      }
-      if (line.trim() === '') return <div key={idx} className="h-2"></div>;
-      // Normal paragraph
-      return <p key={idx} className="text-xs text-slate-300 leading-relaxed mb-2.5">{line}</p>;
+      } else {
+        // Bullet hit blank boundaries
+        addLog(`💨 Bullet struck structural walls (Missed Hostiles).`, "system");
+        return prevEnemies;
+      };
     });
+
+    // Muzzle firing recoil duration
+    setTimeout(() => {
+      setPlayer((prev) => ({ ...prev, isFiring: false }));
+    }, curWeapon.fireRate - 40);
   };
 
-  if (showStartMenu) {
-    return (
-      <StartMenu
-        scenarios={SCENARIOS}
-        selectedScenario={selectedScenario}
-        onSelectScenario={(sc) => setSelectedScenario(sc)}
-        onEnterApp={(tab) => {
-          setActiveTab(tab);
-          setShowStartMenu(false);
-        }}
-        soundEnabled={soundEnabled}
-        onToggleSound={() => setSoundEnabled(!soundEnabled)}
-      />
-    );
-  }
+  // Manual reload event refilling weapon ammunition clips with temporary speed/charge delay
+  const handleReloadWeapon = () => {
+    const curPlayer = playerRef.current || player;
+    if (!curPlayer || gameState !== "PLAYING") return;
+    if (isReloadingRef.current || curPlayer.isFiring) return;
+
+    const curWeapon = curPlayer.weapons[curPlayer.currentWeaponIndex];
+    if (curWeapon.ammo === curWeapon.maxAmmo) {
+      addLog(`🛡️ MUNITIONS CORES AT MAXIMUM CHARGE. NO RELOAD REQUIRED.`, "system");
+      return;
+    }
+
+    setIsReloading(true);
+    isReloadingRef.current = true;
+    
+    addLog(`🔄 RECONNECTING MUNITIONS PACK: Reloading ${curWeapon.name}...`, "ammo");
+    playAmmoPickup();
+
+    setTimeout(() => {
+      setPlayer((prev) => {
+        const copyWeapons = [...prev.weapons];
+        copyWeapons[prev.currentWeaponIndex].ammo = copyWeapons[prev.currentWeaponIndex].maxAmmo;
+        return {
+          ...prev,
+          weapons: copyWeapons,
+        };
+      });
+      setIsReloading(false);
+      isReloadingRef.current = false;
+      addLog(`✅ ${curWeapon.name.toUpperCase()} MOUNTED & FULLY CHARGED!`, "system");
+    }, 1500); // 1.5 seconds reload penalty delay
+  };
+
+  // Weapon swap selection methods
+  const selectWeapon = (idx: number) => {
+    if (idx < 0 || idx >= player.weapons.length) return;
+    setPlayer((prev) => ({ ...prev, currentWeaponIndex: idx }));
+    playSelect();
+    addLog(`🔫 EQUIPPED ARSENAL MODULE: ${player.weapons[idx].name}`, "system");
+  };
+
+  // Keep references updated on every render
+  fireRef.current = handleFireWeapon;
+  reloadRef.current = handleReloadWeapon;
+
+  // Muzzle spark graphics factory
+  const createMuzzleGasParticles = (px: number, py: number, angle: number) => {
+    const list: Particle[] = [];
+    const cosVal = Math.cos(angle);
+    const sinVal = Math.sin(angle);
+
+    for (let i = 0; i < 5; i++) {
+      const spreadAngle = angle + (Math.random() - 0.5) * 0.45;
+      const speed = 0.04 + Math.random() * 0.05;
+      list.push({
+        id: `mzl-${Date.now()}-${Math.random()}-${i}`,
+        x: px + cosVal * 0.4,
+        y: py + sinVal * 0.4,
+        vx: Math.cos(spreadAngle) * speed,
+        vy: Math.sin(spreadAngle) * speed,
+        color: Math.random() < 0.5 ? "#fbbf24" : "#f97316",
+        size: 3 + Math.random() * 3,
+        alpha: 0.95,
+        life: 12 + Math.floor(Math.random() * 7),
+      });
+    }
+    setParticles((prev) => [...prev, ...list]);
+  };
+
+  // Shock particles factory on target damage registering
+  const createSparks = (ex: number, ey: number, color: string) => {
+    const list: Particle[] = [];
+    for (let i = 0; i < 7; i++) {
+      const rot = Math.random() * Math.PI * 2;
+      const spd = 0.02 + Math.random() * 0.03;
+      list.push({
+        id: `spk-${Date.now()}-${Math.random()}-${i}`,
+        x: ex,
+        y: ey,
+        vx: Math.cos(rot) * spd,
+        vy: Math.sin(rot) * spd,
+        color,
+        size: 2.5 + Math.random() * 3,
+        alpha: 1.0,
+        life: 8 + Math.floor(Math.random() * 10),
+      });
+    }
+    setParticles((prev) => [...prev, ...list]);
+  };
+
+  // Wall collisions utilities
+  const checkCollision = (targetX: number, targetY: number): boolean => {
+    const sizeOffset = 0.28; // safe wall gap buffer distance
+    const grid = activeLevel.wallGrid;
+    const maxRow = grid.length;
+    const maxCol = grid[0].length;
+
+    for (const sx of [-sizeOffset, sizeOffset]) {
+      for (const sy of [-sizeOffset, sizeOffset]) {
+        const cx = Math.floor(targetX + sx);
+        const cy = Math.floor(targetY + sy);
+        if (cx < 0 || cx >= maxCol || cy < 0 || cy >= maxRow) return true;
+        // Level completion gates (4) do not block movement
+        if (grid[cy][cx] > 0 && grid[cy][cx] !== 4) return true;
+      }
+    }
+    return false;
+  };
+
+  // Game Engine physics loop ticking (Ticks W/A/S/D coordinate changes, particle life cycles, AI states)
+  useEffect(() => {
+    if (gameState !== "PLAYING") {
+      if (gameLoopRef.current) {
+        cancelAnimationFrame(gameLoopRef.current);
+        gameLoopRef.current = null;
+      }
+      return;
+    }
+
+    const tick = (time: number) => {
+      // Setup delta rate
+      if (!lastTimeRef.current) lastTimeRef.current = time;
+      const _dt = Math.min((time - lastTimeRef.current) / 1000, 0.1);
+      lastTimeRef.current = time;
+
+      const pState = playerRef.current;
+      if (!pState) {
+        gameLoopRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      // 1. UPDATE PLAYER MOVEMENT (Keyboard responsive fluid gliding)
+      const walkSpeed = 0.075; // tiles traversal units per frame tick
+      const rotSpeed = 0.042; // radians steering per frame tick
+
+      let moveX = 0;
+      let moveY = 0;
+      let rotDelta = 0;
+
+      // Handle translation inputs
+      if (keysPressed.current.has("w") || keysPressed.current.has("arrowup")) {
+        moveX += pState.dirX * walkSpeed;
+        moveY += pState.dirY * walkSpeed;
+      }
+      if (keysPressed.current.has("s") || keysPressed.current.has("arrowdown")) {
+        moveX -= pState.dirX * walkSpeed;
+        moveY -= pState.dirY * walkSpeed;
+      }
+      if (keysPressed.current.has("a") || keysPressed.current.has("arrowleft")) {
+        rotDelta -= rotSpeed;
+      }
+      if (keysPressed.current.has("d") || keysPressed.current.has("arrowright")) {
+        rotDelta += rotSpeed;
+      }
+
+      // Process looking rotation change values
+      let nextPlayer = { ...pState };
+      if (rotDelta !== 0) {
+        const nextAngle = (pState.angle + rotDelta + Math.PI * 2) % (Math.PI * 2);
+        nextPlayer.angle = nextAngle;
+        nextPlayer.dirX = Math.cos(nextAngle);
+        nextPlayer.dirY = Math.sin(nextAngle);
+        nextPlayer.planeX = -Math.sin(nextAngle) * 0.66;
+        nextPlayer.planeY = Math.cos(nextAngle) * 0.66;
+        
+        if (Math.random() < 0.06) playStep();
+      }
+
+      // Process collision checks and sliding coordinates step-by-step
+      if (moveX !== 0 || moveY !== 0) {
+        const projX = pState.x + moveX;
+        const projY = pState.y + moveY;
+        
+        let slideX = pState.x;
+        let slideY = pState.y;
+
+        if (!checkCollision(projX, pState.y)) {
+          slideX = projX;
+        }
+        if (!checkCollision(pState.x, projY)) {
+          slideY = projY;
+        }
+
+        nextPlayer.x = slideX;
+        nextPlayer.y = slideY;
+
+        if (slideX !== pState.x || slideY !== pState.y) {
+          if (Math.random() < 0.1) playStep();
+        }
+      }
+
+      // 2. DETECT EXIT REVEAL PROTOCOL
+      const currentCellX = Math.floor(nextPlayer.x);
+      const currentCellY = Math.floor(nextPlayer.y);
+      const cellValue = activeLevel.wallGrid[currentCellY]?.[currentCellX];
+
+      if (cellValue === 4) {
+        // Trigger exit protocols
+        cancelAnimationFrame(gameLoopRef.current!);
+        handleLevelEscape();
+        return;
+      }
+
+      // 3. RETRIEVE REGEN POWERUPS COLLISION
+      setPowerups((pwrList) => {
+        const collected: string[] = [];
+        pwrList.forEach((pwr) => {
+          const dx = pwr.x - nextPlayer.x;
+          const dy = pwr.y - nextPlayer.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          // Overlap radius
+          if (dist < 0.45) {
+            collected.push(pwr.id);
+            
+            if (pwr.type === "HEALTH") {
+              playHealthPickup();
+            } else if (pwr.type === "AMMO") {
+              playAmmoPickup();
+            } else if (pwr.type === "SHIELD") {
+              playShieldPickup();
+            } else {
+              playPickup();
+            }
+
+            // Notify other peer clients that this item is consumed
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              wsRef.current.send(JSON.stringify({
+                type: "pickup",
+                payload: { pickupId: pwr.id }
+              }));
+            }
+
+            // Apply benefits to state
+            if (pwr.type === "HEALTH") {
+              nextPlayer.health = Math.min(nextPlayer.maxHealth, nextPlayer.health + 30);
+              addLog(`➕ RECONSTRUCTED ARMOR PLATING: Collected Medic Kit (+30 HP)`, "health");
+            } else if (pwr.type === "AMMO") {
+              const updatedWeapons = nextPlayer.weapons.map((w) => {
+                const reloadVal = Math.min(w.maxAmmo, w.ammo + Math.floor(w.maxAmmo * 0.5));
+                return { ...w, ammo: reloadVal };
+              });
+              nextPlayer.weapons = updatedWeapons;
+              addLog(`⚡ RECHARGED MUNITIONS DRIVE: Refilled all ammo (+50%)`, "ammo");
+            } else if (pwr.type === "SHIELD") {
+              nextPlayer.shield = Math.min(nextPlayer.maxShield, nextPlayer.shield + 40);
+              addLog(`🛡️ SYNCED BARRIER: Powered up Deflector Shield (+40 Shield)`, "health");
+            }
+          }
+        });
+
+        if (collected.length > 0) {
+          return pwrList.filter((p) => !collected.includes(p.id));
+        }
+        return pwrList;
+      });
+
+      // Update Damage flash timer ticks
+      if (nextPlayer.isTakingDamage && nextPlayer.damageTimer > 0) {
+        nextPlayer.damageTimer--;
+        if (nextPlayer.damageTimer <= 0) {
+          nextPlayer.isTakingDamage = false;
+        }
+      }
+
+      // Sync player coordinates
+      setPlayer(nextPlayer);
+
+      // Sync coordinates to WebSocket server in real-time (Throttled update rate)
+      const now = Date.now();
+      if (now - lastWsUpdateRef.current > 45) { // ~22 updates/sec
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({
+            type: "update",
+            payload: {
+              x: nextPlayer.x,
+              y: nextPlayer.y,
+              dirX: nextPlayer.dirX,
+              dirY: nextPlayer.dirY,
+              angle: nextPlayer.angle,
+              health: nextPlayer.health,
+              score: nextPlayer.score,
+              kills: nextPlayer.kills,
+              currentWeaponIndex: nextPlayer.currentWeaponIndex,
+              isFiring: nextPlayer.isFiring,
+            }
+          }));
+        }
+        lastWsUpdateRef.current = now;
+      }
+
+      // 4. ANIMATE HOSTILE ENEMY CHASE AI STATE ENGINE
+      setEnemies((currentEnemies) => {
+        return currentEnemies.map((enemy) => {
+          if (enemy.health <= 0) return enemy;
+
+          // Enemy hit flash cooldown tick
+          let freshEnemy = { ...enemy };
+          if (freshEnemy.isHitFlash) {
+            freshEnemy.isHitFlash = false;
+          }
+
+          const dx = nextPlayer.x - freshEnemy.x;
+          const dy = nextPlayer.y - freshEnemy.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          // Proximity Close combat combat actions
+          if (dist < 0.6) {
+            freshEnemy.state = "ATTACKING";
+            freshEnemy.stateTimer++;
+
+            // Strike rate interval (strikes player periodically every ~1 second)
+            if (freshEnemy.stateTimer % 35 === 0) {
+              setPlayer((p) => {
+                if (p.health <= 0) return p;
+                
+                // Reduce health factoring barrier shield absorption (60% shield mitigation)
+                const shieldAbsorb = Math.min(p.shield, Math.floor(freshEnemy.damage * 0.6));
+                const finalDamage = freshEnemy.damage - shieldAbsorb;
+                const nextHealth = Math.max(0, p.health - finalDamage);
+                const nextShield = Math.max(0, p.shield - shieldAbsorb);
+
+                playOof();
+                addLog(`🚨 HULL CRISIS: Blocked hit by hostile droid. -${finalDamage} HP (Shielded -${shieldAbsorb})`, "combat");
+
+                // Evaluate player demise bounds
+                if (nextHealth <= 0) {
+                  setTimeout(() => {
+                    handlePlayerDemise();
+                  }, 50);
+                }
+
+                return {
+                  ...p,
+                  health: nextHealth,
+                  shield: nextShield,
+                  isTakingDamage: true,
+                  damageTimer: 10,
+                };
+              });
+            }
+          }
+          // Distance medium alert parameters - chase player
+          else if (dist > 0.6 && dist < 8.0) {
+            freshEnemy.state = "CHASING";
+            const dirX = dx / dist;
+            const dirY = dy / dist;
+
+            const nextEx = freshEnemy.x + dirX * freshEnemy.speed;
+            const nextEy = freshEnemy.y + dirY * freshEnemy.speed;
+
+            // Glide smoothly around walls check
+            let resolvedX = freshEnemy.x;
+            let resolvedY = freshEnemy.y;
+
+            if (activeLevel.wallGrid[Math.floor(freshEnemy.y)]?.[Math.floor(nextEx)] === 0) {
+              resolvedX = nextEx;
+            }
+            if (activeLevel.wallGrid[Math.floor(nextEy)]?.[Math.floor(freshEnemy.x)] === 0) {
+              resolvedY = nextEy;
+            }
+
+            freshEnemy.x = resolvedX;
+            freshEnemy.y = resolvedY;
+          } else {
+            freshEnemy.state = "IDLE";
+          }
+
+          return freshEnemy;
+        });
+      });
+
+      // 5. UPDATE GRAPHICS PARTICLES DUST
+      setParticles((prevParticles) => {
+        return prevParticles
+          .map((p) => ({
+            ...p,
+            x: p.x + p.vx,
+            y: p.y + p.vy,
+            alpha: Math.max(0, p.alpha - 0.04),
+            life: p.life - 1,
+          }))
+          .filter((p) => p.life > 0 && p.alpha > 0);
+      });
+
+      gameLoopRef.current = requestAnimationFrame(tick);
+    };
+
+    gameLoopRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (gameLoopRef.current) {
+        cancelAnimationFrame(gameLoopRef.current);
+      }
+    };
+  }, [gameState, currentLevelId]);
+
+  // Handle successful elevator level exit escape
+  const handleLevelEscape = () => {
+    playVictory();
+    
+    // Evaluate if facility is completed, move to Wasteland next, or finish all
+    if (currentLevelId === "facility") {
+      setGameState("LEVEL_COMPLETE");
+      addLog(`🏆 LEVEL COMPLETED! DELTA SECTOR CLEARED. ESCAPING LIFT ACTIVE`, "level");
+    } else if (currentLevelId === "wasteland") {
+      setGameState("LEVEL_COMPLETE");
+      addLog(`🏆 OUTPOST WASTELAND SURVIVED! ESCAPED STORM FRONTS ESCORT ACTIVE`, "level");
+    } else {
+      setGameState("VICTORY_ALL");
+      addLog(`✨ ALL ROGUE NODES PURGED SUCCESSFULLY! TOTAL CYBER DEMON CORE SAVED.`, "system");
+    }
+  };
+
+  // Skip completion, move onto following area
+  const advanceToNextLevel = () => {
+    playTeleport();
+    if (currentLevelId === "facility") {
+      setGameState("PLAYING");
+      loadLevel("wasteland");
+    } else if (currentLevelId === "wasteland") {
+      setGameState("PLAYING");
+      loadLevel("hive");
+    } else {
+      setGameState("INTRO");
+    }
+  };
+
+  // Demise protocol handler
+  const handlePlayerDemise = () => {
+    setGameState("GAMEOVER");
+    addLog(`💀 CRITICAL ANNIHILATION DETECTED. CORE DOWN.`, "combat");
+    playDefeat();
+  };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans selection:bg-amber-500/30 selection:text-amber-200">
+    <div id="first-person-arena-root" className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-mono selection:bg-cyan-500/30 selection:text-cyan-200">
       
-      {/* Top Medieval Sovereign Header */}
-      <header className="relative border-b border-slate-800 bg-slate-950 px-6 py-6 overflow-hidden shadow-2xl">
-        <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-red-500"></div>
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="text-xl px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 font-serif tracking-widest rounded-lg">
-                VIII
-              </span>
-              <h1 className="text-2xl md:text-3xl font-serif font-black tracking-widest text-slate-50 uppercase flex items-center gap-2">
-                三国志 8
-              </h1>
-            </div>
-            <p className="text-xs text-slate-400 mt-1.5 font-mono max-w-2xl leading-relaxed">
-              招募史实与自立名将，自由配置五维属性与独特特质，缔结合契绊或宿怨机制，更有服务端 Gemini AI 军师亲授天下大势与破敌妙策。
-            </p>
+      {/* 🚀 Top Cyber Banner Header */}
+      <header className="bg-slate-950 border-b border-slate-900 px-5 py-3.5 shadow-md flex items-center justify-between select-none">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 bg-cyan-950/40 border border-cyan-800/40 rounded flex items-center justify-center text-cyan-400 relative">
+            <Gamepad2 className="w-5 h-5 text-cyan-400" />
+            <span className="absolute -bottom-1 -right-1 bg-red-650 text-white font-mono text-[8px] px-1 rounded-full font-bold scale-90 border border-slate-900 animate-pulse">
+              3D
+            </span>
           </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-mono tracking-widest text-cyan-400 font-bold uppercase py-0.5 px-2 rounded bg-cyan-950 border border-cyan-900/40">
+                TAC-3D VIRTUAL ENGINE
+              </span>
+              <span className="block w-2 h-2 rounded-full bg-cyan-451 animate-ping" />
+            </div>
+            <h1 className="text-sm font-extrabold tracking-tight text-white uppercase mt-0.5">
+              Battlefield Tactics <span className="text-xs text-slate-500 font-normal">Raycaster FPS</span>
+            </h1>
+          </div>
+        </div>
 
-          <div className="flex gap-2.5 items-center bg-slate-900 border border-slate-800 rounded-xl p-2 md:self-center">
-            <button
-              id="btn-return-start"
-              onClick={() => setShowStartMenu(true)}
-              className="px-3 py-1 text-[11px] font-sans font-bold text-amber-500 hover:text-amber-400 border border-amber-500/20 hover:border-amber-500/40 bg-amber-950/20 hover:bg-amber-950/40 rounded-lg active:scale-95 transition-all mr-1 flex items-center gap-1 cursor-pointer"
-            >
-              🏯 返回开始界面
-            </button>
-            <span className="text-[11px] font-mono text-slate-400 px-2 border-l border-slate-800 pl-2">军事天盘连线：</span>
-            {wsStatus === 'connecting' ? (
-              <span className="text-[11px] text-amber-500 flex items-center gap-1 animate-pulse">
-                <RefreshCw size={11} className="animate-spin" /> 星曜校准中...
-              </span>
-            ) : wsStatus === 'connected' ? (
-              <span className="text-[11.5px] text-emerald-400 bg-emerald-950/30 px-2.5 py-0.5 rounded-lg border border-emerald-950/80 font-mono flex items-center gap-1.5 shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                实时军政中枢直通
-              </span>
-            ) : (
-              <span className="text-[11.5px] text-rose-400 bg-rose-950/20 px-2.5 py-0.5 rounded-lg border border-rose-950 font-mono inline-flex items-center gap-1.5" title="Attempting reconnection... Make sure the dev server is active.">
-                ● 离线沙盘模式
-              </span>
-            )}
+        {/* Tactical status HUD */}
+        <div className="hidden md:flex items-center gap-6 text-xs text-slate-400 font-mono">
+          <div className="flex items-center gap-1.5">
+            <Trophy className="w-4 h-4 text-amber-500" />
+            <span>ACCUMULATED SCORE:</span>
+            <span className="text-white font-bold">{player.score} PTS</span>
+          </div>
+          <div className="flex items-center gap-1.5 border-l border-slate-900 pl-6">
+            <Target className="w-4 h-4 text-emerald-500" />
+            <span>DROIDS SLAYED:</span>
+            <span className="text-white font-bold">{player.kills} KIA</span>
           </div>
         </div>
       </header>
 
-      {/* Main Workspace Grid Router (Roster / Creator / Relationships Simulator) */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Main Deployment Matrix frame */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         
-        {/* Left Section (Column span 8): Primary action and selection board */}
-        <section className="lg:col-span-8 flex flex-col gap-6">
+        {/* Left column: Immersive Raycast Arena */}
+        <div className="lg:col-span-8 flex flex-col justify-between bg-slate-900/30 border border-slate-900 rounded-xl p-4 md:p-5 shadow-inner">
           
-          {/* Navigation Control Toolbar */}
-          <div className="bg-slate-950 p-2 rounded-2xl border border-slate-900 flex justify-between items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-1 p-1 bg-slate-900 rounded-xl border border-slate-800/80">
-              <button
-                id="tab-roster"
-                onClick={() => setActiveTab('roster')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'roster' 
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Users size={12} /> 麾下名将录
-              </button>
-              <button
-                id="tab-creator"
-                onClick={() => setActiveTab('creator')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'creator' 
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <UserPlus size={12} /> 自立武将登用
-              </button>
-              <button
-                id="tab-bonds"
-                onClick={() => setActiveTab('bonds')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'bonds' 
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Heart size={14} /> 人际关系与单挑
-              </button>
-              <button
-                id="tab-map"
-                onClick={() => setActiveTab('map')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'map' 
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Map size={12} /> 沙盘天盘地图
-              </button>
+          <div className="flex justify-between items-center mb-3 select-none">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-cyan-400 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-350">
+                ACTIVE COGNITIVE SPECTRUM VIEWPORT
+              </span>
             </div>
-
-            <div className="text-xs text-slate-400 font-mono px-3">
-              当前剧本年份: <strong className="text-amber-400">公元 {selectedScenario.year} 年</strong>
+            <div className="text-[10px] text-slate-500">
+              {activeLevel.name} • [DIFF: {activeLevel.difficulty}]
             </div>
           </div>
 
-          {/* Tab 1: Officer Roster */}
-          {activeTab === 'roster' && (
-            <div className="flex flex-col gap-5">
-              
-              {/* Filter controls */}
-              <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col md:flex-row gap-4 justify-between items-center">
-                <div className="relative w-full md:w-64">
-                  <Search size={14} className="absolute left-3 top-3.5 text-slate-500" />
-                  <input
-                    id="search-officers"
-                    type="text"
-                    placeholder="搜姓名、字号、技能特质或列传..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl pl-9 pr-4 py-2.5 text-xs focus:outline-none focus:border-slate-700 transition-colors"
-                  />
+          {/* Core Interactive Visual Raycast canvas */}
+          {gameState === "INTRO" ? (
+            <div className="w-full aspect-[4/3] rounded-lg bg-slate-950 border-2 border-slate-900 flex flex-col items-center justify-center p-6 text-center shadow-xl relative overflow-hidden">
+              <div className="absolute inset-0 opacity-15 pointer-events-none bg-cover bg-center bg-[radial-gradient(ellipse_at_center,_var(--alpha-color-900),_transparent)]" />
+              <div className="z-10 bg-slate-950/90 p-6 md:p-8 rounded-xl border border-cyan-900/40 max-w-md">
+                <div className="inline-flex p-3 rounded-full bg-cyan-950/80 border border-cyan-800/40 mb-4 text-cyan-450 animate-bounce">
+                  <Gamepad2 className="w-8 h-8" />
                 </div>
-
-                <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-                  <span className="text-slate-400 text-xs font-mono shrink-0 flex items-center gap-1.5">
-                    <Filter size={12} /> 筛选所属阵营:
-                  </span>
-                  <div className="flex gap-1">
-                    {[
-                      { id: 'all', name: '不限势力' },
-                      ...FACTIONS
-                    ].map(f => (
-                      <button
-                        id={`btn-faction-filter-${f.id}`}
-                        key={f.id}
-                        onClick={() => setFactionFilter(f.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all border shrink-0 ${
-                          factionFilter === f.id 
-                            ? 'bg-slate-800 text-slate-200 border-slate-600' 
-                            : 'bg-slate-950/40 text-slate-400 border-transparent hover:border-slate-900 hover:text-slate-300'
-                        }`}
-                      >
-                        {f.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Grid database Roster */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filteredOfficers.length > 0 ? (
-                  filteredOfficers.map(off => (
-                    <OfficerCard
-                      key={off.id}
-                      officer={off}
-                      onEdit={(updated) => {
-                        setOfficers(prev => prev.map(o => o.id === updated.id ? updated : o));
-                        setSelectedOfficer(updated);
-                        if (ws && ws.readyState === WebSocket.OPEN) {
-                           ws.send(JSON.stringify({
-                            type: 'add_officer',
-                            data: updated
-                          }));
-                        }
-                      }}
-                      onDelete={handleDeleteOfficer}
-                      onSelectForStrategy={(selected) => setSelectedOfficer(selected)}
-                      isSelectableForStrategy={true}
-                      onGenerateBio={(tgt) => {
-                        const matchedFaction = FACTIONS.find(f => f.id === tgt.factionId) || FACTIONS[FACTIONS.length - 1];
-                        return requestBioAI(tgt, matchedFaction);
-                      }}
-                    />
-                  ))
-                ) : (
-                  <div className="col-span-1 md:col-span-2 text-center py-12 bg-slate-900/10 border border-slate-900 border-dashed rounded-2xl">
-                    <User size={24} className="text-slate-600 mx-auto mb-2" />
-                    <p className="text-sm text-slate-400 font-medium">在这片乱世天盘的坐标格段，未能寻到任何出仕武将。</p>
-                    <p className="text-xs text-slate-500 mt-1">请尝试清除搜索字或变更所属势力分类。</p>
-                  </div>
-                )}
+                <h2 className="text-base font-extrabold text-white uppercase tracking-wider">
+                  Delta Hack: The Cyber Arena
+                </h2>
+                <p className="text-xs text-slate-400 leading-relaxed mt-2 mb-5">
+                  Hostile rogue drones and heavy mechanical steel demons have taken control of the Delta facilities. Maneuver through local corridors, pick up battery cells, and escape through the lift shafts!
+                </p>
+                <button
+                  id="load-virtual-sim-btn"
+                  onClick={handleStartGame}
+                  className="w-full bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold uppercase py-2 text-xs tracking-wider rounded transition-all duration-150 cursor-pointer border border-cyan-800"
+                >
+                  DEACTIVATE SAFE-LOCKS & BATTLE
+                </button>
               </div>
             </div>
-          )}
-
-          {/* Tab 2: Custom Officer Creator */}
-          {activeTab === 'creator' && (
-            <form onSubmit={handleCreateOfficer} className="bg-slate-950 rounded-2xl border border-slate-900 p-6 flex flex-col gap-6">
-              
-              <div className="flex justify-between items-center border-b border-slate-900 pb-4">
-                <div>
-                  <h2 className="text-lg font-serif font-bold text-slate-200 uppercase tracking-wider">自立群雄名将幕府</h2>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">对属性进行完全自定义、一键套用经典模板，并实时预览武将画像。</p>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    id="btn-template-warrior"
-                    type="button"
-                    onClick={() => applyTemplate('warrior')}
-                    className="px-2.5 py-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono text-slate-300 rounded transition-colors"
-                  >
-                    ⚔️ 悍勇猛将
-                  </button>
-                  <button
-                    id="btn-template-tactician"
-                    type="button"
-                    onClick={() => applyTemplate('tactician')}
-                    className="px-2.5 py-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono text-slate-300 rounded transition-colors"
-                  >
-                    🎓 治世谋臣
-                  </button>
-                  <button
-                    id="btn-template-monarch"
-                    type="button"
-                    onClick={() => applyTemplate('monarch')}
-                    className="px-2.5 py-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono text-slate-300 rounded transition-colors"
-                  >
-                    👑 仁德英豪
-                  </button>
-                </div>
-              </div>
-
-              {/* Creator Main content grid */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                
-                {/* Visual live Avatar Generator panel */}
-                <div className="md:col-span-4 flex flex-col items-center gap-4 bg-slate-900/40 p-5 rounded-2xl border border-slate-900 min-h-[300px]">
-                  <span className="text-xs font-mono text-slate-400 block tracking-widest uppercase">丹青画像</span>
-                  
-                  <AvatarRenderer 
-                    style={{
-                      hairColor: avatarHairColor,
-                      hairStyle: avatarHairStyle,
-                      armorColor: avatarArmorColor,
-                      accessory: avatarAccessory,
-                      expression: avatarExpression,
-                      bgGradient: avatarGradient
-                    }} 
-                    size={160} 
-                  />
-
-                  <div className="w-full space-y-3 mt-2">
-                    {/* Background Selector */}
-                    <div>
-                      <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">画卷背景</label>
-                      <select
-                        id="select-gradient"
-                        value={avatarGradient}
-                        onChange={(e) => setAvatarGradient(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-2 focus:outline-none"
-                      >
-                        {GRADIENTS.map(g => (
-                          <option key={g.value} value={g.value}>{g.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Expression Selector */}
-                    <div>
-                      <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">神态之姿</label>
-                      <select
-                        id="select-expression"
-                        value={avatarExpression}
-                        onChange={(e) => setAvatarExpression(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-2 focus:outline-none"
-                      >
-                        {EXPRESSIONS.map(e => (
-                          <option key={e.value} value={e.value}>{e.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Form fields & Sliders panel */}
-                <div className="md:col-span-8 flex flex-col gap-5">
-                  
-                  {/* Biography Identifiers */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-mono text-slate-400 block mb-1">武将姓名</label>
-                      <input
-                        id="input-custom-name"
-                        type="text"
-                        placeholder="例如：马超"
-                        value={customName}
-                        onChange={(e) => setCustomName(e.target.value)}
-                        required
-                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-slate-700"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-mono text-slate-400 block mb-1">字号 / 表字</label>
-                      <input
-                        id="input-style-name"
-                        type="text"
-                        placeholder="例如：孟起"
-                        value={customStyleName}
-                        onChange={(e) => setCustomStyleName(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-slate-700"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-mono text-slate-400 block mb-1">性别</label>
-                      <div className="flex gap-2">
-                        {['Male', 'Female'].map(g => (
-                          <button
-                            id={`btn-gender-${g}`}
-                            key={g}
-                            type="button"
-                            onClick={() => setCustomGender(g as any)}
-                            className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                              customGender === g 
-                                ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold' 
-                                : 'bg-slate-950 border-slate-800 text-slate-400'
-                            }`}
-                          >
-                            {g === 'Female' ? '女' : '男'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-mono text-slate-400 block mb-1">出仕效忠势力</label>
-                      <select
-                        id="select-custom-faction"
-                        value={customFactionId}
-                        onChange={(e) => setCustomFactionId(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-slate-700"
-                      >
-                        {FACTIONS.map(f => (
-                          <option key={f.id} value={f.id}>{f.crest} - {f.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Appearance customizations */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-900/20 p-4 rounded-xl border border-slate-900">
-                    <div>
-                      <label className="text-[10px] font-mono text-slate-400 block mb-1 uppercase">画卷冠发</label>
-                      <select
-                        id="select-hair-style"
-                        value={avatarHairStyle}
-                        onChange={(e) => setAvatarHairStyle(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-1.5 focus:outline-none"
-                      >
-                        {HAIR_STYLES.map(h => (
-                          <option key={h.value} value={h.value}>{h.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-mono text-slate-400 block mb-1 uppercase">须发色泽</label>
-                      <select
-                        id="select-hair-color"
-                        value={avatarHairColor}
-                        onChange={(e) => setAvatarHairColor(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-1.5 focus:outline-none"
-                      >
-                        {HAIR_COLORS.map(c => (
-                          <option key={c.value} value={c.value}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-mono text-slate-400 block mb-1 uppercase">甲胄战袍色</label>
-                      <select
-                        id="select-armor-color"
-                        value={avatarArmorColor}
-                        onChange={(e) => setAvatarArmorColor(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-1.5 focus:outline-none"
-                      >
-                        {ARMOR_COLORS.map(c => (
-                          <option key={c.value} value={c.value}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="sm:col-span-3">
-                      <label className="text-[10px] font-mono text-slate-400 block mb-1 uppercase">手持专属神兵武器</label>
-                      <select
-                        id="select-accessory"
-                        value={avatarAccessory}
-                        onChange={(e) => setAvatarAccessory(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-1.5 focus:outline-none"
-                      >
-                        {ACCESSORIES.map(a => (
-                          <option key={a.value} value={a.value}>{a.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Attributes Panel Creator Sliders */}
-                  <div className="space-y-3.5 pt-2">
-                    <div className="flex justify-between items-center bg-slate-900/10 border-b border-slate-900 pb-1.5">
-                      <span className="text-xs font-mono font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1">
-                        <Sliders size={12} /> 武将五维属性值自配
-                      </span>
-                      <button
-                        id="btn-randomize-stats"
-                        type="button"
-                        onClick={randomizeStats}
-                        className="text-[10px] text-amber-400 hover:text-amber-300 inline-flex items-center gap-1 font-mono transition-all"
-                      >
-                        <RefreshCw size={10} /> 骰点随机生成属性
-                      </button>
-                    </div>
-
-                    {[
-                      { label: '统帅率 (LDR)', state: statLeadership, setter: setStatLeadership, icon: Shield, desc: '兵力上限、行军速度、防御坚韧与战术抗性' },
-                      { label: '武艺力 (FOR)', state: statForce, setter: setStatForce, icon: Swords, desc: '白刃物理杀伤伤害、战技爆发与个人单挑胜率' },
-                      { label: '智略率 (INT)', state: statIntelligence, setter: setStatIntelligence, icon: Brain, desc: '奇袭秘计概率、陷阱与火计杀伤力、智谋抵挡' },
-                      { label: '政治度 (POL)', state: statPolitics, setter: setStatPolitics, icon: Scroll, desc: '屯田金米产量、内政筑城科研速度与同盟外交说服' },
-                      { label: '魅力值 (CHR)', state: statCharisma, setter: setStatCharisma, icon: Sparkles, desc: '人才召纳速度、名将好感上升与战阵士气维持' }
-                    ].map((st, idx) => (
-                      <div key={idx} className="space-y-1">
-                        <div className="flex justify-between text-xs font-mono">
-                          <span className="text-slate-300 inline-flex items-center gap-1.5">
-                            <st.icon size={12} className="text-amber-500/80" /> {st.label}
-                          </span>
-                          <span className="text-amber-400 font-bold">{st.state}</span>
-                        </div>
-                        <input
-                          id={`slider-stat-${idx}`}
-                          type="range"
-                          min="10"
-                          max="100"
-                          value={st.state}
-                          onChange={(e) => st.setter(parseInt(e.target.value))}
-                          className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                        />
-                        <span className="text-[10px] text-slate-500 block leading-none font-mono">{st.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                </div>
-              </div>
-
-              {/* Traits & Skills check board */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-900">
-                <div>
-                  <span className="text-xs font-mono font-semibold text-slate-300 block mb-2">个性特质选择 (最多选取 3 项)</span>
-                  <div className="grid grid-cols-1 gap-1.5 max-h-[170px] overflow-y-auto pr-1 bg-slate-950 p-3 rounded-xl border border-slate-900">
-                    {AVAILABLE_TRAITS.map(tr => {
-                      const isSelected = selectedTraits.includes(tr);
-                      return (
-                        <button
-                          id={`btn-trait-${tr.split('(')[0].trim().split('（')[0].trim()}`}
-                          key={tr}
-                          type="button"
-                          onClick={() => toggleTrait(tr)}
-                          className={`text-left p-1.5 rounded text-[11px] font-mono transition-all flex items-center justify-between ${
-                            isSelected 
-                              ? 'bg-amber-950/40 text-amber-300 border border-amber-900/60' 
-                              : 'bg-slate-900/30 text-slate-400 border border-transparent hover:border-slate-800'
-                          }`}
-                        >
-                          <span>{tr}</span>
-                          {isSelected && <span className="text-amber-400 font-bold">✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <span className="text-xs font-mono font-semibold text-slate-300 block mb-2">战术战法技能选择 (最多选取 4 项)</span>
-                  <div className="grid grid-cols-1 gap-1.5 max-h-[170px] overflow-y-auto pr-1 bg-slate-950 p-3 rounded-xl border border-slate-900">
-                    {AVAILABLE_SKILLS.map(sk => {
-                      const isSelected = selectedSkills.includes(sk);
-                      return (
-                        <button
-                          id={`btn-skill-${sk.split('(')[0].trim().split('（')[0].trim()}`}
-                          key={sk}
-                          type="button"
-                          onClick={() => toggleSkill(sk)}
-                          className={`text-left p-1.5 rounded text-[11px] font-mono transition-all flex items-center justify-between ${
-                            isSelected 
-                              ? 'bg-sky-950/40 text-sky-400 border border-sky-900/50' 
-                              : 'bg-slate-900/30 text-slate-400 border border-transparent hover:border-slate-800'
-                          }`}
-                        >
-                          <span>{sk}</span>
-                          {isSelected && <span className="text-sky-450 font-bold">✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                id="btn-submit-officer"
-                type="submit"
-                className="mt-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 text-xs font-black uppercase tracking-widest py-3.5 px-6 rounded-xl transition-all shadow-md inline-flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <UserPlus size={14} /> 登用此武将，令其入仕参战！
-              </button>
-
-            </form>
-          )}
-
-          {/* Tab 3: Interactive Relationship Simulator & Duels */}
-          {activeTab === 'bonds' && (
-            <div className="flex flex-col gap-6">
-              
-              {/* Dynamic oath bonding forge */}
-              <div className="bg-slate-950 border border-slate-900 rounded-2xl p-6">
-                <h3 className="text-base font-serif font-black uppercase tracking-wider text-amber-400 mb-1 flex items-center gap-1.5">
-                  <Award size={16} /> 人性情仇纽带锻造工坊
-                </h3>
-                <p className="text-xs text-slate-400 font-mono mb-4">在此编织与缔结桃园义结金兰、宿敌血仇、联姻爱侣，追踪乱世情仇对大军师出谋决策的作用影响。</p>
-
-                <form onSubmit={handleCreateRelationship} className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
-                  <div>
-                    <label className="text-xs font-mono text-slate-400 block mb-1">第一位名将</label>
-                    <select
-                      id="select-rel-from"
-                      value={relFrom}
-                      onChange={(e) => setRelFrom(e.target.value)}
-                      required
-                      className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs"
-                    >
-                      <option value="">请选择武将</option>
-                      {officers.map(o => (
-                        <option key={o.id} value={o.id}>{o.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-mono text-slate-400 block mb-1">缔结关系类型</label>
-                    <select
-                      id="select-rel-type"
-                      value={relType}
-                      onChange={(e) => setRelType(e.target.value as any)}
-                      className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs font-mono"
-                    >
-                      <option value="Sworn Brother">金兰结义 🤝</option>
-                      <option value="Rival">生平宿敌 ⚡</option>
-                      <option value="Spouse">金玉良缘 💍</option>
-                      <option value="Lord">君臣效忠 👑</option>
-                      <option value="Confidant">莫逆红颜 🎭</option>
-                      <option value="Trust">至信之交 ⭐</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-mono text-slate-400 block mb-1">第二位名将</label>
-                    <select
-                      id="select-rel-to"
-                      value={relTo}
-                      onChange={(e) => setRelTo(e.target.value)}
-                      required
-                      className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs"
-                    >
-                      <option value="">请选择武将</option>
-                      {officers.map(o => (
-                        <option key={o.id} value={o.id}>{o.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <button
-                    id="btn-forge-bond"
-                    type="submit"
-                    className="bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold py-2 px-4 rounded-xl border border-slate-700 transition cursor-pointer"
-                  >
-                    锻造连带纽带
-                  </button>
-                </form>
-              </div>
-
-              {/* Active list representation of bounds */}
-              <div className="bg-slate-950 border border-slate-900 rounded-2xl p-6">
-                <span className="text-xs font-mono text-slate-450 block tracking-widest uppercase mb-4 text-slate-400">当前历史天盘演武的名将情仇网络</span>
-                
-                {relationships.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {relationships.map((rel, idx) => {
-                      const off1 = officers.find(o => o.id === rel.fromOfficerId);
-                      const off2 = officers.find(o => o.id === rel.toOfficerId);
-                      
-                      if (!off1 || !off2) return null;
-
-                      return (
-                        <div key={idx} className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col justify-between gap-3">
-                          <div className="flex justify-between items-center gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-serif text-slate-200 text-sm">{off1.name}</span>
-                              <span className="text-[10px] text-slate-500 font-mono">({off1.stats.force} 武力)</span>
-                            </div>
-                            
-                            <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] font-mono">
-                              {rel.type === 'Sworn Brother' ? '金兰结义' : rel.type === 'Rival' ? '生平宿敌' : rel.type === 'Spouse' ? '金玉良缘' : rel.type === 'Lord' ? '主臣效忠' : rel.type === 'Confidant' ? '莫逆红颜' : '至信之交'}
-                            </span>
-
-                            <div className="flex items-center gap-2">
-                              <span className="font-serif text-slate-200 text-sm">{off2.name}</span>
-                              <span className="text-[10px] text-slate-500 font-mono">({off2.stats.force} 武力)</span>
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-center bg-slate-950/40 p-1 rounded-lg border border-slate-950">
-                            {/* Simulation buttons */}
-                            <button
-                              id={`btn-duel-sim-${idx}`}
-                              onClick={() => runBattleDuelSim(off1, off2)}
-                              className="text-[10px] text-sky-400 hover:text-sky-305 text-sky-300 font-semibold px-2 py-1 flex items-center gap-1 active:scale-95 transition cursor-pointer"
-                            >
-                              ⚔️ 挥军阵前单挑
-                            </button>
-
-                            <button
-                              id={`btn-sever-bond-${idx}`}
-                              onClick={() => handleBreakRelationship(off1.id, off2.id)}
-                              className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold px-2 py-1 active:scale-95 transition cursor-pointer"
-                            >
-                              斩断羁绊情仇
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-xs text-slate-500">
-                    天盘羁绊中枢目前尚未连结任何人际纽带名录。快在上方熔炉缔结吧！
-                  </div>
-                )}
-              </div>
-
-              {/* Battle result box if active */}
-              {combatOutcome && (
-                <div className="bg-amber-950/20 border border-amber-500/30 text-slate-300 p-5 rounded-2xl">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-mono font-bold text-amber-400">沙盘两军武将阵前对局单挑演义日志</span>
-                    <button
-                      id="btn-clear-outcome"
-                      onClick={() => setCombatOutcome(null)}
-                      className="text-[10px] text-slate-400 hover:text-slate-200 cursor-pointer"
-                    >
-                      清空日志
-                    </button>
-                  </div>
-                  <pre className="text-xs font-mono whitespace-pre-wrap leading-relaxed text-slate-200 bg-slate-950 p-4 rounded-xl border border-slate-900">
-                    {combatOutcome}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tab 4: Tactical Map Simulation */}
-          {activeTab === 'map' && (
-            <TacticalMap 
-              selectedScenario={selectedScenario} 
-              officers={officers} 
-              onSelectOfficer={(off) => {
-                setSelectedOfficer(off);
-              }} 
-              soundEnabled={soundEnabled}
+          ) : (
+            /* Live core 3D Raycaster Canvas Screen element */
+            <RaycasterScreen
+              player={player}
+              enemies={enemies}
+              particles={particles}
+              level={activeLevel}
+              scanlines={scanlines}
+              reticle={reticle}
+              otherPlayers={otherPlayers}
+              onFire={handleFireWeapon}
+              gameState={gameState}
+              onAdvanceLevel={advanceToNextLevel}
+              onResetLevel={handleResetLevel}
+              onExitToIntro={() => setGameState("INTRO")}
             />
           )}
 
-        </section>
-
-        {/* Right Section (Column span 4): Selected Officer Core and Strategy Advisor Council */}
-        <section className="lg:col-span-4 flex flex-col gap-6">
-          
-          {/* Selected Officer Spotlight focus */}
-          <div className="bg-slate-950 p-5 rounded-2xl border border-slate-900">
-            <span className="text-xs font-mono font-bold uppercase tracking-widest text-slate-400 block mb-4">当前聚焦群雄真容</span>
-            
-            <div className="flex items-center gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-900">
-              <AvatarRenderer style={selectedOfficer.avatarStyle} size={84} />
-              
-              <div>
-                <h3 className="font-serif text-lg font-bold text-slate-100 leading-snug">
-                  {selectedOfficer.name}
-                </h3>
-                {selectedOfficer.styleName && (
-                  <span className="text-xs text-slate-400 font-mono">&#12298;{selectedOfficer.styleName}&#12299;</span>
-                )}
-                
-                <p className="text-[11px] text-slate-400 mt-1">
-                  活跃于 <strong className="text-amber-500 font-mono font-semibold">{selectedScenario.year} 年【{selectedScenario.title}】</strong>
-                </p>
+          {/* Vital controls bar overlay dashboard */}
+          {gameState === "PLAYING" && (
+            <div className="mt-4 p-4 rounded-lg bg-slate-950/90 border border-slate-900 select-none">
+              {/* Onscreen Steering/Firing controllers for tablet and touch preview devices */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="text-[10px] text-slate-500 max-w-[150px] font-sans leading-relaxed hidden sm:block">
+                  <span className="text-cyan-400 font-mono">W / S:</span> Move Forward/Backward • <span className="text-cyan-400 font-mono">A / D:</span> Steer • <span className="text-cyan-400 font-mono">Space:</span> Shoot
+                </div>
+ 
+                {/* Micro on-screen D-pad */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onMouseDown={() => keysPressed.current.add("a")}
+                    onMouseUp={() => keysPressed.current.delete("a")}
+                    onTouchStart={() => keysPressed.current.add("a")}
+                    onTouchEnd={() => keysPressed.current.delete("a")}
+                    className="h-8 w-8 bg-slate-900 hover:bg-slate-850 active:bg-cyan-950 border border-slate-800 rounded flex items-center justify-center cursor-pointer text-slate-350 active:text-cyan-400 transition-colors"
+                    title="Turn Left"
+                  >
+                    <ArrowBigLeft className="w-5 h-5" />
+                  </button>
+ 
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      onMouseDown={() => keysPressed.current.add("w")}
+                      onMouseUp={() => keysPressed.current.delete("w")}
+                      onTouchStart={() => keysPressed.current.add("w")}
+                      onTouchEnd={() => keysPressed.current.delete("w")}
+                      className="h-8 w-8 bg-slate-900 hover:bg-slate-850 active:bg-cyan-950 border border-slate-800 rounded flex items-center justify-center cursor-pointer text-slate-350 active:text-cyan-400 transition-colors"
+                      title="Move Forward"
+                    >
+                      <ArrowBigUp className="w-5 h-5" />
+                    </button>
+                    <button
+                      onMouseDown={() => keysPressed.current.add("s")}
+                      onMouseUp={() => keysPressed.current.delete("s")}
+                      onTouchStart={() => keysPressed.current.add("s")}
+                      onTouchEnd={() => keysPressed.current.delete("s")}
+                      className="h-8 w-8 bg-slate-900 hover:bg-slate-850 active:bg-cyan-950 border border-slate-800 rounded flex items-center justify-center cursor-pointer text-slate-350 active:text-cyan-400 transition-colors"
+                      title="Move Backward"
+                    >
+                      <ArrowBigDown className="w-5 h-5" />
+                    </button>
+                  </div>
+ 
+                  <button
+                    onMouseDown={() => keysPressed.current.add("d")}
+                    onMouseUp={() => keysPressed.current.delete("d")}
+                    onTouchStart={() => keysPressed.current.add("d")}
+                    onTouchEnd={() => keysPressed.current.delete("d")}
+                    className="h-8 w-8 bg-slate-900 hover:bg-slate-850 active:bg-cyan-950 border border-slate-800 rounded flex items-center justify-center cursor-pointer text-slate-350 active:text-cyan-400 transition-colors"
+                    title="Turn Right"
+                  >
+                    <ArrowBigRight className="w-5 h-5" />
+                  </button>
+                </div>
+ 
+                {/* Massive tactile red gun trigger shoot button */}
+                <button
+                  id="tactile-shoot-trigger"
+                  onClick={handleFireWeapon}
+                  className="px-4 py-3 bg-rose-650 hover:bg-rose-550 border border-rose-800/80 rounded font-black text-[11px] text-white tracking-widest uppercase cursor-pointer flex items-center gap-1 shadow-md hover:shadow-rose-950 animate-pulse"
+                >
+                  <Target className="w-4 h-4" />
+                  <span>ENGAGE</span>
+                </button>
               </div>
+ 
             </div>
+          )}
+
+        </div>
+
+        {/* Right column: HUD control consoles */}
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          
+          {/* Weapons selector */}
+          <div className="shrink-0">
+            <WeaponSelector
+              weapons={player.weapons}
+              currentIndex={player.currentWeaponIndex}
+              onSelect={selectWeapon}
+              isFiring={player.isFiring}
+              isReloading={isReloading}
+              onReload={handleReloadWeapon}
+            />
           </div>
 
-          {/* Core Grand Advisory Chamber */}
-          <div className="bg-slate-950 rounded-2xl border border-slate-900 overflow-hidden flex flex-col">
-            
-            {/* Advisor Cover Image header with beautiful deep gradient styling */}
-            <div className="p-5 bg-gradient-to-r from-emerald-950 to-indigo-950 border-b border-slate-900 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-full border border-teal-500/30 flex items-center justify-center bg-teal-950 overflow-hidden">
-                  <span className="text-base">🪶</span>
-                </div>
-                <div>
-                  <h3 className="text-sm font-serif font-black uppercase text-teal-300 tracking-wider">中军帐军机处</h3>
-                  <p className="text-[10px] text-slate-400 font-mono">卧龙孔明大军师专属 AI</p>
-                </div>
+          {/* Cyber Co-op Link Hub */}
+          <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3.5 flex flex-col gap-2.5 font-mono select-none">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.55">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-cyan-400">
+                <Gamepad2 className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                <span>CO-OP BROADCAST LINK</span>
               </div>
-
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" title="War Council Ready"></span>
+              <div className="flex items-center gap-1">
+                <span className={`w-1.5 h-1.5 rounded-full ${wsStatus === "connected" ? "bg-emerald-500 animate-pulse" : wsStatus === "connecting" ? "bg-amber-500 animate-spin" : "bg-rose-500"}`} />
+                <span className="text-[8px] uppercase font-bold text-slate-500">
+                  {wsStatus}
+                </span>
+              </div>
             </div>
 
-            <div className="p-5 flex-1 flex flex-col justify-between gap-5 min-h-[350px]">
-              
-              {/* Dynamic briefing output */}
-              <div className="flex-1 bg-slate-950/80 rounded-xl p-4 border border-slate-900 max-h-[450px] overflow-y-auto">
-                {isConsultingAdvisor ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-                    <RefreshCw size={24} className="text-amber-400 animate-spin" />
-                    <div>
-                      <p className="text-xs text-slate-300 font-mono font-medium">诸葛孔明正夜观星象、调兵遣将中...</p>
-                      <p className="text-[10px] text-slate-500 mt-1 italic font-sans">&quot;为将者，当知天文，识地理，晓阴阳，明八卦，知兵势。&quot;</p>
+            {/* Identity Settings */}
+            <div className="grid grid-cols-2 gap-2 text-[10px]">
+              <div className="flex flex-col gap-1">
+                <span className="text-slate-500 text-[8px] uppercase font-bold">Call Sign</span>
+                <input
+                  type="text"
+                  value={customName}
+                  maxLength={12}
+                  onChange={(e) => {
+                    const val = e.target.value.substring(0, 12);
+                    setCustomName(val);
+                    localStorage.setItem("coop_player_name", val);
+                  }}
+                  className="bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50"
+                  placeholder="Name..."
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-slate-500 text-[8px] uppercase font-bold">HUD Color</span>
+                <select
+                  value={customColor}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomColor(val);
+                    localStorage.setItem("coop_player_color", val);
+                  }}
+                  className="bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 text-white focus:outline-none focus:border-cyan-500/50 text-[10px]"
+                >
+                  <option value="#06b6d4">Cyan Accent</option>
+                  <option value="#10b981">Green Vitals</option>
+                  <option value="#f59e0b">Amber Radar</option>
+                  <option value="#ec4899">Pink Spectrum</option>
+                  <option value="#a855f7">Purple Neon</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Active co-op squad list */}
+            <div className="bg-slate-900/40 rounded border border-slate-900 p-1.5 max-h-[85px] overflow-y-auto space-y-1">
+              {otherPlayers.length === 0 ? (
+                <div className="text-[9px] text-slate-600 italic text-center py-1">
+                  No remote squad mates in current quadrant.
+                </div>
+              ) : (
+                otherPlayers.map((peer) => (
+                  <div key={peer.id} className="flex items-center justify-between text-[10px] bg-slate-950/50 border border-slate-900 p-1 rounded">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: peer.color }} />
+                      <span className="text-white font-medium">{peer.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[9px] text-slate-400">
+                      <span>🛡️ HP: {peer.health}%</span>
+                      <span>🏆 K: {peer.kills}</span>
                     </div>
                   </div>
-                ) : advisorBrief ? (
-                  <div className="prose prose-invert prose-xs">
-                    {renderAdviceMarkdown(advisorBrief)}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-slate-500">
-                    <MessageCircle size={32} className="text-slate-705 mb-2.5 text-slate-700" />
-                    <p className="text-xs font-medium text-slate-400">中军帐军机处目前一片肃静。</p>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                      请点击下方【请大军师为当前名将亲授锦囊】。军师将针对 {selectedOfficer.name} 及其在 【{selectedScenario.title}】 时期的宿命局势，为您研判推演宏图战略。
-                    </p>
-                  </div>
-                )}
-              </div>
+                ))
+              )}
+            </div>
 
-              {/* Strategy Invoke Button */}
+            {/* Tactical Squad Chat Transceiver */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const form = e.currentTarget;
+                const input = form.elements.namedItem("chatMessage") as HTMLInputElement;
+                const msg = input.value.trim();
+                if (msg && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                  wsRef.current.send(JSON.stringify({
+                    type: "chat:message",
+                    payload: { message: msg }
+                  }));
+                  input.value = "";
+                }
+              }}
+              className="flex gap-1.5"
+            >
+              <input
+                name="chatMessage"
+                type="text"
+                placeholder="SEND TACTICAL CHANNEL CHAT..."
+                maxLength={60}
+                autoComplete="off"
+                className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[10px] text-white placeholder-slate-600 flex-1 focus:outline-none focus:border-cyan-500/50"
+              />
               <button
-                id="btn-evaluate-strategy-brief"
-                onClick={handleConsultWarCouncil}
-                disabled={isConsultingAdvisor}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-widest transition duration-300 shadow-md flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                type="submit"
+                className="bg-cyan-950/80 border border-cyan-800/40 hover:bg-cyan-900 text-cyan-400 px-2.5 py-1 text-[9px] font-bold rounded uppercase whitespace-nowrap cursor-pointer hover:border-cyan-500 transition-colors"
               >
-                <Compass size={14} className={isConsultingAdvisor ? 'animate-spin' : ''} />
-                {isConsultingAdvisor ? '锦囊研判修纂中...' : `请大军师为 ${selectedOfficer.name} 亲授妙计`}
+                SEND
               </button>
-
-            </div>
-
+            </form>
           </div>
 
-          {/* Quick FAQ info block */}
-          <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-900 text-xs text-slate-400 space-y-1.5 leading-relaxed font-mono">
-            <div className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1">
-              <HelpCircle size={12} className="text-amber-500" />
-              <span>三国志8 辅助器军机要策 FAQ</span>
-            </div>
-            <p className="text-[11px]">✦ 五维属性加权：【统帅】极大地主导兵力规模上限与阵前基础城防抵抗；【智力】能看破大雾陷阱并识破诸葛亮之流的离间诡计；【武力】则对个人白刃伤害与阵前斩首胜率有极其重要的抵抗。</p>
-            <p className="text-[11px]">✦ 人脉羁绊：武将间若处于“金兰结义”或“金玉良缘”等至交情谊，两军在沙盘天盘中产生战技合力共鸣的连击概率会飙涨。</p>
+          {/* Combat telemetry feeds logs */}
+          <div className="flex-1 flex flex-col min-h-[160px] md:min-h-[200px]">
+            <BattleLogs
+              logs={logs}
+              onClear={() => setLogs([])}
+            />
           </div>
 
-        </section>
+          {/* Quick diagnostic Settings bar */}
+          <div className="p-3 bg-slate-950/80 border border-slate-805 rounded-lg flex items-center justify-between text-xs font-mono select-none shrink-0 text-slate-500">
+            <div className="flex items-center gap-3">
+              <button
+                id="toggle-sound-mute"
+                onClick={toggleMute}
+                className="hover:text-cyan-400 transition-colors cursor-pointer flex items-center gap-1 p-1 rounded hover:bg-slate-900"
+                title={mutedState ? "Unmute Tactical SFX" : "Mute Sound"}
+              >
+                {mutedState ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
+                <span className={!mutedState ? "text-cyan-400" : ""}>{mutedState ? "MUTED" : "SOUND: ON"}</span>
+              </button>
+              
+              <button
+                id="toggle-help-manual"
+                onClick={() => setShowTutorial(true)}
+                className="hover:text-cyan-400 transition-colors cursor-pointer flex items-center gap-1 p-1 rounded hover:bg-slate-900"
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span>MANUAL</span>
+              </button>
+            </div>
+
+            {/* CRT filters toggler */}
+            <label className="flex items-center gap-1 cursor-pointer">
+              <input
+                id="crt-scanlines-opt"
+                type="checkbox"
+                checked={scanlines}
+                onChange={() => setScanlines(!scanlines)}
+                className="form-checkbox h-3.5 w-3.5 rounded text-cyan-500 bg-slate-900 border-slate-800"
+              />
+              <span className={scanlines ? "text-cyan-455" : ""}>CRT HUD</span>
+            </label>
+          </div>
+
+        </div>
 
       </main>
 
-      {/* Footer copyright */}
-      <footer className="bg-slate-950 py-6 border-t border-slate-900 mt-auto text-center text-xs text-slate-500 font-mono">
-        <div className="max-w-7xl mx-auto px-6">
-          <p>三国志 8 战术辅助模拟器 — 采用 React、Tailwind CSS V4 精雕细琢，内置服务端 Gemini AI 云脑深度研判。</p>
-          <p className="mt-1 text-[10px] text-slate-600">本辅助工具纯属粉丝同人创作，不含任何商业游戏受版权保护的原始资源，生成和定制的名将及演义细节均源于公开的三国古籍传说知识。</p>
+      {/* 📚 Help & Operations Guidelines Briefing modal */}
+      {showTutorial && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in select-none">
+          <div className="bg-slate-900 border-2 border-cyan-800/80 rounded-xl max-w-md w-full p-5 shadow-2xl relative">
+            <div className="text-center">
+              <div className="inline-flex p-3 rounded-full bg-cyan-950/80 border border-cyan-800/40 mb-3 animate-bounce">
+                <Info className="w-7 h-7 text-cyan-400" />
+              </div>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                COMM-BRIEF: OPERATION DELTA PURGE
+              </h3>
+              <p className="text-[10px] text-slate-500 font-mono mt-0.5 mb-4">
+                BLUE ALLIANCE INTELLIGENCE INTERFACE
+              </p>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-300">
+              
+              <div className="p-3 bg-slate-950/80 rounded border border-slate-800 space-y-2">
+                <div className="font-bold text-cyan-405 flex items-center gap-1 border-b border-slate-800 pb-1 uppercase text-[10px]">
+                  <span>1. Combat Maneuver Deck</span>
+                </div>
+                <div className="space-y-1 text-[10.5px] leading-relaxed text-slate-400">
+                  <p>• <strong>Steer & Slide:</strong> Use W/S keys to step forward/backward, and A/D keys to rotate screen camera. Alternatively, use navigation arrow-pads on mobile/tablet viewports.</p>
+                  <p>• <strong>Fire Weaponry:</strong> Tap Spacebar, Enter, or the onscreen <strong>ENGAGE</strong> button to shoot down centers lines of sight.</p>
+                  <p>• <strong>Inventory Swap [1, 2, 3]:</strong> Click weapon names layout cards on HUD to equip Gauss pistols, shotguns, or automatic Gauss pulse blasters.</p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-950/80 rounded border border-slate-800 space-y-2">
+                <div className="font-bold text-cyan-405 flex items-center gap-1 border-b border-slate-800 pb-1 uppercase text-[10px]">
+                  <span>2. Exploration Power-ups</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 text-[10px] text-center text-slate-405">
+                  <div className="bg-slate-900/50 p-1.5 rounded border border-rose-950/40">
+                    <span className="block text-sm">➕</span>
+                    <strong className="text-rose-455">Medic Kit</strong>
+                    <span className="block text-[8px] text-slate-500 mt-0.5">+30 HP</span>
+                  </div>
+                  <div className="bg-slate-900/50 p-1.5 rounded border border-blue-950/40">
+                    <span className="block text-sm">🛡️</span>
+                    <strong className="text-blue-400">Shield</strong>
+                    <span className="block text-[8px] text-slate-500 mt-0.5">+40 Barrier</span>
+                  </div>
+                  <div className="bg-slate-900/50 p-1.5 rounded border border-amber-950/40">
+                    <span className="block text-sm">⚡</span>
+                    <strong className="text-amber-500">Amunition</strong>
+                    <span className="block text-[8px] text-slate-500 mt-0.5">+50% Ammo</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-[10px] text-slate-505 italic text-center leading-relaxed">
+                Ensure computer audio volume is level to play synthesized procedurally-generated retro battle effects!
+              </div>
+
+            </div>
+
+            <div className="mt-4">
+              <button
+                id="close-manual-brief-btn"
+                onClick={() => {
+                  setShowTutorial(false);
+                  playSelect();
+                }}
+                className="w-full cursor-pointer bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold uppercase py-2.5 rounded text-[11px] tracking-wider transition-all duration-150 shadow-md font-mono"
+              >
+                DISMISS BRIEF & DEPLOY
+              </button>
+            </div>
+          </div>
         </div>
+      )}
+
+      {/* Retro Slate Footnote */}
+      <footer className="bg-slate-950 border-t border-slate-900 px-4 py-2 flex items-center justify-between text-[10px] text-slate-500 select-none">
+        <span>COGNITIVE MATRIX LINK ACTIVE [v1.5]</span>
+        <span>DEPLOYMENT STATUS: ONLINE</span>
       </footer>
 
     </div>

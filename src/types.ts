@@ -1,58 +1,134 @@
-export interface Officer {
+export type EnemyType = "DRONE" | "SOLDIER" | "CYBER_DEMON";
+
+export interface Enemy {
+  id: string;
+  type: EnemyType;
+  x: number; // grid float coordinates
+  y: number;
+  health: number;
+  maxHealth: number;
+  speed: number;
+  state: "IDLE" | "CHASING" | "ATTACKING" | "HURT" | "DYING" | "DEAD";
+  stateTimer: number; // for animations/timing
+  damage: number;
+  scoreValue: number;
+  radius: number; // size for collision
+  avatar: string; // Emoji character / Canvas shape code
+  color: string;
+  isHitFlash: boolean; // visual flash on damage
+}
+
+export interface Weapon {
   id: string;
   name: string;
-  gender: 'Male' | 'Female';
-  styleName?: string; // e.g. "Xuande" for Liu Bei
-  factionId: string; // Faction aligning with
-  avatarStyle: AvatarStyle;
-  stats: OfficerStats;
-  traits: string[]; // Personality or special traits
-  skills: string[]; // Combat or tactical skills
-  biography: string;
-  custom?: boolean; // True if custom created
-  advice?: string; // Gemini generated dynamic strategic/tactical gameplay advice
-  promotionLevel?: number;
-  promotionTitle?: string;
+  ammo: number;
+  maxAmmo: number;
+  damage: number;
+  range: number;
+  fireRate: number; // ms delay
+  recoil: number; // visual offset
+  burstSize: number; // bullets dispatched per click
+  sound: "pistol" | "shotgun" | "plasma";
+  emoji: string;
+  accuracy: number; // float spread
 }
 
-export interface OfficerStats {
-  leadership: number; // LDR
-  force: number;      // FOR
-  intelligence: number; // INT
-  politics: number;   // POL
-  charisma: number;   // CHR
+export interface PlayerState {
+  x: number;
+  y: number;
+  dirX: number; // direction vector coords
+  dirY: number;
+  planeX: number; // 2D camera projection plane values
+  planeY: number;
+  angle: number; // looking rotation angle (radians)
+  health: number;
+  maxHealth: number;
+  shield: number;
+  maxShield: number;
+  score: number;
+  kills: number;
+  currentWeaponIndex: number;
+  weapons: Weapon[];
+  isFiring: boolean;
+  fireTimer: number;
+  isTakingDamage: boolean;
+  damageTimer: number;
+  currentLevelId: string;
 }
 
-export interface AvatarStyle {
-  hairColor: string;
-  hairStyle: string;
-  armorColor: string;
-  accessory: string;
-  expression: string;
-  bgGradient: string;
-}
-
-export interface Faction {
+export interface LevelConfig {
   id: string;
   name: string;
-  ruler: string;
-  color: string; // Tailwind color class or hex
   description: string;
-  crest: string; // Emoji symbols or short crest words
+  difficulty: "EASY" | "MEDIUM" | "HEAVY" | "CHALLENGE";
+  wallGrid: number[][]; // 2D layout where grid values 1,2,3 define wall textures
+  ceilingColor: string;
+  floorColor: string;
+  exitX: number;
+  exitY: number;
+  playerStartX: number;
+  playerStartY: number;
+  playerStartAngle: number;
+  enemyCount: number;
 }
 
-export interface CampaignScenario {
+export interface LaserTracer {
   id: string;
-  title: string;
-  year: number;
-  description: string;
-  featuredFactions: string[];
-  victoryCondition: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
+  screenX: number; // position on screen
+  color: string;
+  opacity: number;
 }
 
-export interface RelationshipRelation {
-  fromOfficerId: string;
-  toOfficerId: string;
-  type: 'Sworn Brother' | 'Rival' | 'Spouse' | 'Lord' | 'Confidant' | 'Trust';
+export interface Particle {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  color: string;
+  size: number;
+  alpha: number;
+  life: number;
 }
+
+export interface BloodSplat {
+  id: string;
+  x: number;
+  y: number;
+  size: number;
+  opacity: number;
+}
+
+export interface ScoreEntry {
+  playerName: string;
+  score: number;
+  kills: number;
+  level: string;
+  date: string;
+}
+
+export interface GameLog {
+  id: string;
+  timestamp: string;
+  message: string;
+  type: "combat" | "system" | "health" | "ammo" | "level" | "kill" | "chat";
+}
+
+export interface RemotePlayer {
+  id: string;
+  name: string;
+  color: string;
+  x: number;
+  y: number;
+  dirX: number;
+  dirY: number;
+  angle: number;
+  health: number;
+  score: number;
+  kills: number;
+  currentWeaponIndex: number;
+  isFiring: boolean;
+  levelId: string;
+  lastSeen?: number;
+}
+

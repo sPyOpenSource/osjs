@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "OSjs" },
+      { name: "description", content: "An open-source web desktop operating system for running applications and managing security scan data." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "OSjs" },
+      { property: "og:description", content: "An open-source web desktop operating system for running applications and managing security scan data." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "OSjs" },
+      { name: "twitter:description", content: "An open-source web desktop operating system for running applications and managing security scan data." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/88d39f9e-6fe3-4b93-b7d3-0c99fec7efdd/id-preview-2e392132--347b56bd-14d5-4395-9811-625f0d87370a.lovable.app-1781378108209.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/88d39f9e-6fe3-4b93-b7d3-0c99fec7efdd/id-preview-2e392132--347b56bd-14d5-4395-9811-625f0d87370a.lovable.app-1781378108209.png" },
     ],
     links: [
       {

@@ -1,134 +1,91 @@
-export type EnemyType = "DRONE" | "SOLDIER" | "CYBER_DEMON";
+export type Faction = 'ALLIES' | 'SOVIETS' | 'YURI';
 
-export interface Enemy {
-  id: string;
-  type: EnemyType;
-  x: number; // grid float coordinates
-  y: number;
-  health: number;
-  maxHealth: number;
-  speed: number;
-  state: "IDLE" | "CHASING" | "ATTACKING" | "HURT" | "DYING" | "DEAD";
-  stateTimer: number; // for animations/timing
-  damage: number;
-  scoreValue: number;
-  radius: number; // size for collision
-  avatar: string; // Emoji character / Canvas shape code
-  color: string;
-  isHitFlash: boolean; // visual flash on damage
-}
+export type TabType = 'STRUCTURES' | 'DEFENSES' | 'INFANTRY' | 'VEHICLES';
 
-export interface Weapon {
+export interface StructureTypeInfo {
   id: string;
   name: string;
-  ammo: number;
-  maxAmmo: number;
+  cost: number;
+  power: number; // Positive = production, negative = consumption
+  buildTime: number; // in seconds
+  description: string;
+  icon: string; // Tailwind class or symbol
+  unlockedBy?: string[];
+  hp: number;
+}
+
+export interface UnitTypeInfo {
+  id: string;
+  name: string;
+  cost: number;
+  buildTime: number;
+  description: string;
+  icon: string;
+  hp: number;
+  damage: number;
+  range: number; // grid distance
+  speed: number; // movement cells per sec
+  sound: string; // classic quote
+  synthType: 'bullet' | 'laser' | 'tesla' | 'flame' | 'psychic';
+}
+
+export interface PlacedStructure {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  active: boolean;
+  angle?: number;
+  lastFired?: number;
+}
+
+export interface PlacedUnit {
+  id: string;
+  type: string;
+  x: number; // current smooth visual X
+  y: number; // current smooth visual Y
+  targetX: number; // target grid X
+  targetY: number; // target grid Y
+  owner: 'PLAYER' | 'ENEMY';
+  hp: number;
+  maxHp: number;
+  angle: number;
+  lastFired: number;
+  speed: number;
   damage: number;
   range: number;
-  fireRate: number; // ms delay
-  recoil: number; // visual offset
-  burstSize: number; // bullets dispatched per click
-  sound: "pistol" | "shotgun" | "plasma";
-  emoji: string;
-  accuracy: number; // float spread
-}
-
-export interface PlayerState {
-  x: number;
-  y: number;
-  dirX: number; // direction vector coords
-  dirY: number;
-  planeX: number; // 2D camera projection plane values
-  planeY: number;
-  angle: number; // looking rotation angle (radians)
-  health: number;
-  maxHealth: number;
-  shield: number;
-  maxShield: number;
-  score: number;
-  kills: number;
-  currentWeaponIndex: number;
-  weapons: Weapon[];
-  isFiring: boolean;
-  fireTimer: number;
-  isTakingDamage: boolean;
-  damageTimer: number;
-  currentLevelId: string;
-}
-
-export interface LevelConfig {
-  id: string;
-  name: string;
-  description: string;
-  difficulty: "EASY" | "MEDIUM" | "HEAVY" | "CHALLENGE";
-  wallGrid: number[][]; // 2D layout where grid values 1,2,3 define wall textures
-  ceilingColor: string;
-  floorColor: string;
-  exitX: number;
-  exitY: number;
-  playerStartX: number;
-  playerStartY: number;
-  playerStartAngle: number;
-  enemyCount: number;
-}
-
-export interface LaserTracer {
-  id: string;
-  screenX: number; // position on screen
+  synthType: 'bullet' | 'laser' | 'tesla' | 'flame' | 'psychic';
   color: string;
-  opacity: number;
+  isKirov?: boolean;
 }
 
-export interface Particle {
+export interface BuildQueueItem {
   id: string;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  color: string;
-  size: number;
-  alpha: number;
-  life: number;
+  category: TabType;
+  progress: number; // 0 to 100
+  paused: boolean;
 }
 
-export interface BloodSplat {
+export interface LogMessage {
   id: string;
-  x: number;
-  y: number;
-  size: number;
-  opacity: number;
-}
-
-export interface ScoreEntry {
-  playerName: string;
-  score: number;
-  kills: number;
-  level: string;
-  date: string;
-}
-
-export interface GameLog {
-  id: string;
+  text: string;
+  type: 'info' | 'warning' | 'danger' | 'success';
   timestamp: string;
-  message: string;
-  type: "combat" | "system" | "health" | "ammo" | "level" | "kill" | "chat";
 }
 
-export interface RemotePlayer {
-  id: string;
-  name: string;
-  color: string;
+export interface MapCell {
   x: number;
   y: number;
-  dirX: number;
-  dirY: number;
-  angle: number;
-  health: number;
-  score: number;
-  kills: number;
-  currentWeaponIndex: number;
-  isFiring: boolean;
-  levelId: string;
-  lastSeen?: number;
+  type: 'grass' | 'water' | 'ore' | 'gem';
+  oreAmount?: number; // for harvesting
 }
 
+export interface SoundFX {
+  name: string;
+  quote: string;
+  role: string | null;
+  frequency: number;
+  type: 'synth' | 'speech';
+}

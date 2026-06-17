@@ -1,6 +1,6 @@
 {
-  "name": "Battlefield Tactics",
-  "description": "An immersive 3D retro first-person shooter (FPS) combat arena with smooth raycasting, multi-weapon loadouts, real-time minimap, and synthesized audio.",
+  "name": "Red Alert 2 Tactical Command Terminal",
+  "description": "An immersive interactive RTS skirmish battle simulator and classic encyclopedia tribute to Command & Conquer: Red Alert 2, built with custom synthesized audio zaps, troop spawners, and tactile CRT controls.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -1,0 +1,6 @@
+{
+  "name": "Clash of Clans Tactics & Army Planner",
+  "description": "An interactive army calculator, troop statistics compendium, strategy tactics guide, and AI attack planner for Clash of Clans.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

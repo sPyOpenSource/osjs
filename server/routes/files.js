@@ -101,4 +101,31 @@ router.get('/files', async (req, res) => {
   }
 });
 
+router.post('/mkdir', async (req, res) => {
+  try {
+    const { path: dirPath, name } = req.body;
+    
+    if (!name || name.includes('/') || name.includes('..')) {
+      return res.status(400).send('<div class="error">Invalid name</div>');
+    }
+    
+    const fullPath = path.join(ROOT_DIR, dirPath, name);
+    
+    if (!fullPath.startsWith(ROOT_DIR)) {
+      return res.status(403).send('<div>Access denied</div>');
+    }
+    
+    await fs.mkdir(fullPath, { recursive: true });
+    
+    const updatedPath = dirPath || '/';
+    const listingUrl = `/api/files?path=${encodeURIComponent(updatedPath)}`;
+    
+    res.setHeader('HX-Redirect', listingUrl);
+    res.send('');
+  } catch (error) {
+    console.error('Error creating directory:', error);
+    res.status(500).send(`<div class="error">Error: ${error.message}</div>`);
+  }
+});
+
 module.exports = router;

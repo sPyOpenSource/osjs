@@ -2,3 +2,159 @@
 .osjs-filemanager-minimalistic .osjs-gui-panes-inner>div:nth-child(2) {
     display: none
 }
+
+.file-manager {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: sans-serif;
+}
+
+.file-manager .toolbar {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+  gap: 8px;
+}
+
+.file-manager .toolbar button {
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.file-manager .breadcrumb {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.file-manager .breadcrumb span {
+  cursor: pointer;
+  color: #0066cc;
+}
+
+.file-manager .breadcrumb span:hover {
+  text-decoration: underline;
+}
+
+.file-manager #file-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.file-manager .file-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  gap: 12px;
+}
+
+.file-manager .file-item:hover {
+  background: #f0f0f0;
+}
+
+.file-manager .file-item.selected {
+  background: #e0e0ff;
+}
+
+.file-manager .file-icon {
+  width: 24px;
+  height: 24px;
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.file-manager .file-item.directory .file-icon {
+  background: #ffd700;
+}
+
+.file-manager .file-name {
+  flex: 1;
+}
+
+.file-manager .file-size,
+.file-manager .file-date {
+  color: #666;
+  font-size: 0.9em;
+}
+
+.file-manager .statusbar {
+  padding: 8px;
+  background: #f5f5f5;
+  border-top: 1px solid #ddd;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.htmx-indicator {
+  display: none;
+}
+
+.htmx-request .htmx-indicator {
+  display: block;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  min-width: 300px;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+}
+
+.modal-content input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 16px;
+  box-sizing: border-box;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modal-buttons button {
+  padding: 8px 16px;
+}
+
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+  z-index: 1001;
+  min-width: 120px;
+}
+
+.context-menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.context-menu-item:hover {
+  background: #f0f0f0;
+}

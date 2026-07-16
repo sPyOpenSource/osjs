@@ -93,6 +93,18 @@ const register = (core, args, options, metadata) => {
       }
     };
 
+    window.deleteItem = (filePath, fileName) => {
+      if (confirm(`Delete "${fileName}"?`)) {
+        fetch('/api/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filePath })
+        }).then(() => {
+          htmx.trigger('#file-list', 'load');
+        });
+      }
+    };
+
     window.createFolder = async () => {
       const name = document.getElementById('new-folder-name').value.trim();
       if (!name) return;

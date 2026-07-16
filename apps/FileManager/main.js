@@ -17,6 +17,8 @@ const register = (core, args, options, metadata) => {
                   hx-target="#file-list" 
                   hx-swap="innerHTML">↑ Up</button>
           <button onclick="showNewFolderDialog()">New Folder</button>
+          <button onclick="document.getElementById('upload-input').click()">Upload</button>
+          <input type="file" id="upload-input" multiple style="display:none" onchange="uploadFiles(this)" />
           <div class="breadcrumb" id="breadcrumb">
             <span hx-get="/api/files?path=/" 
                   hx-target="#file-list" 
@@ -102,6 +104,31 @@ const register = (core, args, options, metadata) => {
         }).then(() => {
           htmx.trigger('#file-list', 'load');
         });
+      }
+    };
+
+    window.uploadFiles = async (input) => {
+      const files = input.files;
+      if (!files.length) return;
+      
+      const fileList = document.getElementById('file-list');
+      const currentPath = fileList?.dataset?.currentPath || '/';
+      
+      const formData = new FormData();
+      formData.append('path', currentPath);
+      for (const file of files) {
+        formData.append('files', file);
+      }
+      
+      try {
+        await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        input.value = '';
+        htmx.trigger('#file-list', 'load');
+      } catch (error) {
+        console.error('Error uploading:', error);
       }
     };
 

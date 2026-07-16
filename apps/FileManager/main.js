@@ -1,195 +1,155 @@
-// apps/FileManager/main.js
-const register = (core, args, options, metadata) => {
-  const proc = core.make('osjs/application', { args, options, metadata });
+!function(e){var t={};function n(r){if(t[r])return t[r].exports;var o=t[r]={i:r,l:!1,exports:{}};return e[r].call(o.exports,o,o.exports,n),o.l=!0,o.exports}n.m=e,n.c=t,n.d=function(e,t,r){n.o(e,t)||Object.defineProperty(e,t,{enumerable:!0,get:r})},n.r=function(e){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})},n.n=function(e){var t=e&&e.__esModule?function(){return e.default}:function(){return e};return n.d(e,"a",t),t},n.o=function(e,t){return Object.prototype.hasOwnProperty.call(e,t)},n.p="",n(n.s=2)}([function(e,t){e.exports=OSjs},function(e){e.exports=JSON.parse('{"a":"FileManager"}')},function(e,t,n){"use strict";n.r(t);var r=n(0),o=n.n(r),i=n(1),u=n.n(i);
+
+function setupFileManager(core, args, options, metadata) {
+  var proc = core.make("osjs/application", {args:args, options:options, metadata:metadata});
   
-  proc.createWindow({
-    id: 'FileManagerWindow',
-    title: 'File Manager',
-    icon: metadata.icon,
-    dimension: { width: 800, height: 500 }
+  return proc.createWindow({
+    id: "FileManagerWindow",
+    title: "File Manager",
+    icon: proc.resource(metadata.icon),
+    dimension: {width: 800, height: 500}
   })
-  .on('destroy', () => proc.destroy())
-  .render(($content) => {
-    $content.innerHTML = `
-      <div class="file-manager">
-        <div class="toolbar">
-          <button hx-get="/api/files?path=.." 
-                  hx-target="#file-list" 
-                  hx-swap="innerHTML">↑ Up</button>
-          <button onclick="showNewFolderDialog()">New Folder</button>
-          <button onclick="document.getElementById('upload-input').click()">Upload</button>
-          <input type="file" id="upload-input" multiple style="display:none" onchange="uploadFiles(this)" />
-          <div class="breadcrumb" id="breadcrumb">
-            <span hx-get="/api/files?path=/" 
-                  hx-target="#file-list" 
-                  hx-swap="innerHTML">/</span>
-          </div>
-        </div>
-        
-        <div id="loading" class="htmx-indicator">Loading...</div>
-        <div id="file-list" 
-             hx-get="/api/files?path=/"
-             hx-trigger="load"
-             hx-swap="innerHTML">
-        </div>
-        
-        <div class="statusbar" id="statusbar">Ready</div>
-        
-        <div id="new-folder-modal" class="modal" style="display:none;">
-          <div class="modal-content">
-            <h3>New Folder</h3>
-            <input type="text" id="new-folder-name" placeholder="Folder name" />
-            <div class="modal-buttons">
-              <button onclick="hideNewFolderDialog()">Cancel</button>
-              <button onclick="createFolder()">Create</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
+  .on("destroy", function() { return proc.destroy(); })
+  .render(function($content) {
+    $content.innerHTML = '<div class="file-manager">' +
+      '<div class="toolbar">' +
+        '<button hx-get="/api/files?path=.." hx-target="#file-list" hx-swap="innerHTML">\u2191 Up</button>' +
+        '<button onclick="window._fmShowNewFolderDialog()">New Folder</button>' +
+        '<button onclick="document.getElementById(\'upload-input\').click()">Upload</button>' +
+        '<input type="file" id="upload-input" multiple style="display:none" onchange="window._fmUploadFiles(this)" />' +
+        '<div class="breadcrumb" id="breadcrumb">' +
+          '<span hx-get="/api/files?path=/" hx-target="#file-list" hx-swap="innerHTML">/</span>' +
+        '</div>' +
+      '</div>' +
+      '<div id="loading" class="htmx-indicator">Loading...</div>' +
+      '<div id="file-list" hx-get="/api/files?path=/" hx-trigger="load" hx-swap="innerHTML"></div>' +
+      '<div class="statusbar" id="statusbar">Ready</div>' +
+      '<div id="new-folder-modal" class="modal" style="display:none;">' +
+        '<div class="modal-content">' +
+          '<h3>New Folder</h3>' +
+          '<input type="text" id="new-folder-name" placeholder="Folder name" />' +
+          '<div class="modal-buttons">' +
+            '<button onclick="window._fmHideNewFolderDialog()">Cancel</button>' +
+            '<button onclick="window._fmCreateFolder()">Create</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
 
-    window.showNewFolderDialog = () => {
-      document.getElementById('new-folder-modal').style.display = 'flex';
-      document.getElementById('new-folder-name').focus();
+    window._fmShowNewFolderDialog = function() {
+      document.getElementById("new-folder-modal").style.display = "flex";
+      document.getElementById("new-folder-name").focus();
     };
 
-    window.hideNewFolderDialog = () => {
-      document.getElementById('new-folder-modal').style.display = 'none';
-      document.getElementById('new-folder-name').value = '';
+    window._fmHideNewFolderDialog = function() {
+      document.getElementById("new-folder-modal").style.display = "none";
+      document.getElementById("new-folder-name").value = "";
     };
 
-    // Context menu
-    window.showContextMenu = (event, filePath, fileName) => {
+    window._fmShowContextMenu = function(event, filePath, fileName) {
       event.preventDefault();
-      
-      const existing = document.getElementById('context-menu');
+      var existing = document.getElementById("context-menu");
       if (existing) existing.remove();
-      
-      const menu = document.createElement('div');
-      menu.id = 'context-menu';
-      menu.className = 'context-menu';
-      menu.innerHTML = `
-        <div class="context-menu-item" onclick="renameItem('${filePath}', '${fileName}')">Rename</div>
-        <div class="context-menu-item" onclick="deleteItem('${filePath}', '${fileName}')">Delete</div>
-      `;
-      menu.style.left = event.pageX + 'px';
-      menu.style.top = event.pageY + 'px';
-      
+      var menu = document.createElement("div");
+      menu.id = "context-menu";
+      menu.className = "context-menu";
+      menu.innerHTML = '<div class="context-menu-item" onclick="window._fmRenameItem(\'' + filePath + '\',\'' + fileName + '\')">Rename</div>' +
+        '<div class="context-menu-item" onclick="window._fmDeleteItem(\'' + filePath + '\',\'' + fileName + '\')">Delete</div>';
+      menu.style.left = event.pageX + "px";
+      menu.style.top = event.pageY + "px";
       document.body.appendChild(menu);
-      
-      setTimeout(() => {
-        document.addEventListener('click', () => menu.remove(), { once: true });
+      setTimeout(function() {
+        document.addEventListener("click", function() { menu.remove(); }, {once: true});
       }, 0);
     };
 
-    window.renameItem = (filePath, currentName) => {
-      const newName = prompt('Rename to:', currentName);
+    window._fmRenameItem = function(filePath, currentName) {
+      var newName = prompt("Rename to:", currentName);
       if (newName && newName !== currentName) {
-        fetch('/api/rename', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ oldPath: filePath, newName })
-        }).then(() => {
-          htmx.trigger('#file-list', 'load');
-        });
+        fetch("/api/rename", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({oldPath: filePath, newName: newName})
+        }).then(function() { htmx.trigger("#file-list", "load"); });
       }
     };
 
-    window.deleteItem = (filePath, fileName) => {
-      if (confirm(`Delete "${fileName}"?`)) {
-        fetch('/api/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filePath })
-        }).then(() => {
-          htmx.trigger('#file-list', 'load');
-        });
+    window._fmDeleteItem = function(filePath, fileName) {
+      if (confirm("Delete \"" + fileName + "\"?")) {
+        fetch("/api/delete", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({filePath: filePath})
+        }).then(function() { htmx.trigger("#file-list", "load"); });
       }
     };
 
-    window.uploadFiles = async (input) => {
-      const files = input.files;
+    window._fmUploadFiles = function(input) {
+      var files = input.files;
       if (!files.length) return;
-      
-      const fileList = document.getElementById('file-list');
-      const currentPath = fileList?.dataset?.currentPath || '/';
-      
-      const formData = new FormData();
-      formData.append('path', currentPath);
-      for (const file of files) {
-        formData.append('files', file);
+      var fileList = document.getElementById("file-list");
+      var currentPath = (fileList && fileList.dataset) ? fileList.dataset.currentPath : "/";
+      var formData = new FormData();
+      formData.append("path", currentPath);
+      for (var i = 0; i < files.length; i++) {
+        formData.append("files", files[i]);
       }
-      
-      try {
-        await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-        input.value = '';
-        htmx.trigger('#file-list', 'load');
-      } catch (error) {
-        console.error('Error uploading:', error);
-      }
+      fetch("/api/upload", {method: "POST", body: formData}).then(function() {
+        input.value = "";
+        htmx.trigger("#file-list", "load");
+      });
     };
 
-    window.createFolder = async () => {
-      const name = document.getElementById('new-folder-name').value.trim();
+    window._fmCreateFolder = function() {
+      var name = document.getElementById("new-folder-name").value.trim();
       if (!name) return;
-      
-      const fileList = document.getElementById('file-list');
-      const currentPath = fileList?.dataset?.currentPath || '/';
-      
-      try {
-        const response = await fetch('/api/mkdir', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: currentPath, name })
-        });
-        
+      var fileList = document.getElementById("file-list");
+      var currentPath = (fileList && fileList.dataset) ? fileList.dataset.currentPath : "/";
+      fetch("/api/mkdir", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({path: currentPath, name: name})
+      }).then(function(response) {
         if (response.ok) {
-          hideNewFolderDialog();
-          htmx.trigger('#file-list', 'load');
+          window._fmHideNewFolderDialog();
+          htmx.trigger("#file-list", "load");
         }
-      } catch (error) {
-        console.error('Error creating folder:', error);
-      }
+      });
     };
-    
-    if (typeof htmx !== 'undefined') {
+
+    if (typeof htmx !== "undefined") {
       htmx.process($content);
     }
 
-    // Listen for HX-Trigger refresh events
-    document.body.addEventListener('refreshFileList', () => {
-      htmx.trigger('#file-list', 'load');
+    document.body.addEventListener("refreshFileList", function() {
+      htmx.trigger("#file-list", "load");
     });
 
-    $content.addEventListener('htmx:afterRequest', (event) => {
-      const fileList = document.getElementById('file-list');
-      if (fileList && fileList.dataset.currentPath) {
+    $content.addEventListener("htmx:afterRequest", function() {
+      var fileList = document.getElementById("file-list");
+      if (fileList && fileList.dataset && fileList.dataset.currentPath) {
         updateBreadcrumb(fileList.dataset.currentPath);
       }
     });
 
     function updateBreadcrumb(path) {
-      const breadcrumb = document.getElementById('breadcrumb');
+      var breadcrumb = document.getElementById("breadcrumb");
       if (!breadcrumb) return;
-      
-      const parts = path.split('/').filter(Boolean);
-      let html = `<span hx-get="/api/files?path=/" hx-target="#file-list" hx-swap="innerHTML">/</span>`;
-      
-      let currentPath = '';
-      parts.forEach((part, i) => {
-        currentPath += '/' + part;
-        html += ` / <span hx-get="/api/files?path=${encodeURIComponent(currentPath)}" hx-target="#file-list" hx-swap="innerHTML">${part}</span>`;
+      var parts = path.split("/").filter(Boolean);
+      var html = '<span hx-get="/api/files?path=/" hx-target="#file-list" hx-swap="innerHTML">/</span>';
+      var currentPath = "";
+      parts.forEach(function(part) {
+        currentPath += "/" + part;
+        html += ' / <span hx-get="/api/files?path=' + encodeURIComponent(currentPath) + '" hx-target="#file-list" hx-swap="innerHTML">' + part + '</span>';
       });
-      
       breadcrumb.innerHTML = html;
       htmx.process(breadcrumb);
     }
-  });
-  
-  return proc;
-};
+  }), proc;
+}
 
-osjs.register('FileManager', register);
+u.n(o).register(u.n(i)({a:"FileManager"}), function(core, args, options, metadata) {
+  return setupFileManager(core, args, options, metadata);
+});
+
+}]);

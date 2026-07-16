@@ -148,7 +148,9 @@ function setupFileManager(core, args, options, metadata) {
   }), proc;
 }
 
-u.n(o).register(u.n(i)({a:"FileManager"}), function(core, args, options, metadata) {
+var OSjs = n(0);
+var metadata = n(1);
+OSjs.register(metadata.a, function(core, args, options, metadata) {
   return setupFileManager(core, args, options, metadata);
 });
 

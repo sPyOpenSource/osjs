@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs').promises;
 const path = require('path');
+const multer = require('multer');
+const upload = multer({ dest: '/tmp/uploads/' });
 
 const ROOT_DIR = process.env.FS_ROOT || process.cwd();
 
@@ -179,6 +181,31 @@ router.post('/delete', async (req, res) => {
     res.send('');
   } catch (error) {
     console.error('Error deleting:', error);
+    res.status(500).send(`<div class="error">Error: ${error.message}</div>`);
+  }
+});
+
+router.post('/upload', upload.array('files'), async (req, res) => {
+  try {
+    const targetDir = req.body.path || '/';
+    const targetFullPath = path.join(ROOT_DIR, targetDir);
+    
+    // Security check
+    if (!targetFullPath.startsWith(ROOT_DIR)) {
+      return res.status(403).send('<div>Access denied</div>');
+    }
+    
+    // Move uploaded files to target directory
+    for (const file of req.files) {
+      const destPath = path.join(targetFullPath, file.originalname);
+      await fs.rename(file.path, destPath);
+    }
+    
+    // Return empty response with HX-Trigger to refresh
+    res.setHeader('HX-Trigger', 'refreshFileList');
+    res.send('');
+  } catch (error) {
+    console.error('Error uploading:', error);
     res.status(500).send(`<div class="error">Error: ${error.message}</div>`);
   }
 });

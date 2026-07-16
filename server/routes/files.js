@@ -77,7 +77,8 @@ router.get('/files', async (req, res) => {
         <div class="file-item ${file.type}" 
              data-type="${file.type}" 
              data-path="${file.path}"
-             ${clickAttr}>
+             ${clickAttr}
+             oncontextmenu="showContextMenu(event, '${file.path}', '${file.name}')">
           <i class="file-icon ${file.iconClass}"></i>
           <span class="file-name">${file.name}</span>
           <span class="file-size">${file.size}</span>

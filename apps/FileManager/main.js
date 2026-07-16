@@ -56,6 +56,43 @@ const register = (core, args, options, metadata) => {
       document.getElementById('new-folder-name').value = '';
     };
 
+    // Context menu
+    window.showContextMenu = (event, filePath, fileName) => {
+      event.preventDefault();
+      
+      const existing = document.getElementById('context-menu');
+      if (existing) existing.remove();
+      
+      const menu = document.createElement('div');
+      menu.id = 'context-menu';
+      menu.className = 'context-menu';
+      menu.innerHTML = `
+        <div class="context-menu-item" onclick="renameItem('${filePath}', '${fileName}')">Rename</div>
+        <div class="context-menu-item" onclick="deleteItem('${filePath}', '${fileName}')">Delete</div>
+      `;
+      menu.style.left = event.pageX + 'px';
+      menu.style.top = event.pageY + 'px';
+      
+      document.body.appendChild(menu);
+      
+      setTimeout(() => {
+        document.addEventListener('click', () => menu.remove(), { once: true });
+      }, 0);
+    };
+
+    window.renameItem = (filePath, currentName) => {
+      const newName = prompt('Rename to:', currentName);
+      if (newName && newName !== currentName) {
+        fetch('/api/rename', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oldPath: filePath, newName })
+        }).then(() => {
+          htmx.trigger('#file-list', 'load');
+        });
+      }
+    };
+
     window.createFolder = async () => {
       const name = document.getElementById('new-folder-name').value.trim();
       if (!name) return;

@@ -15,8 +15,8 @@ const register = (core, args, options, metadata) => {
         <div class="toolbar">
           <button hx-get="/api/files?path=.." 
                   hx-target="#file-list" 
-                  hx-swap="innerHTML"
-                  hx-include="[data-current-path]">↑ Up</button>
+                  hx-swap="innerHTML">↑ Up</button>
+          <button onclick="showNewFolderDialog()">New Folder</button>
           <div class="breadcrumb" id="breadcrumb">
             <span hx-get="/api/files?path=/" 
                   hx-target="#file-list" 
@@ -31,11 +31,53 @@ const register = (core, args, options, metadata) => {
              hx-swap="innerHTML">
         </div>
         
-        <div class="statusbar" id="statusbar">
-          Ready
+        <div class="statusbar" id="statusbar">Ready</div>
+        
+        <div id="new-folder-modal" class="modal" style="display:none;">
+          <div class="modal-content">
+            <h3>New Folder</h3>
+            <input type="text" id="new-folder-name" placeholder="Folder name" />
+            <div class="modal-buttons">
+              <button onclick="hideNewFolderDialog()">Cancel</button>
+              <button onclick="createFolder()">Create</button>
+            </div>
+          </div>
         </div>
       </div>
     `;
+
+    window.showNewFolderDialog = () => {
+      document.getElementById('new-folder-modal').style.display = 'flex';
+      document.getElementById('new-folder-name').focus();
+    };
+
+    window.hideNewFolderDialog = () => {
+      document.getElementById('new-folder-modal').style.display = 'none';
+      document.getElementById('new-folder-name').value = '';
+    };
+
+    window.createFolder = async () => {
+      const name = document.getElementById('new-folder-name').value.trim();
+      if (!name) return;
+      
+      const fileList = document.getElementById('file-list');
+      const currentPath = fileList?.dataset?.currentPath || '/';
+      
+      try {
+        const response = await fetch('/api/mkdir', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentPath, name })
+        });
+        
+        if (response.ok) {
+          hideNewFolderDialog();
+          htmx.trigger('#file-list', 'load');
+        }
+      } catch (error) {
+        console.error('Error creating folder:', error);
+      }
+    };
     
     if (typeof htmx !== 'undefined') {
       htmx.process($content);

@@ -159,6 +159,11 @@ const register = (core, args, options, metadata) => {
       htmx.process($content);
     }
 
+    // Listen for HX-Trigger refresh events
+    document.body.addEventListener('refreshFileList', () => {
+      htmx.trigger('#file-list', 'load');
+    });
+
     $content.addEventListener('htmx:afterRequest', (event) => {
       const fileList = document.getElementById('file-list');
       if (fileList && fileList.dataset.currentPath) {

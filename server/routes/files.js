@@ -128,4 +128,30 @@ router.post('/mkdir', async (req, res) => {
   }
 });
 
+router.post('/rename', async (req, res) => {
+  try {
+    const { oldPath, newName } = req.body;
+    
+    if (!newName || newName.includes('/') || newName.includes('..')) {
+      return res.status(400).send('<div class="error">Invalid name</div>');
+    }
+    
+    const oldFullPath = path.join(ROOT_DIR, oldPath);
+    const dir = path.dirname(oldFullPath);
+    const newFullPath = path.join(dir, newName);
+    
+    if (!oldFullPath.startsWith(ROOT_DIR) || !newFullPath.startsWith(ROOT_DIR)) {
+      return res.status(403).send('<div>Access denied</div>');
+    }
+    
+    await fs.rename(oldFullPath, newFullPath);
+    
+    res.setHeader('HX-Trigger', 'refreshFileList');
+    res.send('');
+  } catch (error) {
+    console.error('Error renaming:', error);
+    res.status(500).send(`<div class="error">Error: ${error.message}</div>`);
+  }
+});
+
 module.exports = router;

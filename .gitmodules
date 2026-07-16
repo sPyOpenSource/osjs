@@ -4,3 +4,8 @@
 [submodule "apps/Website"]
 	path = apps/Website
 	url = https://github.com/sPyOpenSource/personal-website.git
+[submodule "apps/SimCity"]
+	path = apps/SimCity
+	url = https://github.com/sPyOpenSource/drone.git
+	branch = simcity
+	

@@ -204,7 +204,7 @@ __webpack_require__.r(__webpack_exports__);
     }
   },
   ws: {
-    uri: 'ws://beaglebone.local:1880/OS'
+    uri: 'wss://xuyi.h4ck.me/ws'
   }
 });
 

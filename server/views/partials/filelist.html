@@ -1,0 +1,15 @@
+<div id="file-list">
+  {{#each files}}
+  <div class="file-item" 
+       data-type="{{this.type}}" 
+       data-path="{{this.path}}"
+       {{#if isDirectory}}hx-get="/api/files?path={{this.path}}"{{/if}}
+       hx-target="#file-list"
+       hx-swap="innerHTML">
+    <i class="file-icon {{this.iconClass}}"></i>
+    <span class="file-name">{{this.name}}</span>
+    <span class="file-size">{{this.size}}</span>
+    <span class="file-date">{{this.date}}</span>
+  </div>
+  {{/each}}
+</div>

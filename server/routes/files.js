@@ -155,4 +155,32 @@ router.post('/rename', async (req, res) => {
   }
 });
 
+router.post('/delete', async (req, res) => {
+  try {
+    const { filePath } = req.body;
+    
+    const fullPath = path.join(ROOT_DIR, filePath);
+    
+    // Security check
+    if (!fullPath.startsWith(ROOT_DIR)) {
+      return res.status(403).send('<div>Access denied</div>');
+    }
+    
+    const stats = await fs.stat(fullPath);
+    
+    if (stats.isDirectory()) {
+      await fs.rm(fullPath, { recursive: true });
+    } else {
+      await fs.unlink(fullPath);
+    }
+    
+    // Return empty response with HX-Trigger to refresh
+    res.setHeader('HX-Trigger', 'refreshFileList');
+    res.send('');
+  } catch (error) {
+    console.error('Error deleting:', error);
+    res.status(500).send(`<div class="error">Error: ${error.message}</div>`);
+  }
+});
+
 module.exports = router;

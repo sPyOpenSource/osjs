@@ -68,7 +68,7 @@ router.get('/files', async (req, res) => {
       return a.name.localeCompare(b.name);
     });
     
-    let html = '<div id="file-list">';
+    let html = `<div id="file-list" data-current-path="${requestedPath}">`;
     files.forEach(file => {
       const clickAttr = file.isDirectory 
         ? `hx-get="/api/files?path=${encodeURIComponent(file.path)}" hx-target="#file-list" hx-swap="innerHTML"`
@@ -86,6 +86,14 @@ router.get('/files', async (req, res) => {
     });
     html += '</div>';
     
+    const dirCount = files.filter(f => f.type === 'directory').length;
+    const fileCount = files.filter(f => f.type === 'file').length;
+
+    html += `
+<div id="statusbar" hx-swap-oob="true">
+  ${dirCount} directories, ${fileCount} files
+</div>`;
+
     res.send(html);
   } catch (error) {
     console.error('Error reading directory:', error);

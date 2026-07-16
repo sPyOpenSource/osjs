@@ -40,6 +40,30 @@ const register = (core, args, options, metadata) => {
     if (typeof htmx !== 'undefined') {
       htmx.process($content);
     }
+
+    $content.addEventListener('htmx:afterRequest', (event) => {
+      const fileList = document.getElementById('file-list');
+      if (fileList && fileList.dataset.currentPath) {
+        updateBreadcrumb(fileList.dataset.currentPath);
+      }
+    });
+
+    function updateBreadcrumb(path) {
+      const breadcrumb = document.getElementById('breadcrumb');
+      if (!breadcrumb) return;
+      
+      const parts = path.split('/').filter(Boolean);
+      let html = `<span hx-get="/api/files?path=/" hx-target="#file-list" hx-swap="innerHTML">/</span>`;
+      
+      let currentPath = '';
+      parts.forEach((part, i) => {
+        currentPath += '/' + part;
+        html += ` / <span hx-get="/api/files?path=${encodeURIComponent(currentPath)}" hx-target="#file-list" hx-swap="innerHTML">${part}</span>`;
+      });
+      
+      breadcrumb.innerHTML = html;
+      htmx.process(breadcrumb);
+    }
   });
   
   return proc;

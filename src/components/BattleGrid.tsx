@@ -611,24 +611,25 @@ export default function BattleGrid({
         }
       });
 
-      if (bestStruct) {
-        const wallIdx = updatedStructures.findIndex(s => s.id === (bestStruct as PlacedStructure).id);
+      const target = bestStruct as PlacedStructure | null;
+      if (target) {
+        const wallIdx = updatedStructures.findIndex(s => s.id === (target).id);
         if (wallIdx !== -1) {
           updatedStructures[wallIdx].hp = Math.max(0, updatedStructures[wallIdx].hp - enemy.damage);
           enemy.lastFired = now;
 
           newDamageIndicators.push({
             id: `dmg_struct_${Date.now()}_${Math.random()}`,
-            x: bestStruct.x,
-            y: bestStruct.y,
+            x: target.x,
+            y: target.y,
             text: `-${enemy.damage}`,
             color: 'text-red-500 font-black bg-red-950/70 border border-red-500/40 px-1.5 rounded shadow-lg text-[9px]',
             createdAt: now
           });
           newFlashingCells.push({
             id: `flash_struct_${Date.now()}_${Math.random()}`,
-            x: Math.round(bestStruct.x),
-            y: Math.round(bestStruct.y),
+            x: Math.round(target.x),
+            y: Math.round(target.y),
             color: 'red',
             createdAt: now
           });
@@ -638,8 +639,8 @@ export default function BattleGrid({
             type: enemy.isKirov ? 'explosion' : 'bullet',
             startX: enemy.x + 0.5,
             startY: enemy.y + 0.5,
-            endX: bestStruct.x + 0.5,
-            endY: bestStruct.y + 0.5,
+            endX: target.x + 0.5,
+            endY: target.y + 0.5,
             timer: 0.3
           });
 
@@ -652,16 +653,16 @@ export default function BattleGrid({
           if (updatedStructures[wallIdx].hp <= 0) {
             newDamageIndicators.push({
               id: `dmg_struct_destroyed_${Date.now()}_${Math.random()}`,
-              x: bestStruct.x,
-              y: bestStruct.y,
+              x: target.x,
+              y: target.y,
               text: 'DESTROYED',
               color: 'text-red-600 font-extrabold text-[12px] bg-neutral-900 border-2 border-red-600 px-1.5 rounded shadow-[0_0_15px_rgba(220,38,38,0.6)] uppercase animate-bounce',
               createdAt: now
             });
             newFlashingCells.push({
               id: `flash_struct_die_${Date.now()}_${Math.random()}`,
-              x: Math.round(bestStruct.x),
-              y: Math.round(bestStruct.y),
+              x: Math.round(target.x),
+              y: Math.round(target.y),
               color: 'orange',
               createdAt: now
             });
@@ -669,10 +670,10 @@ export default function BattleGrid({
             spawnedEffects.push({
               id: Math.random().toString(),
               type: 'explosion',
-              startX: bestStruct.x + 0.5,
-              startY: bestStruct.y + 0.5,
-              endX: bestStruct.x + 0.5,
-              endY: bestStruct.y + 0.5,
+              startX: target.x + 0.5,
+              startY: target.y + 0.5,
+              endX: target.x + 0.5,
+              endY: target.y + 0.5,
               timer: 0.6
             });
             playSynthSound('explosion');

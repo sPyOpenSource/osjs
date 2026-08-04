@@ -296,6 +296,7 @@ export default function App() {
             <input
               id="callsign_input"
               type="text"
+              aria-label="Commander callsign"
               value={commanderName}
               onChange={(e) => setCommanderName(e.target.value.slice(0, 16))}
               className="bg-transparent text-amber-400 text-xs font-mono font-extrabold border-none outline-none focus:ring-0 w-24 placeholder-neutral-700"
@@ -335,6 +336,7 @@ export default function App() {
               id="reset_game_btn"
               onClick={() => resetBattlefield(faction)}
               title="Reset Tactical Map"
+              aria-label="Reset tactical map"
               className="bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-amber-500 border border-neutral-800 p-2.5 rounded transition-all focus:outline-none cursor-pointer"
             >
               <RefreshCcw className="w-3.5 h-3.5" />
@@ -469,6 +471,7 @@ export default function App() {
                       sendChatMessage();
                     }
                   }}
+                  aria-label="Broadcast message to tactical net"
                   placeholder="Broadcast message to tactical net..."
                   className="bg-neutral-900 text-[11px] font-mono text-neutral-200 placeholder-neutral-500 py-1.5 px-3 rounded border border-neutral-800 focus:outline-none focus:border-amber-500 flex-1 min-w-0"
                 />

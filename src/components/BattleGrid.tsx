@@ -611,7 +611,7 @@ export default function BattleGrid({
         }
       });
 
-      const target: PlacedStructure | null = bestStruct;
+      const target = bestStruct as PlacedStructure | null;
       if (target) {
         const wallIdx = updatedStructures.findIndex(s => s.id === (target).id);
         if (wallIdx !== -1) {

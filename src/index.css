@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;500;600;700;900&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Share Tech Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-build-progress: #f59e0b;
+  --color-build-track: #262626;
 }
 
 /* Custom terminal layout overrides for the 15x15 grids */

@@ -5,7 +5,9 @@ import OfficerCard from './components/OfficerCard';
 import AvatarRenderer from './components/AvatarRenderer';
 import TacticalMap from './components/TacticalMap';
 import StartMenu from './components/StartMenu';
-import { playClashSound, playDrumSound } from './utils/audio';
+import DuelArena from './components/DuelArena';
+import InternalAffairs from './components/InternalAffairs';
+import { playClashSound, playDrumSound, playHarvestSound } from './utils/audio';
 import { 
   Shield, 
   Swords, 
@@ -27,7 +29,8 @@ import {
   Sword,
   Target,
   MessageCircle,
-  Users
+  Users,
+  Building2
 } from 'lucide-react';
 
 export default function App() {
@@ -37,7 +40,7 @@ export default function App() {
   const [officers, setOfficers] = useState<Officer[]>(FAMOUS_OFFICERS);
   const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
   const [selectedScenario, setSelectedScenario] = useState<CampaignScenario>(SCENARIOS[0]);
-  const [activeTab, setActiveTab] = useState<'roster' | 'creator' | 'bonds' | 'map'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'creator' | 'bonds' | 'map' | 'duel' | 'affairs'>('roster');
   
   // Roster Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -753,6 +756,28 @@ export default function App() {
                 <Heart size={14} /> 人际关系与单挑
               </button>
               <button
+                id="tab-affairs"
+                onClick={() => setActiveTab('affairs')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'affairs' 
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Building2 size={12} /> 🏯 内政经略
+              </button>
+              <button
+                id="tab-duel"
+                onClick={() => setActiveTab('duel')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'duel' 
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Swords size={12} /> ⚔️ 1v1 单挑对决
+              </button>
+              <button
                 id="tab-map"
                 onClick={() => setActiveTab('map')}
                 className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
@@ -1339,6 +1364,31 @@ export default function App() {
                 setSelectedOfficer(off);
               }} 
               soundEnabled={soundEnabled}
+            />
+          )}
+
+          {/* Tab 5: 1v1 Duel Arena */}
+          {activeTab === 'duel' && (
+            <DuelArena 
+              officers={officers}
+              soundEnabled={soundEnabled}
+              playClashSound={playClashSound}
+              playDrumSound={playDrumSound}
+              onClose={() => setActiveTab('map')}
+            />
+          )}
+
+          {/* Tab 6: Internal Affairs (内政经略) */}
+          {activeTab === 'affairs' && (
+            <InternalAffairs 
+              officers={officers}
+              soundEnabled={soundEnabled}
+              playDrumSound={playDrumSound}
+              playClashSound={playClashSound}
+              playHarvestSound={playHarvestSound}
+              onSelectOfficer={(off) => {
+                setSelectedOfficer(off);
+              }}
             />
           )}
 

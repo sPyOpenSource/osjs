@@ -3,6 +3,7 @@ import { Officer, Faction, CampaignScenario } from '../types';
 import { FACTIONS } from '../data';
 import { motion, AnimatePresence } from 'motion/react';
 import { playDrumSound, playClashSound } from '../utils/audio';
+import WarMode from './WarMode';
 import { 
   Shield, 
   Swords, 
@@ -208,8 +209,9 @@ export default function TacticalMap({
   onSelectOfficer,
   soundEnabled = false 
 }: TacticalMapProps) {
-  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view'>('svg-map');
+  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode'>('svg-map');
   const [weatherId, setWeatherId] = useState<'sunny' | 'rainy' | 'windy' | 'foggy'>('sunny');
+  const [show190Border, setShow190Border] = useState(true);
   const [cityOwnership, setCityOwnership] = useState<Record<string, string>>(() => 
     getScenarioDefaultOwnership(selectedScenario.id)
   );
@@ -307,6 +309,35 @@ export default function TacticalMap({
       ...prev,
       [cityId]: factionId
     }));
+  };
+
+  const handleBattleComplete = (winner: 'attacker' | 'defender', goldReward: number, epicRelic?: string, conqueredCityId?: string) => {
+    if (winner === 'attacker' && conqueredCityId) {
+      const originControllerId = cityOwnership[expeditionOriginId] || 'ronin';
+      setCityOwnership(prev => ({
+        ...prev,
+        [conqueredCityId]: originControllerId
+      }));
+      setPlayerGold(prev => prev + goldReward);
+      if (epicRelic) {
+        setPlayerInventory(prev => {
+          if (prev.includes(epicRelic)) return prev;
+          return [...prev, epicRelic];
+        });
+      }
+      setInteriorLogs(prev => [
+        `【关前合战胜利】大军亲自击破攻克敌境 [${CITIES.find(c => c.id === conqueredCityId)?.name || conqueredCityId}] 门阀大捷！缴获犒赏军饷黄金 ${goldReward}，夺取传代宝物 [${epicRelic || '名门铁券'}]！`,
+        ...prev
+      ]);
+    } else {
+      const absoluteLoss = Math.abs(goldReward);
+      setPlayerGold(prev => Math.max(0, prev - absoluteLoss));
+      setInteriorLogs(prev => [
+        `【合战攻城折戟】前线突袭受阻引兵撤遁，整军抢修工事折耗抚恤黄金 ${absoluteLoss}。`,
+        ...prev
+      ]);
+    }
+    setMapTab('svg-map');
   };
 
   // Palace Actions
@@ -789,6 +820,19 @@ export default function TacticalMap({
           <Layers size={13.5} />
           九郡十四城治所总览
         </button>
+        <button
+          id="tab-map-war-mode"
+          type="button"
+          onClick={() => setMapTab('war-mode')}
+          className={`px-4 py-2 rounded-xl text-xs font-serif font-black tracking-wider transition-all inline-flex items-center gap-2 cursor-pointer ${
+            mapTab === 'war-mode'
+              ? 'bg-rose-550 text-slate-950 font-black shadow-md shadow-rose-550/15 border border-rose-450'
+              : 'text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-900 hover:border-slate-800'
+          }`}
+        >
+          <Sword size={13.5} className={mapTab === 'war-mode' ? 'text-slate-950' : 'text-rose-500'} />
+          <span>⚔️ 城防会战实演</span>
+        </button>
       </div>
 
       {mapTab === 'svg-map' ? (
@@ -840,11 +884,28 @@ export default function TacticalMap({
           
           {/* SVG Interactive Map (Span 7) */}
           <div className="lg:col-span-7 bg-slate-950 p-4 rounded-2xl border border-slate-900 flex flex-col justify-between relative overflow-hidden min-h-[400px]">
-            <div className="flex justify-between items-center mb-2 z-10">
-              <span className="text-[10px] font-mono tracking-widest text-slate-400 uppercase flex items-center gap-1">
-                <Flag size={10} className="text-amber-500 animate-pulse" />
-                Tactical Campaign Sandtable Map of China
-              </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 z-10">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-mono tracking-widest text-slate-400 uppercase flex items-center gap-1">
+                  <Flag size={10} className="text-amber-500 animate-pulse" />
+                  Tactical Campaign Sandtable Map of China
+                </span>
+                
+                {/* 190 AD Border Layer Toggle */}
+                <button
+                  type="button"
+                  id="toggle-190-border"
+                  onClick={() => setShow190Border(p => !p)}
+                  className={`px-2 py-0.5 rounded text-[9.5px] font-serif font-bold cursor-pointer transition-all border flex items-center gap-1 ${
+                    show190Border 
+                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30 shadow-sm shadow-rose-500/5' 
+                      : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-350'
+                  }`}
+                >
+                  <Compass size={9.5} className={show190Border ? 'animate-spin-slow text-rose-400' : ''} />
+                  190 AD 汉境国界：{show190Border ? '已启' : '已闭'}
+                </button>
+              </div>
               <div className="flex gap-2">
                 {FACTIONS.filter(f => f.id !== 'ronin').map(f => (
                   <div key={f.id} className="flex items-center gap-1">
@@ -859,7 +920,7 @@ export default function TacticalMap({
             <div className="relative w-full aspect-[8/5] bg-slate-900/10 rounded-xl border border-slate-900 overflow-hidden select-none">
               
               {/* Ambient map grid pattern */}
-              <svg className="absolute inset-0 w-full h-full text-slate-900 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+              <svg className="absolute inset-0 w-full h-full text-slate-900 pointer-events-none" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
                     <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.15" />
@@ -870,8 +931,57 @@ export default function TacticalMap({
                     <stop offset="50%" stopColor="#38bdf8" stopOpacity="0.45" />
                     <stop offset="100%" stopColor="#0284c7" stopOpacity="0.2" />
                   </linearGradient>
+                  
+                  {/* Glowing Imperial Territory Fill of Han Dynasty */}
+                  <radialGradient id="territoryGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#ef4444" stopOpacity="0.22" />
+                    <stop offset="65%" stopColor="#eab308" stopOpacity="0.10" />
+                    <stop offset="100%" stopColor="#dc2626" stopOpacity="0.02" />
+                  </radialGradient>
+                  
+                  {/* Glow filter for boundary lines */}
+                  <filter id="glowFilter" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3.5" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                  </filter>
                 </defs>
                 <rect width="100%" height="100%" fill="url(#grid)" />
+
+                {/* 190 AD Historical China (Han Dynasty) Borders Overlay Layer */}
+                {show190Border && (
+                  <g id="han-empire-190-border" className="transition-opacity duration-500">
+                    {/* Subtle retro glowing territory tint */}
+                    <path
+                      d="M 720 50 L 780 70 L 820 100 L 790 120 L 680 130 Q 730 150 780 160 L 750 200 L 740 240 L 790 280 L 850 340 L 880 390 Q 800 440 700 450 L 550 460 L 420 470 L 260 480 L 110 470 L 80 430 L 90 350 L 80 280 L 20 230 L 10 180 L 10 150 L 140 180 L 190 210 Q 200 130 240 110 L 350 90 L 480 80 Q 600 50 720 50 Z"
+                      fill="url(#territoryGlow)"
+                      opacity="1"
+                    />
+                    
+                    {/* Glowing outer aura stroke */}
+                    <path
+                      d="M 720 50 L 780 70 L 820 100 L 790 120 L 680 130 Q 730 150 780 160 L 750 200 L 740 240 L 790 280 L 850 340 L 880 390 Q 800 440 700 450 L 550 460 L 420 470 L 260 480 L 110 470 L 80 430 L 90 350 L 80 280 L 20 230 L 10 180 L 10 150 L 140 180 L 190 210 Q 200 130 240 110 L 350 90 L 480 80 Q 601 50 720 50 Z"
+                      fill="none"
+                      stroke="#ef4444"
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      opacity="0.3"
+                      filter="url(#glowFilter)"
+                    />
+
+                    {/* Historical border dashed line */}
+                    <path
+                      d="M 720 50 L 780 70 L 820 100 L 790 120 L 680 130 Q 730 150 780 160 L 750 200 L 740 240 L 790 280 L 850 340 L 880 390 Q 800 440 700 450 L 550 460 L 420 470 L 260 480 L 110 470 L 80 430 L 90 350 L 80 280 L 20 230 L 10 180 L 10 150 L 140 180 L 190 210 Q 200 130 240 110 L 350 90 L 480 80 Q 601 50 720 50 Z"
+                      fill="none"
+                      stroke="#f43f5e"
+                      strokeWidth="1.8"
+                      strokeDasharray="5, 5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      opacity="0.8"
+                    />
+                  </g>
+                )}
 
                 {/* Major Rivers of Ancient China: Yellow River 黄河 */}
                 <path 
@@ -882,7 +992,7 @@ export default function TacticalMap({
                   strokeLinecap="round"
                   opacity="0.6"
                 />
-                <text x="140" y="195" fill="#38bdf8" className="text-[10px] font-serif italic" opacity="0.45">黄河 (Yellow River)</text>
+                <text x="140" y="195" fill="#3c82f6" className="text-[10px] font-serif font-black italic opacity-45">黄河 (Yellow River)</text>
 
                 {/* Yangtze River 长江 */}
                 <path 
@@ -893,7 +1003,7 @@ export default function TacticalMap({
                   strokeLinecap="round"
                   opacity="0.6"
                 />
-                <text x="110" y="380" fill="#38bdf8" className="text-[10px] font-serif italic" opacity="0.45">长江 (Yangtze River)</text>
+                <text x="110" y="380" fill="#3c82f6" className="text-[10px] font-serif font-black italic opacity-45">长江 (Yangtze River)</text>
 
                 {/* Qinling Mountains outline - Separator between Changan and Hanzhong */}
                 <path 
@@ -906,15 +1016,32 @@ export default function TacticalMap({
                 />
                 <text x="210" y="445" fill="#475569" className="text-[8px] font-mono" opacity="0.6">秦岭山脉 (Qinling Mts.)</text>
 
+                {/* Neighbor & Regional Seal Tags for 190 AD China */}
+                {show190Border && (
+                  <g id="historical-labels" className="transition-opacity duration-300 select-none opacity-90">
+                    <text x="350" y="38" fill="#f43f5e" className="text-[11px] font-serif font-bold tracking-widest text-[#fecdd3]" opacity="0.8">【草原鲜卑】</text>
+                    <text x="660" y="38" fill="#fecdd3" className="text-[11px] font-serif font-bold tracking-widest" opacity="0.8">【辽东乌桓】</text>
+                    <text x="65" y="225" fill="#cbd5e1" className="text-[11px] font-serif font-bold tracking-widest" opacity="0.75">【陇西羌胡】</text>
+                    <text x="100" y="475" fill="#99f6e4" className="text-[11px] font-serif font-bold tracking-widest" opacity="0.75">【西南夷蛮】</text>
+                    <text x="745" y="400" fill="#64748b" className="text-[10px] font-serif font-bold italic tracking-wider" opacity="0.65">【浩瀚东海 / 夷州】</text>
+
+                    {/* Unified Imperial Title Centerpiece */}
+                    <g transform="translate(400, 245)">
+                      <rect x="-95" y="-12" width="190" height="24" rx="4" fill="#1e1b4b" stroke="#f43f5e" strokeWidth="1.2" opacity="0.85" />
+                      <text x="0" y="4" fill="#ffe4e6" className="text-[11px] font-serif font-bold tracking-[0.22em] text-[#ffe4e6]" textAnchor="middle">公元190年・大汉大一统疆域</text>
+                    </g>
+                  </g>
+                )}
+
                 {/* Draw animated Campaign Expedition Line on SVG if running */}
                 {isExpeditionRunning && expeditionStep >= 1 && (
                   <>
                     {/* Glowing Arrow Path */}
                     <line 
-                      x1={`${CITIES.find(c => c.id === expeditionOriginId)!.x}%`}
-                      y1={`${CITIES.find(c => c.id === expeditionOriginId)!.y}%`}
-                      x2={`${CITIES.find(c => c.id === expeditionTargetId)!.x}%`}
-                      y2={`${CITIES.find(c => c.id === expeditionTargetId)!.y}%`}
+                      x1={CITIES.find(c => c.id === expeditionOriginId)!.x * 8}
+                      y1={CITIES.find(c => c.id === expeditionOriginId)!.y * 5}
+                      x2={CITIES.find(c => c.id === expeditionTargetId)!.x * 8}
+                      y2={CITIES.find(c => c.id === expeditionTargetId)!.y * 5}
                       stroke={originControllerId !== 'ronin' ? (FACTIONS.find(f => f.id === originControllerId)?.color || '#eab308') : '#fb923c'}
                       strokeWidth="3.5"
                       strokeDasharray="8 6"
@@ -926,8 +1053,8 @@ export default function TacticalMap({
                     />
                     {/* Arrow Pointing Target */}
                     <circle 
-                      cx={`${CITIES.find(c => c.id === expeditionTargetId)!.x}%`}
-                      cy={`${CITIES.find(c => c.id === expeditionTargetId)!.y}%`}
+                      cx={CITIES.find(c => c.id === expeditionTargetId)!.x * 8}
+                      cy={CITIES.find(c => c.id === expeditionTargetId)!.y * 5}
                       r="9"
                       fill="none"
                       stroke="#eab308"
@@ -1942,6 +2069,19 @@ export default function TacticalMap({
           </div>
 
         </div>
+      ) : mapTab === 'war-mode' ? (
+        <WarMode
+          originCity={CITIES.find(c => c.id === expeditionOriginId) || CITIES[0]}
+          targetCity={CITIES.find(c => c.id === expeditionTargetId) || CITIES[1]}
+          attackerFaction={FACTIONS.find(f => f.id === originControllerId) || FACTIONS[5]}
+          defenderFaction={FACTIONS.find(f => f.id === (cityOwnership[expeditionTargetId] || 'ronin')) || FACTIONS[5]}
+          attackingOfficer={officers.find(o => o.id === selectedGeneralId) || null}
+          defendingOfficer={officers.filter(o => o.factionId === (cityOwnership[expeditionTargetId] || 'ronin'))[0] || null}
+          weatherId={weatherId}
+          soundEnabled={soundEnabled}
+          onBattleComplete={handleBattleComplete}
+          onClose={() => setMapTab('svg-map')}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {CITIES.map(city => {
@@ -2281,6 +2421,19 @@ export default function TacticalMap({
               <Play size={12} fill="currentColor" />
               {isExpeditionRunning ? '大军兵临绝地，推演克敌中...' : '传令三军：发兵演武！'}
             </button>
+
+            {originControllerId !== (cityOwnership[expeditionTargetId] || 'ronin') && (
+              <button
+                id="btn-launch-war-mode-direct"
+                type="button"
+                onClick={() => setMapTab('war-mode')}
+                disabled={isExpeditionRunning || leadersAvailable.length === 0}
+                className="w-full bg-[linear-gradient(135deg,#e11d48,_#be123c)] hover:bg-[linear-gradient(135deg,#f43f5e,_#e11d48)] disabled:opacity-45 text-slate-50 text-xs font-black uppercase tracking-widest py-3 px-4 rounded-xl transition duration-300 shadow-lg flex items-center justify-center gap-1.5 cursor-pointer border border-rose-500/30"
+              >
+                <Sword size={12} className="text-slate-50" />
+                <span>亲自指挥攻城（手动合战役）</span>
+              </button>
+            )}
           </form>
         </div>
 

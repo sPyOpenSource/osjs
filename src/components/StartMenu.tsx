@@ -20,14 +20,15 @@ import {
   MapPin,
   Flame,
   Globe,
-  Star
+  Star,
+  Building2
 } from 'lucide-react';
 
 interface StartMenuProps {
   scenarios: CampaignScenario[];
   selectedScenario: CampaignScenario;
   onSelectScenario: (scenario: CampaignScenario) => void;
-  onEnterApp: (tab: 'roster' | 'creator' | 'bonds' | 'map') => void;
+  onEnterApp: (tab: 'roster' | 'creator' | 'bonds' | 'map' | 'affairs') => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
 }
@@ -91,6 +92,16 @@ export default function StartMenu({
       borderColor: 'border-rose-500/30',
       hoverBg: 'hover:bg-rose-500/10',
       icon: <Heart size={18} className="text-rose-400" />
+    },
+    {
+      id: 'affairs',
+      title: '治国理政 · 内政经略',
+      english: 'DOMESTIC AFFAIRS & GOVERNANCE',
+      desc: '筑城固守、屯田积粮、校场练兵。基于武将五维（POL、LDR、FOR）数理模型推演政略成果。',
+      color: 'text-emerald-400',
+      borderColor: 'border-emerald-500/30',
+      hoverBg: 'hover:bg-emerald-500/10',
+      icon: <Building2 size={18} className="text-emerald-400" />
     }
   ];
 

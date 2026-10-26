@@ -125,3 +125,37 @@ export function playClashSound() {
   filter.connect(gainNode);
   gainNode.connect(ctx.destination);
 }
+
+/**
+ * Plays a pleasant classical bell/chime chime sound for internal affairs harvests and rewards.
+ */
+export function playHarvestSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+
+  const now = ctx.currentTime;
+  // Pentatonic celebration notes: C5, E5, G5, C6
+  const notes = [523.25, 659.25, 783.99, 1046.50];
+
+  notes.forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+    gainNode.gain.setValueAtTime(0.001, now + idx * 0.08);
+    gainNode.gain.linearRampToValueAtTime(0.25, now + idx * 0.08 + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.5);
+
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    osc.start(now + idx * 0.08);
+    osc.stop(now + idx * 0.08 + 0.55);
+  });
+}

@@ -56,3 +56,49 @@ export interface RelationshipRelation {
   toOfficerId: string;
   type: 'Sworn Brother' | 'Rival' | 'Spouse' | 'Lord' | 'Confidant' | 'Trust';
 }
+
+export type InternalTaskType = 'fortify' | 'agriculture' | 'drill' | 'patrol' | 'commerce';
+
+export interface InternalTaskConfig {
+  id: InternalTaskType;
+  name: string;
+  category: string;
+  icon: string;
+  tagline: string;
+  description: string;
+  coreAttributes: string;
+  statWeights: {
+    politics?: number;
+    leadership?: number;
+    force?: number;
+    intelligence?: number;
+    charisma?: number;
+  };
+  formulaDisplay: string;
+  outputDescription: string;
+}
+
+export interface TaskAssignment {
+  id: string;
+  officerId: string;
+  taskType: InternalTaskType;
+  progress: number; // 0 to 100
+  targetDays: number;
+  completedCycles: number;
+  lastOutputSummary?: string;
+}
+
+export interface CityAffairsState {
+  cityName: string;
+  governorOfficerId?: string;
+  defense: number;
+  maxDefense: number;
+  grain: number;
+  gold: number;
+  troops: number;
+  training: number;
+  morale: number;
+  order: number;
+  agriculture: number;
+  commerce: number;
+}

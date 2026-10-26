@@ -5,7 +5,7 @@ import { FACTIONS } from '../data';
 import { Shield, Swords, Brain, Scroll, Sparkles, User, Sword, Compass, BookOpen, Trash2, Award, Crown } from 'lucide-react';
 
 // Helper to calculate official rank/promotion details based on peak metrics
-export function getPromotionInfo(stats: Officer['stats'], level: number = 0) {
+export function getPromotionInfo(stats: Officer['stats'], level: number = 0, isGlobalLeader: boolean = false) {
   const statMap = [
     { name: '统帅', val: stats.leadership, type: 'leader' },
     { name: '武力', val: stats.force, type: 'force' },
@@ -23,63 +23,83 @@ export function getPromotionInfo(stats: Officer['stats'], level: number = 0) {
   else if (primaryAttribute.val >= 70) maxLevel = 3;
   else if (primaryAttribute.val >= 50) maxLevel = 2;
 
-  let title = '白丁乡勇';
+  let title = isGlobalLeader ? '海外豪杰 / 部族首领' : '白丁乡勇';
   let badgeColor = 'bg-slate-950/40 text-slate-400 border-slate-800';
   let starColor = 'text-slate-600';
 
   if (level === 1) {
     starColor = 'text-emerald-500';
     badgeColor = 'bg-emerald-950/40 text-emerald-400 border-emerald-900/50';
-    if (primaryAttribute.type === 'force' || primaryAttribute.type === 'leader') {
-      title = '牙门小校';
-    } else if (primaryAttribute.type === 'intel' || primaryAttribute.type === 'politics') {
-      title = '郡府局佐';
+    if (isGlobalLeader) {
+      title = primaryAttribute.type === 'force' || primaryAttribute.type === 'leader' ? '军团百夫长' : '行省主簿';
     } else {
-      title = '州府从事';
+      if (primaryAttribute.type === 'force' || primaryAttribute.type === 'leader') {
+        title = '牙门小校';
+      } else if (primaryAttribute.type === 'intel' || primaryAttribute.type === 'politics') {
+        title = '郡府局佐';
+      } else {
+        title = '州府从事';
+      }
     }
   } else if (level === 2) {
     starColor = 'text-blue-500';
     badgeColor = 'bg-blue-950/40 text-blue-400 border-blue-900/50';
-    if (primaryAttribute.type === 'force' || primaryAttribute.type === 'leader') {
-      title = '偏将军';
-    } else if (primaryAttribute.type === 'intel' || primaryAttribute.type === 'politics') {
-      title = '行军参军';
+    if (isGlobalLeader) {
+      title = primaryAttribute.type === 'force' || primaryAttribute.type === 'leader' ? '近卫大统领' : '帝国财务官';
     } else {
-      title = '持节都尉';
+      if (primaryAttribute.type === 'force' || primaryAttribute.type === 'leader') {
+        title = '偏将军';
+      } else if (primaryAttribute.type === 'intel' || primaryAttribute.type === 'politics') {
+        title = '行军参军';
+      } else {
+        title = '持节都尉';
+      }
     }
   } else if (level === 3) {
     starColor = 'text-purple-500';
     badgeColor = 'bg-purple-950/40 text-purple-400 border-purple-900/60';
-    if (primaryAttribute.type === 'force' || primaryAttribute.type === 'leader') {
-      title = '讨逆中郎将';
-    } else if (primaryAttribute.type === 'intel' || primaryAttribute.type === 'politics') {
-      title = '军师祭酒';
+    if (isGlobalLeader) {
+      title = primaryAttribute.type === 'force' || primaryAttribute.type === 'leader' ? '行省统御总督' : '元老院大法官';
     } else {
-      title = '郡守太守';
+      if (primaryAttribute.type === 'force' || primaryAttribute.type === 'leader') {
+        title = '讨逆中郎将';
+      } else if (primaryAttribute.type === 'intel' || primaryAttribute.type === 'politics') {
+        title = '军师祭酒';
+      } else {
+        title = '郡守太守';
+      }
     }
   } else if (level === 4) {
     starColor = 'text-amber-500';
     badgeColor = 'bg-amber-950/40 text-amber-400 border-amber-900/60';
-    if (primaryAttribute.type === 'force' || primaryAttribute.type === 'leader') {
-      title = '偏征/卫将军';
-    } else if (primaryAttribute.type === 'intel' || primaryAttribute.type === 'politics') {
-      title = '尚书侍郎';
+    if (isGlobalLeader) {
+      title = primaryAttribute.type === 'force' || primaryAttribute.type === 'leader' ? '帝国大元帅' : '元老院首席执政官';
     } else {
-      title = '刺史都尉';
+      if (primaryAttribute.type === 'force' || primaryAttribute.type === 'leader') {
+        title = '偏征/卫将军';
+      } else if (primaryAttribute.type === 'intel' || primaryAttribute.type === 'politics') {
+        title = '尚书侍郎';
+      } else {
+        title = '刺史都尉';
+      }
     }
   } else if (level >= 5) {
     starColor = 'text-rose-500 animate-pulse';
     badgeColor = 'bg-rose-950/50 text-rose-400 border-rose-900/70 shadow-lg';
-    if (primaryAttribute.type === 'force') {
-      title = '骠骑大将军 / 关内侯';
-    } else if (primaryAttribute.type === 'leader') {
-      title = '天下大都督';
-    } else if (primaryAttribute.type === 'intel') {
-      title = '军师中郎将 / 卧龙军师';
-    } else if (primaryAttribute.type === 'politics') {
-      title = '当朝丞相 / 尚书令';
+    if (isGlobalLeader) {
+      title = primaryAttribute.type === 'force' ? '无双战神·万夫莫敌' : primaryAttribute.type === 'leader' ? '开国统帅·传世大帝' : primaryAttribute.type === 'politics' ? '奥古斯都·万王之王' : '普天转轮圣王';
     } else {
-      title = '武乡侯 / 益州牧';
+      if (primaryAttribute.type === 'force') {
+        title = '骠骑大将军 / 关内侯';
+      } else if (primaryAttribute.type === 'leader') {
+        title = '天下大都督';
+      } else if (primaryAttribute.type === 'intel') {
+        title = '军师中郎将 / 卧龙军师';
+      } else if (primaryAttribute.type === 'politics') {
+        title = '当朝丞相 / 尚书令';
+      } else {
+        title = '武乡侯 / 益州牧';
+      }
     }
   }
 
@@ -116,15 +136,15 @@ export default function OfficerCard({
   const [localBio, setLocalBio] = useState(officer.biography);
   const [promoSuccessMessage, setPromoSuccessMessage] = useState<string | null>(null);
   
-  const promoInfo = getPromotionInfo(officer.stats, officer.promotionLevel || 0);
+  const promoInfo = getPromotionInfo(officer.stats, officer.promotionLevel || 0, officer.isGlobalLeader);
 
   const handlePromote = () => {
     const currentLvl = officer.promotionLevel || 0;
     const nextLvl = currentLvl + 1;
-    const nextInfo = getPromotionInfo(officer.stats, nextLvl);
+    const nextInfo = getPromotionInfo(officer.stats, nextLvl, officer.isGlobalLeader);
 
     if (currentLvl >= nextInfo.maxLevel) {
-      alert(`晋升失败：${officer.name} 当前能力的晋升上限为 ${nextInfo.maxLevel} 阶。\n其封爵受限于其最高武将五维属性「${nextInfo.primaryAttributeName}」（数值 ${nextInfo.primaryAttributeValue}）。\n如欲晋升极位大都督或当朝丞相，其某项功绩属性需要通过沙场历练突破对应值（70/80/90+）！`);
+      alert(`晋升失败：${officer.name} 当前能力的晋升上限为 ${nextInfo.maxLevel} 阶。\n其封爵受限于其最高武将五维属性「${nextInfo.primaryAttributeName}」（数值 ${nextInfo.primaryAttributeValue}）。\n如欲晋升极位大都督、元老院首席执政官或普天转轮圣王，其某项功绩属性需要通过沙场历练突破对应值（70/80/90+）！`);
       return;
     }
 
@@ -178,10 +198,20 @@ export default function OfficerCard({
   return (
     <div 
       id={`officer-card-${officer.id}`}
-      className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden hover:border-slate-700 transition-all duration-300 shadow-xl flex flex-col h-full"
+      className={`bg-slate-900/90 border rounded-2xl overflow-hidden hover:border-slate-700 transition-all duration-300 shadow-xl flex flex-col h-full ${
+        officer.isGlobalLeader 
+          ? 'border-amber-500/30 ring-1 ring-amber-500/20 shadow-amber-950/20' 
+          : 'border-slate-800'
+      }`}
     >
       {/* Card Header Background Block */}
-      <div className={`h-2.5 w-full`} style={{ backgroundColor: matchedFaction.color }}></div>
+      <div className={`h-2.5 w-full flex items-center justify-end px-3`} style={{ backgroundColor: matchedFaction.color }}>
+        {officer.isGlobalLeader && (
+          <span className="text-[9px] font-mono font-bold text-white/90 drop-shadow uppercase tracking-widest">
+            WORLD LEADER
+          </span>
+        )}
+      </div>
 
       <div className="p-6 flex-1 flex flex-col">
         {/* Officer Hero Segment */}
@@ -194,11 +224,23 @@ export default function OfficerCard({
                   {officer.name}
                   {officer.styleName && (
                     <span className="text-xs font-sans tracking-wide text-slate-400 font-normal">
-                      （字 {officer.styleName}）
+                      （{officer.isGlobalLeader ? '号' : '字'} {officer.styleName}）
                     </span>
                   )}
                 </h3>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">{officer.gender === 'Female' ? '女' : '男'}</p>
+                {officer.englishName && (
+                  <p className="text-xs font-mono text-amber-300/80 font-medium tracking-wide mt-0.5">
+                    {officer.englishName}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[11px] text-slate-400 font-mono">{officer.gender === 'Female' ? '女' : '男'}</span>
+                  {officer.origin && (
+                    <span className="text-[10px] text-slate-400 font-mono bg-slate-950/60 px-1.5 py-0.5 rounded border border-slate-800/60">
+                      {officer.origin}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {officer.custom && onDelete && (
@@ -213,8 +255,8 @@ export default function OfficerCard({
               )}
             </div>
 
-            {/* Faction Badge */}
-            <div className="mt-3 flex items-center justify-between">
+            {/* Faction and Global Badges */}
+            <div className="mt-3 flex items-center flex-wrap gap-2 justify-between">
               <span 
                 className="px-2.5 py-1 rounded-full text-xs font-medium text-white shadow-sm inline-flex items-center gap-1.5"
                 style={{ backgroundColor: `${matchedFaction.color}33`, border: `1px solid ${matchedFaction.color}88` }}
@@ -223,11 +265,19 @@ export default function OfficerCard({
                 {matchedFaction.name}
               </span>
 
-              {officer.custom && (
-                <span className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] tracking-wider px-2 py-0.5 rounded font-mono">
-                  原创
-                </span>
-              )}
+              <div className="flex items-center gap-1.5">
+                {officer.isGlobalLeader && (
+                  <span className="bg-gradient-to-r from-amber-500/20 to-red-500/20 border border-amber-400/40 text-amber-300 text-[10px] tracking-wider px-2 py-0.5 rounded-md font-mono font-bold flex items-center gap-1 shadow-sm">
+                    <span>🌍</span> 全球领袖
+                  </span>
+                )}
+
+                {officer.custom && (
+                  <span className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] tracking-wider px-2 py-0.5 rounded font-mono">
+                    原创
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

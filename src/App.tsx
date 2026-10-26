@@ -45,6 +45,7 @@ export default function App() {
   // Roster Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [factionFilter, setFactionFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'global' | 'threekingdoms' | 'custom'>('all');
   const [selectedOfficer, setSelectedOfficer] = useState<Officer>(FAMOUS_OFFICERS[0]);
 
   // Strategy Advisor panel states
@@ -321,6 +322,8 @@ export default function App() {
           requestId,
           name: officer.name,
           styleName: officer.styleName,
+          englishName: officer.englishName,
+          origin: officer.origin,
           gender: officer.gender,
           factionName: matchedFaction.name,
           stats: officer.stats,
@@ -601,11 +604,24 @@ export default function App() {
 
   // Filter & Search roster
   const filteredOfficers = officers.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (item.styleName && item.styleName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      item.biography.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q ||
+      item.name.toLowerCase().includes(q) || 
+      (item.styleName && item.styleName.toLowerCase().includes(q)) ||
+      (item.englishName && item.englishName.toLowerCase().includes(q)) ||
+      (item.origin && item.origin.toLowerCase().includes(q)) ||
+      item.biography.toLowerCase().includes(q) ||
+      item.traits.some(t => t.toLowerCase().includes(q)) ||
+      item.skills.some(s => s.toLowerCase().includes(q));
+
+    const matchesCategory = 
+      categoryFilter === 'all' ? true :
+      categoryFilter === 'global' ? !!item.isGlobalLeader :
+      categoryFilter === 'threekingdoms' ? (!item.isGlobalLeader && !item.custom) :
+      categoryFilter === 'custom' ? !!item.custom : true;
+
     const matchesFaction = factionFilter === 'all' || item.factionId === factionFilter;
-    return matchesSearch && matchesFaction;
+    return matchesSearch && matchesCategory && matchesFaction;
   });
 
   // Render markdown with high visual fidelity custom parser
@@ -800,41 +816,95 @@ export default function App() {
             <div className="flex flex-col gap-5">
               
               {/* Filter controls */}
-              <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col md:flex-row gap-4 justify-between items-center">
-                <div className="relative w-full md:w-64">
-                  <Search size={14} className="absolute left-3 top-3.5 text-slate-500" />
-                  <input
-                    id="search-officers"
-                    type="text"
-                    placeholder="搜姓名、字号、技能特质或列传..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl pl-9 pr-4 py-2.5 text-xs focus:outline-none focus:border-slate-700 transition-colors"
-                  />
-                </div>
-
-                <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-                  <span className="text-slate-400 text-xs font-mono shrink-0 flex items-center gap-1.5">
-                    <Filter size={12} /> 筛选所属阵营:
-                  </span>
-                  <div className="flex gap-1">
+              <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col gap-3.5">
+                {/* Category selector row */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/50">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {[
-                      { id: 'all', name: '不限势力' },
-                      ...FACTIONS
-                    ].map(f => (
+                      { id: 'all', label: '全部豪杰', count: officers.length, icon: '⚔️' },
+                      { id: 'global', label: '世界群雄', count: officers.filter(o => o.isGlobalLeader).length, icon: '🌍' },
+                      { id: 'threekingdoms', label: '华夏三国', count: officers.filter(o => !o.isGlobalLeader && !o.custom).length, icon: '🐉' },
+                      { id: 'custom', label: '自创武将', count: officers.filter(o => o.custom).length, icon: '✨' }
+                    ].map(cat => (
                       <button
-                        id={`btn-faction-filter-${f.id}`}
-                        key={f.id}
-                        onClick={() => setFactionFilter(f.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all border shrink-0 ${
-                          factionFilter === f.id 
-                            ? 'bg-slate-800 text-slate-200 border-slate-600' 
-                            : 'bg-slate-950/40 text-slate-400 border-transparent hover:border-slate-900 hover:text-slate-300'
+                        id={`btn-category-${cat.id}`}
+                        key={cat.id}
+                        onClick={() => {
+                          setCategoryFilter(cat.id as any);
+                          if (cat.id === 'global' && factionFilter !== 'all') {
+                            const isGlobalFaction = ['rome', 'macedon', 'persia', 'kushan', 'yamatai', 'carthage', 'steppe'].includes(factionFilter);
+                            if (!isGlobalFaction) setFactionFilter('all');
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all inline-flex items-center gap-1.5 border cursor-pointer ${
+                          categoryFilter === cat.id
+                            ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/60 shadow-sm'
+                            : 'bg-slate-950/60 text-slate-400 border-slate-800/80 hover:text-slate-200 hover:border-slate-700'
                         }`}
                       >
-                        {f.name}
+                        <span>{cat.icon}</span>
+                        <span>{cat.label}</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${categoryFilter === cat.id ? 'bg-amber-500/30 text-amber-200' : 'bg-slate-800 text-slate-400'}`}>
+                          {cat.count}
+                        </span>
                       </button>
                     ))}
+                  </div>
+
+                  <div className="text-xs text-slate-400 font-mono">
+                    已入册豪杰: <strong className="text-amber-400">{filteredOfficers.length}</strong> / {officers.length} 位
+                  </div>
+                </div>
+
+                {/* Search and Faction Filter row */}
+                <div className="flex flex-col md:flex-row gap-3 justify-between items-center">
+                  <div className="relative w-full md:w-80">
+                    <Search size={14} className="absolute left-3 top-3.5 text-slate-500" />
+                    <input
+                      id="search-officers"
+                      type="text"
+                      placeholder="搜姓名、号/字、西文名、国家领地、特质或列传..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl pl-9 pr-8 py-2.5 text-xs focus:outline-none focus:border-slate-700 transition-colors"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2.5 top-3 text-slate-500 hover:text-slate-300 text-xs font-mono"
+                        title="清空搜索"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                    <span className="text-slate-400 text-xs font-mono shrink-0 flex items-center gap-1">
+                      <Filter size={12} /> 所属阵营:
+                    </span>
+                    <div className="flex gap-1">
+                      {[
+                        { id: 'all', name: '不限阵营' },
+                        ...FACTIONS
+                      ].map(f => (
+                        <button
+                          id={`btn-faction-filter-${f.id}`}
+                          key={f.id}
+                          onClick={() => setFactionFilter(f.id)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all border shrink-0 flex items-center gap-1 cursor-pointer ${
+                            factionFilter === f.id 
+                              ? 'bg-slate-800 text-slate-100 border-amber-500/50 shadow-sm' 
+                              : 'bg-slate-950/40 text-slate-400 border-transparent hover:border-slate-800 hover:text-slate-300'
+                          }`}
+                        >
+                          {'color' in f && (
+                            <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: (f as any).color }}></span>
+                          )}
+                          {f.name}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>

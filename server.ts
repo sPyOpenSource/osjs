@@ -137,15 +137,16 @@ wss.on('connection', (ws: WebSocket) => {
         }
 
         case 'generate_bio': {
-          const { name, styleName, gender, factionName, stats, traits, skills, requestId } = msg.data;
+          const { name, styleName, englishName, origin, gender, factionName, stats, traits, skills, requestId } = msg.data;
           try {
             const ai = getGeminiClient();
-            const prompt = `你是一位精通《三国志》与三国历史的传奇传记撰写官。
-请为武将撰写一段生动、宏大、符合历史或传奇色彩的武将列传（个人传记），篇幅为3-4句话。
+            const prompt = `你是一位精通《三国志》与古代世界文明史的传奇传记撰写官。
+请为武将/君王撰写一段生动、宏大、符合历史或传奇色彩的列传（个人传记），篇幅为3-4句话。
 请使用极高水准、典雅古风的中文进行书写，风格应与光荣特库摩的《三国志8》武将列传完美契合。
 
-武将信息细节：
-- 姓名：${name} ${styleName ? `（字：${styleName}）` : ""}
+人物信息细节：
+- 姓名：${name} ${styleName ? `（号/字：${styleName}）` : ""} ${englishName ? `[西文原名: ${englishName}]` : ""}
+- 出生地/文明渊源：${origin || "华夏中原"}
 - 性别：${gender === 'Male' ? '男' : '女'}
 - 所属势力 / 阵营：${factionName}
 - 五维属性 (0-100)：统帅 ${stats?.leadership}、武力 ${stats?.force}、智力 ${stats?.intelligence}、政治 ${stats?.politics}、魅力 ${stats?.charisma}

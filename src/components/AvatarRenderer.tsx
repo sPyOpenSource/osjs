@@ -18,6 +18,13 @@ export default function AvatarRenderer({ style, size = 120 }: AvatarRendererProp
     '#f8fafc': '#cbd5e1', // White -> Soft Gray
     '#fb923c': '#c2410c', // Orange
     '#059669': '#064e3b',
+    '#dc2626': '#991b1b', // Roman Crimson
+    '#0284c7': '#0369a1', // Macedon Cyan
+    '#0d9488': '#0f766e', // Persian Teal
+    '#d97706': '#b45309', // Kushan/India Amber
+    '#db2777': '#be185d', // Yamatai Rose
+    '#92400e': '#78350f', // Carthage Bronze
+    '#4f46e5': '#3730a3', // Steppe Indigo
   };
 
   const armorColor = style.armorColor || '#3b82f6';
@@ -30,6 +37,7 @@ export default function AvatarRenderer({ style, size = 120 }: AvatarRendererProp
     '#171717': '#000000', // Dark Charcoal
     '#c2410c': '#7c2d12', // Crimson-red Beard
     '#4b5563': '#1f2937', // Gray hair
+    '#b45309': '#78350f', // Golden Chestnut
   };
 
   const hairColor = style.hairColor || '#1e293b';

@@ -317,6 +317,22 @@ export default function TacticalMap({
   const [showTradeRoutes, setShowTradeRoutes] = useState(true);
   const [showTopography, setShowTopography] = useState(true);
   const [isWideView, setIsWideView] = useState(false);
+  // Double-click zoom for the tactical map canvas
+  const [mapZoom, setMapZoom] = useState(1);
+  const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
+  const handleMapZoomDblClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (mapZoom > 1) {
+      setMapZoom(1);
+      setZoomOrigin({ x: 50, y: 50 });
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setZoomOrigin({
+      x: Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100)),
+      y: Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100)),
+    });
+    setMapZoom(2.5);
+  };
   const [cityOwnership, setCityOwnership] = useState<Record<string, string>>(() => 
     getScenarioDefaultOwnership(selectedScenario.id)
   );
@@ -858,6 +874,8 @@ export default function TacticalMap({
     setExpeditionLogs([]);
     setExpeditionStep(-1);
     setIsExpeditionRunning(false);
+    setMapZoom(1);
+    setZoomOrigin({ x: 50, y: 50 });
   };
 
   return (
@@ -1110,7 +1128,15 @@ export default function TacticalMap({
             </div>
 
             {/* Interactive SVG Canvas */}
-            <div className="relative w-full aspect-[50/31] bg-[#020617] rounded-xl border border-slate-900 overflow-hidden select-none">
+            <div
+              onDoubleClick={handleMapZoomDblClick}
+              className="relative w-full aspect-[50/31] bg-[#020617] rounded-xl border border-slate-900 overflow-hidden select-none"
+            >
+              {/* Zoomable content wrapper — double-click to zoom in at point, double-click again to reset */}
+              <div
+                className={`absolute inset-0 transition-transform duration-500 ease-out ${mapZoom === 1 ? 'cursor-zoom-in' : 'cursor-zoom-out'}`}
+                style={{ transform: `scale(${mapZoom})`, transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%` }}
+              >
               
               {/* Ambient map grid and continental vector geometry */}
               <svg className="absolute inset-0 w-full h-full text-slate-900 pointer-events-none" viewBox="0 0 1000 620" xmlns="http://www.w3.org/2000/svg">
@@ -1779,6 +1805,18 @@ export default function TacticalMap({
                 </div>
               )}
               
+              </div>
+
+              {/* Zoom Reset Control */}
+              {mapZoom > 1 && (
+                <button
+                  onClick={() => { setMapZoom(1); setZoomOrigin({ x: 50, y: 50 }); }}
+                  className="absolute top-2.5 right-2.5 z-30 px-2.5 py-1 bg-slate-950/85 backdrop-blur-sm border border-amber-500/40 text-amber-400 text-[10px] font-mono font-bold rounded-lg hover:bg-slate-900 hover:border-amber-400 transition-colors cursor-pointer"
+                >
+                  复位全景 ({mapZoom}×) ✕
+                </button>
+              )}
+
               {/* Visual Instruction Badge on map bottom */}
               <div className="absolute bottom-2.5 left-2.5 bg-slate-950/85 backdrop-blur-sm border border-slate-900 rounded-lg p-2 max-w-md z-10 flex gap-2 items-center">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />

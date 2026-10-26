@@ -188,7 +188,7 @@ export default function OfficerCard({
         onEdit({ ...officer, biography });
       }
     } catch (err: any) {
-      console.error(err);
+      console.warn('[OfficerCard] Generate bio notice:', err?.message || err);
       alert(err.message || '生成列传失败。请检查秘钥或重试。');
     } finally {
       setIsGeneratingBio(false);

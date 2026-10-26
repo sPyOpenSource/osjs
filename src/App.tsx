@@ -135,7 +135,7 @@ export default function App() {
   const [relType, setRelType] = useState<'Sworn Brother' | 'Rival' | 'Spouse' | 'Lord' | 'Confidant' | 'Trust'>('Sworn Brother');
   const [combatOutcome, setCombatOutcome] = useState<string | null>(null);
 
-  // Real-time WebSockets synchronization
+  // Real-time WebSockets synchronization & resilient HTTP fallback
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const pendingRequestsRef = useRef<Record<string, {
@@ -146,159 +146,200 @@ export default function App() {
   useEffect(() => {
     let socket: WebSocket | null = null;
     let reconnectTimeout: any = null;
+    let reconnectAttempts = 0;
+    let isDisposed = false;
+
+    // Immediately fetch initial state via HTTP in parallel so app is instantly populated
+    const fetchInitialHttpState = async () => {
+      try {
+        const [offRes, relRes] = await Promise.all([
+          fetch('/api/officers').then(r => r.ok ? r.json() : null),
+          fetch('/api/relationships').then(r => r.ok ? r.json() : null)
+        ]);
+        if (isDisposed) return;
+        if (offRes && Array.isArray(offRes) && offRes.length > 0) {
+          setOfficers(offRes);
+          setSelectedOfficer(curr => curr && offRes.some((o: any) => o.id === curr.id) ? curr : offRes[0]);
+        }
+        if (relRes && Array.isArray(relRes)) {
+          setRelationships(relRes);
+        }
+        setHasServerConnection(true);
+      } catch (err) {
+        console.info('[Init] Offline/standalone mode active.');
+      }
+    };
+    fetchInitialHttpState();
 
     function connect() {
+      if (isDisposed) return;
       setWsStatus('connecting');
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}`;
-      console.log(`[WS] Connecting to ${wsUrl}...`);
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
 
-      socket = new WebSocket(wsUrl);
+      try {
+        socket = new WebSocket(wsUrl);
 
-      socket.onopen = () => {
-        console.log('[WS] Connected to live Three Kingdoms tactical server!');
-        setWsStatus('connected');
-        setHasServerConnection(true);
-      };
+        socket.onopen = () => {
+          if (isDisposed) return;
+          console.log('[WS] Connected to live Three Kingdoms tactical server!');
+          reconnectAttempts = 0;
+          setWsStatus('connected');
+          setHasServerConnection(true);
+        };
 
-      socket.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          console.log('[WS] Message received from host:', msg.type);
+        socket.onmessage = (event) => {
+          if (isDisposed) return;
+          try {
+            const msg = JSON.parse(event.data);
 
-          switch (msg.type) {
-            case 'init': {
-              const { officers: initialOfficers, relationships: initialRelationships } = msg.data;
-              setOfficers(initialOfficers);
-              setRelationships(initialRelationships);
-              // Set initial selected officer safely if none selected yet or selected one is reset
-              if (initialOfficers.length > 0) {
+            switch (msg.type) {
+              case 'init': {
+                const { officers: initialOfficers, relationships: initialRelationships } = msg.data;
+                setOfficers(initialOfficers);
+                setRelationships(initialRelationships);
+                if (initialOfficers.length > 0) {
+                  setSelectedOfficer(current => {
+                    if (!current || !initialOfficers.some((o: any) => o.id === current.id)) {
+                      return initialOfficers[0];
+                    }
+                    return current;
+                  });
+                }
+                break;
+              }
+
+              case 'officer_added': {
+                const newOfficer = msg.data;
+                setOfficers(prev => {
+                  const existingIdx = prev.findIndex(o => o.id === newOfficer.id);
+                  if (existingIdx !== -1) {
+                    const updated = [...prev];
+                    updated[existingIdx] = newOfficer;
+                    return updated;
+                  }
+                  return [newOfficer, ...prev];
+                });
+                setSelectedOfficer(current => current && current.id === newOfficer.id ? newOfficer : current);
+                break;
+              }
+
+              case 'officer_deleted': {
+                const { officerId, relationships: updatedRels } = msg.data;
+                setOfficers(prev => prev.filter(o => o.id !== officerId));
+                setRelationships(updatedRels);
                 setSelectedOfficer(current => {
-                  if (!current || !initialOfficers.some((o: Officer) => o.id === current.id)) {
-                    return initialOfficers[0];
+                  if (current && current.id === officerId) {
+                    return FAMOUS_OFFICERS[0];
                   }
                   return current;
                 });
+                break;
               }
-              break;
-            }
 
-            case 'officer_added': {
-              const newOfficer = msg.data;
-              setOfficers(prev => {
-                const existingIdx = prev.findIndex(o => o.id === newOfficer.id);
-                if (existingIdx !== -1) {
-                  // Update in-place
-                  const updated = [...prev];
-                  updated[existingIdx] = newOfficer;
-                  return updated;
+              case 'relationship_added': {
+                const newRel = msg.data;
+                setRelationships(prev => {
+                  const exists = prev.some(r => 
+                    (r.fromOfficerId === newRel.fromOfficerId && r.toOfficerId === newRel.toOfficerId) ||
+                    (r.fromOfficerId === newRel.toOfficerId && r.toOfficerId === newRel.fromOfficerId)
+                  );
+                  if (exists) return prev;
+                  return [...prev, newRel];
+                });
+                break;
+              }
+
+              case 'relationship_deleted': {
+                const { fromOfficerId, toOfficerId } = msg.data;
+                setRelationships(prev => prev.filter(r => 
+                  !(r.fromOfficerId === fromOfficerId && r.toOfficerId === toOfficerId) &&
+                  !(r.fromOfficerId === toOfficerId && r.toOfficerId === fromOfficerId)
+                ));
+                break;
+              }
+
+              case 'bio_generated': {
+                const { requestId, biography } = msg.data;
+                const pending = pendingRequestsRef.current[requestId];
+                if (pending) {
+                  pending.resolve(biography);
+                  delete pendingRequestsRef.current[requestId];
                 }
-                return [newOfficer, ...prev];
-              });
-              setSelectedOfficer(current => current && current.id === newOfficer.id ? newOfficer : current);
-              break;
-            }
+                break;
+              }
 
-            case 'officer_deleted': {
-              const { officerId, relationships: updatedRels } = msg.data;
-              setOfficers(prev => prev.filter(o => o.id !== officerId));
-              setRelationships(updatedRels);
-              setSelectedOfficer(current => {
-                if (current && current.id === officerId) {
-                  return FAMOUS_OFFICERS[0];
+              case 'strategy_evaluated': {
+                const { requestId, advice } = msg.data;
+                const pending = pendingRequestsRef.current[requestId];
+                if (pending) {
+                  pending.resolve(advice);
+                  delete pendingRequestsRef.current[requestId];
                 }
-                return current;
-              });
-              break;
-            }
-
-            case 'relationship_added': {
-              const newRel = msg.data;
-              setRelationships(prev => {
-                const exists = prev.some(r => 
-                  (r.fromOfficerId === newRel.fromOfficerId && r.toOfficerId === newRel.toOfficerId) ||
-                  (r.fromOfficerId === newRel.toOfficerId && r.toOfficerId === newRel.fromOfficerId)
-                );
-                if (exists) return prev;
-                return [...prev, newRel];
-              });
-              break;
-            }
-
-            case 'relationship_deleted': {
-              const { fromOfficerId, toOfficerId } = msg.data;
-              setRelationships(prev => prev.filter(r => 
-                !(r.fromOfficerId === fromOfficerId && r.toOfficerId === toOfficerId) &&
-                !(r.fromOfficerId === toOfficerId && r.toOfficerId === fromOfficerId)
-              ));
-              break;
-            }
-
-            case 'bio_generated': {
-              const { requestId, biography } = msg.data;
-              const pending = pendingRequestsRef.current[requestId];
-              if (pending) {
-                pending.resolve(biography);
-                delete pendingRequestsRef.current[requestId];
+                break;
               }
-              break;
-            }
 
-            case 'strategy_evaluated': {
-              const { requestId, advice } = msg.data;
-              const pending = pendingRequestsRef.current[requestId];
-              if (pending) {
-                pending.resolve(advice);
-                delete pendingRequestsRef.current[requestId];
+              case 'duel_notification': {
+                const result = msg.data;
+                setCombatOutcome(`⚔️ 武将单挑战报：【${result.winnerName}】(武力值 ${result.winnerForce}) 击败了 【${result.loserName}】(武力值 ${result.loserForce})！\n\n战场细节描写：${result.dialogue}`);
+                if (soundEnabled) {
+                  playClashSound();
+                }
+                break;
               }
-              break;
-            }
 
-            case 'duel_notification': {
-              const result = msg.data;
-              setCombatOutcome(`⚔️ 武将单挑战报：【${result.winnerName}】(武力值 ${result.winnerForce}) 击败了 【${result.loserName}】(武力值 ${result.loserForce})！\n\n战场细节描写：${result.dialogue}`);
-              if (soundEnabled) {
-                playClashSound();
+              case 'error': {
+                const { requestId, message } = msg.data;
+                const pending = pendingRequestsRef.current[requestId];
+                if (pending) {
+                  pending.reject(new Error(message));
+                  delete pendingRequestsRef.current[requestId];
+                }
+                break;
               }
-              break;
             }
-
-            case 'error': {
-              const { requestId, message } = msg.data;
-              const pending = pendingRequestsRef.current[requestId];
-              if (pending) {
-                pending.reject(new Error(message));
-                delete pendingRequestsRef.current[requestId];
-              }
-              break;
-            }
+          } catch (err) {
+            console.warn('[WS] Failed to parse message payload');
           }
-        } catch (err) {
-          console.error('[WS] Failed to parse payload:', err);
-        }
-      };
+        };
 
-      socket.onclose = () => {
-        console.warn('[WS] Socket disconnected. Reconnecting in 3s...');
+        socket.onclose = () => {
+          if (isDisposed) return;
+          setWsStatus('disconnected');
+          // Bound reconnection attempts with backoff to prevent continuous connection errors
+          if (reconnectAttempts < 3) {
+            reconnectAttempts++;
+            const backoffMs = reconnectAttempts * 3000;
+            reconnectTimeout = setTimeout(connect, backoffMs);
+          }
+        };
+
+        socket.onerror = () => {
+          if (isDisposed) return;
+          // Gracefully transition to HTTP fallback without firing noisy console.error
+          console.info('[WS] Switched to resilient HTTP mode.');
+          setWsStatus('disconnected');
+        };
+
+        setWs(socket);
+      } catch (e) {
+        console.info('[WS] Socket init skipped, HTTP mode active.');
         setWsStatus('disconnected');
-        setHasServerConnection(false);
-        reconnectTimeout = setTimeout(connect, 3000);
-      };
-
-      socket.onerror = (err) => {
-        console.error('[WS] Error caught:', err);
-        socket?.close();
-      };
-
-      setWs(socket);
+      }
     }
 
     connect();
 
     return () => {
+      isDisposed = true;
       if (socket) {
+        socket.onopen = null;
+        socket.onmessage = null;
         socket.onclose = null;
-        socket.close();
+        socket.onerror = null;
+        try {
+          socket.close();
+        } catch (_) {}
       }
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
@@ -306,52 +347,118 @@ export default function App() {
     };
   }, []);
 
-  // Promise-based WebSocket dispatch helpers
-  const requestBioAI = (officer: Officer, matchedFaction: Faction): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        reject(new Error("军师殿 WebSocket 链接已掉线，等连通后再重试。"));
-        return;
-      }
-      const requestId = `bio-${Date.now()}-${Math.random()}`;
-      pendingRequestsRef.current[requestId] = { resolve, reject };
-
-      ws.send(JSON.stringify({
-        type: 'generate_bio',
-        data: {
-          requestId,
-          name: officer.name,
-          styleName: officer.styleName,
-          englishName: officer.englishName,
-          origin: officer.origin,
-          gender: officer.gender,
-          factionName: matchedFaction.name,
-          stats: officer.stats,
-          traits: officer.traits,
-          skills: officer.skills
-        }
-      }));
+  // Resilient HTTP fallback helpers
+  const fetchBioHttp = async (officer: Officer, matchedFaction: Faction): Promise<string> => {
+    const res = await fetch('/api/generate_bio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: officer.name,
+        styleName: officer.styleName,
+        englishName: officer.englishName,
+        origin: officer.origin,
+        gender: officer.gender,
+        factionName: matchedFaction.name,
+        stats: officer.stats,
+        traits: officer.traits,
+        skills: officer.skills
+      })
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || '生成列传请求未响应');
+    }
+    const data = await res.json();
+    return data.biography;
+  };
+
+  const fetchStrategyHttp = async (officer: Officer, scenario: CampaignScenario): Promise<string> => {
+    const res = await fetch('/api/evaluate_strategy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ officer, scenario })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || '军师殿决策咨询未响应');
+    }
+    const data = await res.json();
+    return data.advice;
+  };
+
+  // Promise-based dispatch helpers with WebSocket + HTTP fallback
+  const requestBioAI = (officer: Officer, matchedFaction: Faction): Promise<string> => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      return new Promise((resolve, reject) => {
+        const requestId = `bio-${Date.now()}-${Math.random()}`;
+        pendingRequestsRef.current[requestId] = { resolve, reject };
+
+        // Fallback timer if WS response stalls
+        const timer = setTimeout(() => {
+          if (pendingRequestsRef.current[requestId]) {
+            delete pendingRequestsRef.current[requestId];
+            fetchBioHttp(officer, matchedFaction).then(resolve).catch(reject);
+          }
+        }, 8000);
+
+        try {
+          ws.send(JSON.stringify({
+            type: 'generate_bio',
+            data: {
+              requestId,
+              name: officer.name,
+              styleName: officer.styleName,
+              englishName: officer.englishName,
+              origin: officer.origin,
+              gender: officer.gender,
+              factionName: matchedFaction.name,
+              stats: officer.stats,
+              traits: officer.traits,
+              skills: officer.skills
+            }
+          }));
+        } catch (_) {
+          clearTimeout(timer);
+          delete pendingRequestsRef.current[requestId];
+          fetchBioHttp(officer, matchedFaction).then(resolve).catch(reject);
+        }
+      });
+    }
+
+    return fetchBioHttp(officer, matchedFaction);
   };
 
   const requestStrategyAdvisor = (officer: Officer, scenario: CampaignScenario): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        reject(new Error("军事天盘连网已阻断，暂时无法觐见军师。"));
-        return;
-      }
-      const requestId = `strat-${Date.now()}-${Math.random()}`;
-      pendingRequestsRef.current[requestId] = { resolve, reject };
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      return new Promise((resolve, reject) => {
+        const requestId = `strat-${Date.now()}-${Math.random()}`;
+        pendingRequestsRef.current[requestId] = { resolve, reject };
 
-      ws.send(JSON.stringify({
-        type: 'evaluate_strategy',
-        data: {
-          requestId,
-          officer,
-          scenario
+        const timer = setTimeout(() => {
+          if (pendingRequestsRef.current[requestId]) {
+            delete pendingRequestsRef.current[requestId];
+            fetchStrategyHttp(officer, scenario).then(resolve).catch(reject);
+          }
+        }, 8000);
+
+        try {
+          ws.send(JSON.stringify({
+            type: 'evaluate_strategy',
+            data: {
+              requestId,
+              officer,
+              scenario
+            }
+          }));
+        } catch (_) {
+          clearTimeout(timer);
+          delete pendingRequestsRef.current[requestId];
+          fetchStrategyHttp(officer, scenario).then(resolve).catch(reject);
         }
-      }));
-    });
+      });
+    }
+
+    return fetchStrategyHttp(officer, scenario);
   };
 
   // Sync selected advisor details when officer selection changes
@@ -366,7 +473,7 @@ export default function App() {
       const advice = await requestStrategyAdvisor(selectedOfficer, selectedScenario);
       setAdvisorBrief(advice);
     } catch (err: any) {
-      console.error(err);
+      console.warn('[Advisor] Strategy consult notice:', err?.message || err);
       alert(err.message || '大军师处连接遇阻，请检查您是否已在 Secrets Panel 中设置了 GEMINI_API_KEY，且开发服务器正常就绪。');
     } finally {
       setIsConsultingAdvisor(false);
@@ -471,6 +578,13 @@ export default function App() {
     } else {
       setOfficers(prev => [newOfficer, ...prev]);
     }
+
+    // Also persist via HTTP REST
+    fetch('/api/officers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newOfficer)
+    }).catch(() => {});
     
     setCreatedCount(prev => prev + 1);
     setSelectedOfficer(newOfficer);
@@ -494,6 +608,7 @@ export default function App() {
         setSelectedOfficer(FAMOUS_OFFICERS[0]);
       }
     }
+    fetch(`/api/officers/${id}`, { method: 'DELETE' }).catch(() => {});
   };
 
   const handleCreateRelationship = (e: React.FormEvent) => {
@@ -528,6 +643,11 @@ export default function App() {
     } else {
       setRelationships(prev => [...prev, newRel]);
     }
+    fetch('/api/relationships', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newRel)
+    }).catch(() => {});
   };
 
   const handleBreakRelationship = (fromId: string, toId: string) => {
@@ -542,37 +662,48 @@ export default function App() {
         !(r.fromOfficerId === toId && r.toOfficerId === fromId)
       ));
     }
+    fetch(`/api/relationships/${fromId}/${toId}`, { method: 'DELETE' }).catch(() => {});
   };
 
-  // Simple Duel Simulator trigger
-  const runBattleDuelSim = (off1: Officer, off2: Officer) => {
+  // Duel Simulator trigger (via WS broadcast or server REST endpoint)
+  const runBattleDuelSim = async (off1: Officer, off2: Officer) => {
     if (!off1 || !off2) return;
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: 'run_duel',
         data: { off1, off2 }
       }));
-    } else {
-      const force1 = off1.stats.force + Math.floor(Math.random() * 15);
-      const force2 = off2.stats.force + Math.floor(Math.random() * 15);
-      
-      let dialogue = '';
-      let winner = off1;
-      let loser = off2;
+      return;
+    }
 
-      if (force1 > force2) {
-         winner = off1;
-         loser = off2;
-      } else {
-         winner = off2;
-         loser = off1;
+    // Try server HTTP endpoint first
+    try {
+      const res = await fetch('/api/run_duel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ off1, off2 })
+      });
+      if (res.ok) {
+        const { outcome } = await res.json();
+        setCombatOutcome(`⚔️ 武将单挑战报：【${outcome.winnerName}】(武力值 ${outcome.winnerForce}) 击败了 【${outcome.loserName}】(武力值 ${outcome.loserForce})！\n\n战场细节描写：${outcome.dialogue}`);
+        if (soundEnabled) {
+          playClashSound();
+        }
+        return;
       }
+    } catch (_) {}
 
-      dialogue = `${winner.name} 挥舞神兵，避开防线，破空一击直捣 ${loser.name} 空门。“${winner.name}” 在战场单挑坐标格中夺得压倒性大胜！`;
-      setCombatOutcome(`⚔️ 【自研离线单挑结果】: 赢家：${winner.name} (单挑后武力 ${winner.stats.force}) 击败了 输家：${loser.name} (单挑后武力 ${loser.stats.force})！\n\n战场细节自摹：${dialogue}`);
-      if (soundEnabled) {
-        playClashSound();
-      }
+    // Fallback to local computation
+    const force1 = off1.stats.force + Math.floor(Math.random() * 15);
+    const force2 = off2.stats.force + Math.floor(Math.random() * 15);
+    
+    const winner = force1 >= force2 ? off1 : off2;
+    const loser = force1 >= force2 ? off2 : off1;
+
+    const dialogue = `${winner.name} 挥舞神兵，避开防线，破空一击直捣 ${loser.name} 空门。“${winner.name}” 在战场单挑坐标格中夺得压倒性大胜！`;
+    setCombatOutcome(`⚔️ 【战役单挑战报】: 赢家：${winner.name} (单挑后武力 ${winner.stats.force}) 击败了 输家：${loser.name} (单挑后武力 ${loser.stats.force})！\n\n战场细节描写：${dialogue}`);
+    if (soundEnabled) {
+      playClashSound();
     }
   };
 

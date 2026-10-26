@@ -174,7 +174,7 @@ export default function App() {
               // Set initial selected officer safely if none selected yet or selected one is reset
               if (initialOfficers.length > 0) {
                 setSelectedOfficer(current => {
-                  if (!current || !initialOfficers.some(o => o.id === current.id)) {
+                  if (!current || !initialOfficers.some((o: Officer) => o.id === current.id)) {
                     return initialOfficers[0];
                   }
                   return current;

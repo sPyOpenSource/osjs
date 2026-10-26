@@ -102,11 +102,11 @@ export const INTERNAL_TASKS: InternalTaskConfig[] = [
 ];
 
 const PRESET_CITIES = [
-  { name: '成都', title: '天府之国 · 蜀汉霸业之基', defense: 1800, maxDefense: 3000, grain: 42000, gold: 21000, troops: 35000, training: 70, morale: 82, order: 88, agriculture: 160, commerce: 140 },
-  { name: '许昌', title: '中原咽喉 · 挟天子以令诸侯', defense: 2200, maxDefense: 3500, grain: 56000, gold: 34000, troops: 50000, training: 78, morale: 86, order: 92, agriculture: 210, commerce: 230 },
-  { name: '建业', title: '龙盘虎踞 · 扼守长江天堑', defense: 1950, maxDefense: 3200, grain: 38000, gold: 26000, troops: 38000, training: 74, morale: 84, order: 86, agriculture: 180, commerce: 190 },
-  { name: '襄阳', title: '南服从道 · 兵家必争重镇', defense: 1700, maxDefense: 2800, grain: 29000, gold: 17000, troops: 26000, training: 66, morale: 76, order: 80, agriculture: 130, commerce: 120 },
-  { name: '洛阳', title: '十三朝古都 · 巍巍帝室王气', defense: 1500, maxDefense: 4000, grain: 31000, gold: 22000, troops: 30000, training: 68, morale: 75, order: 72, agriculture: 140, commerce: 170 }
+  { cityName: '成都', title: '天府之国 · 蜀汉霸业之基', defense: 1800, maxDefense: 3000, grain: 42000, gold: 21000, troops: 35000, training: 70, morale: 82, order: 88, agriculture: 160, commerce: 140 },
+  { cityName: '许昌', title: '中原咽喉 · 挟天子以令诸侯', defense: 2200, maxDefense: 3500, grain: 56000, gold: 34000, troops: 50000, training: 78, morale: 86, order: 92, agriculture: 210, commerce: 230 },
+  { cityName: '建业', title: '龙盘虎踞 · 扼守长江天堑', defense: 1950, maxDefense: 3200, grain: 38000, gold: 26000, troops: 38000, training: 74, morale: 84, order: 86, agriculture: 180, commerce: 190 },
+  { cityName: '襄阳', title: '南服从道 · 兵家必争重镇', defense: 1700, maxDefense: 2800, grain: 29000, gold: 17000, troops: 26000, training: 66, morale: 76, order: 80, agriculture: 130, commerce: 120 },
+  { cityName: '洛阳', title: '十三朝古都 · 巍巍帝室王气', defense: 1500, maxDefense: 4000, grain: 31000, gold: 22000, troops: 30000, training: 68, morale: 75, order: 72, agriculture: 140, commerce: 170 }
 ];
 
 export default function InternalAffairs({
@@ -598,7 +598,7 @@ export default function InternalAffairs({
               <span className="text-[10px] font-mono text-slate-500 self-center mr-1">调阅治所：</span>
               {PRESET_CITIES.map((c, idx) => (
                 <button
-                  key={c.name}
+                  key={c.cityName}
                   onClick={() => handleSwitchCity(idx)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-serif transition-all cursor-pointer ${
                     selectedCityIndex === idx
@@ -606,7 +606,7 @@ export default function InternalAffairs({
                       : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
                   }`}
                 >
-                  {c.name}
+                  {c.cityName}
                 </button>
               ))}
             </div>

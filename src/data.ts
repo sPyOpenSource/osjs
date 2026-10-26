@@ -712,7 +712,10 @@ export const FAMOUS_RELATIONSHIPS: RelationshipRelation[] = [
   { fromOfficerId: 'marcus_aurelius', toOfficerId: 'caesar', type: 'Trust' },
   { fromOfficerId: 'ashoka', toOfficerId: 'kanishka', type: 'Trust' },
   { fromOfficerId: 'modu', toOfficerId: 'liubei', type: 'Rival' },
-  { fromOfficerId: 'ardashir', toOfficerId: 'alexander', type: 'Rival' }
+  { fromOfficerId: 'ardashir', toOfficerId: 'alexander', type: 'Rival' },
+  { fromOfficerId: 'napoleon', toOfficerId: 'caesar', type: 'Trust' },
+  { fromOfficerId: 'napoleon', toOfficerId: 'alexander', type: 'Trust' },
+  { fromOfficerId: 'catherine', toOfficerId: 'cleopatra', type: 'Trust' }
 ];
 
 export const SCENARIOS: CampaignScenario[] = [

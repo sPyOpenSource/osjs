@@ -963,7 +963,7 @@ export default function App() {
                         onClick={() => {
                           setCategoryFilter(cat.id as any);
                           if (cat.id === 'global' && factionFilter !== 'all') {
-                            const isGlobalFaction = ['rome', 'macedon', 'persia', 'kushan', 'yamatai', 'carthage', 'steppe'].includes(factionFilter);
+                            const isGlobalFaction = ['rome', 'macedon', 'persia', 'kushan', 'yamatai', 'carthage', 'steppe', 'france', 'russia', 'wuzhou', 'qing', 'ronin'].includes(factionFilter);
                             if (!isGlobalFaction) setFactionFilter('all');
                           }
                         }}

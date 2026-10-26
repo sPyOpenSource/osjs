@@ -25,6 +25,9 @@ export default function AvatarRenderer({ style, size = 120 }: AvatarRendererProp
     '#db2777': '#be185d', // Yamatai Rose
     '#92400e': '#78350f', // Carthage Bronze
     '#4f46e5': '#3730a3', // Steppe Indigo
+    '#1e40af': '#1e3a8a', // France Blue
+    '#15803d': '#14532d', // Russia Green
+    '#be185d': '#831843', // Wu Zhou Imperial Crimson
   };
 
   const armorColor = style.armorColor || '#3b82f6';

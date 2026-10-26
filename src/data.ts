@@ -114,6 +114,22 @@ export const FACTIONS: Faction[] = [
     crest: '🦅 俄罗斯 (双头鹰绿)'
   },
   {
+    id: 'wuzhou',
+    name: '大周王朝',
+    ruler: '武则天',
+    color: '#be185d', // pink-700
+    description: '华夏唯一正统女皇武则天所开创的大周神朝。迁都神都洛阳，革新科举，广开言路，破格擢拔天下寒门良才，国泰民安，威服四夷。',
+    crest: '👑 大周 (金凤)'
+  },
+  {
+    id: 'qing',
+    name: '大清帝国',
+    ruler: '乾隆',
+    color: '#d97706', // amber-600
+    description: '坐镇紫禁城、统领满蒙汉八旗与十全武功的大清帝国。十次远征开拓巩固疆域近一千三百万平方公里，盛世修典，国力鼎盛。',
+    crest: '🐉 大清 (黄龙)'
+  },
+  {
     id: 'ronin',
     name: '在野 (在野武将)',
     ruler: '无',
@@ -139,7 +155,10 @@ export const AVAILABLE_TRAITS = [
   '战象神威 (冲锋时令周围敌军陷入恐慌动摇并削弱其士气)',
   '鬼道神巫 (施展神秘咒术安抚治下万民并诱使敌阵迷乱)',
   '转轮圣王 (仁爱德化四海，所在领地治安稳定且商业税赋极大提升)',
-  '万王之王 (波斯铁骑与精锐弓骑协同突击，杀伤力呈破甲倍增)'
+  '万王之王 (波斯铁骑与精锐弓骑协同突击，杀伤力呈破甲倍增)',
+  '日月凌空 (女主临朝，独步千古，治下民心安定且百官忠诚激增)',
+  '十全武功 (疆域开拓、万国来朝，远征后勤与八旗兵锋消耗大幅降低)',
+  '诗仙剑圣 (斗酒百篇，仗剑天涯，策谋奇袭暴击与个人魅力冠绝天下)'
 ];
 
 export const AVAILABLE_SKILLS = [
@@ -156,7 +175,10 @@ export const AVAILABLE_SKILLS = [
   '雷霆远征 (以雷霆万钧之势奔袭敌军核心指挥所)',
   '迦太基战象 (驱使庞大披甲战象践踏撕裂敌军步骑阵线)',
   '帕提亚回马射 (伪装溃退诱敌深入，突然回身射出致命穿透重箭)',
-  '鬼道迷离 (施展东海神巫法术使敌全军陷入迷雾与幻境混乱)'
+  '鬼道迷离 (施展东海神巫法术使敌全军陷入迷雾与幻境混乱)',
+  '日月当空 (以无上女皇威仪震慑敌军全阵，削弱其士气与策谋成功率)',
+  '十全平定 (调动满蒙汉八旗与神机营连环火器轰击，阵地固若金汤)',
+  '青莲剑歌 (十步杀一人，千里不留行，以疾风骤雨般的快剑发动无双刺杀)'
 ];
 
 export const FAMOUS_OFFICERS: Officer[] = [
@@ -692,6 +714,117 @@ export const FAMOUS_OFFICERS: Officer[] = [
     traits: ['雄心 (提升个人武将统御及兵力募集上限)', '枭雄 (面对优势敌军时力量获得额外成长)', '仁德 (提升声望与信赖程度)'],
     skills: ['齐射 (发动大范围远程箭雨压制)', '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)', '治疗 (恢复重伤士兵的编制数并激发高昂士气)', '铁壁 (短时间内进入物理与计谋免疫的无敌状态)'],
     biography: '俄罗斯帝国罗曼诺夫王朝女皇，德意志公主嫁入俄廷，以雄才大略登基称帝，史称“叶卡捷琳娜大帝”。她开明施政、广兴文教，与伏尔泰狄德罗鸿雁论政；南疆吞并克里米亚、西境瓜分波兰，将双头鹰版图推向极盛，堪称与彼得大帝齐名之一代雄主。'
+  },
+  {
+    id: 'wuzetian',
+    name: '武则天',
+    gender: 'Female',
+    styleName: '圣神皇帝 · 武曌',
+    englishName: 'Wu Zetian (Empress Regnant)',
+    origin: '大周神都 · 洛阳',
+    isGlobalLeader: true,
+    factionId: 'wuzhou',
+    avatarStyle: {
+      hairColor: '#0f172a',
+      hairStyle: 'Scholar Jade Headdress',
+      armorColor: '#be185d',
+      accessory: 'Golden Sovereign Crown',
+      expression: 'Cold Sovereign',
+      bgGradient: 'from-rose-950 via-purple-950 to-amber-950'
+    },
+    stats: {
+      leadership: 93,
+      force: 42,
+      intelligence: 98,
+      politics: 100,
+      charisma: 99
+    },
+    traits: [
+      '日月凌空 (女主临朝，独步千古，治下民心安定且百官忠诚激增)',
+      '雄心 (提升个人武将统御及兵力募集上限)',
+      '枭雄 (面对优势敌军时力量获得额外成长)'
+    ],
+    skills: [
+      '日月当空 (以无上女皇威仪震慑敌军全阵，削弱其士气与策谋成功率)',
+      '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)',
+      '治疗 (恢复重伤士兵的编制数并激发高昂士气)',
+      '铁壁 (短时间内进入物理与计谋免疫的无敌状态)'
+    ],
+    biography: '华夏历史上唯一的正统大一统女皇帝，改国号为周，定都神都洛阳。从才人登临九五之尊，明察善断，革新科举创立殿试武举，不拘一格拔擢狄仁杰、张柬之、娄师德等治国名相；上承贞观之治，下启开元盛世。其一生波澜壮阔，立无字碑留待后人评说。'
+  },
+  {
+    id: 'qianlong',
+    name: '乾隆',
+    gender: 'Male',
+    styleName: '十全老人 · 弘历',
+    englishName: 'Emperor Qianlong (Hongli)',
+    origin: '大清帝国 · 紫禁城',
+    isGlobalLeader: true,
+    factionId: 'qing',
+    avatarStyle: {
+      hairColor: '#171717',
+      hairStyle: 'Topknot Imperial',
+      armorColor: '#eab308',
+      accessory: 'Golden Sovereign Crown',
+      expression: 'Stately Guarded',
+      bgGradient: 'from-amber-950 via-yellow-950 to-slate-950'
+    },
+    stats: {
+      leadership: 89,
+      force: 75,
+      intelligence: 92,
+      politics: 95,
+      charisma: 94
+    },
+    traits: [
+      '十全武功 (疆域开拓、万国来朝，远征后勤与八旗兵锋消耗大幅降低)',
+      '雄心 (提升个人武将统御及兵力募集上限)',
+      '转轮圣王 (仁爱德化四海，所在领地治安稳定且商业税赋极大提升)'
+    ],
+    skills: [
+      '十全平定 (调动满蒙汉八旗与神机营连环火器轰击，阵地固若金汤)',
+      '齐射 (发动大范围远程箭雨压制)',
+      '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)',
+      '铁壁 (短时间内进入物理与计谋免疫的无敌状态)'
+    ],
+    biography: '清高宗爱新觉罗·弘历，在位六十年，训政三年，享年八十九岁，开创“乾隆盛世”。他自诩“十全老人”，两平准噶尔、定回部、两征金川，巩固近一千三百万平方公里版图；编纂《四库全书》，六下江南，巡幸海内，万国来朝，将大清文治武功推至鼎盛。'
+  },
+  {
+    id: 'libai',
+    name: '李白',
+    gender: 'Male',
+    styleName: '青莲居士 · 诗仙',
+    englishName: 'Li Bai (Poet Immortal)',
+    origin: '盛唐长安 · 青莲剑仙',
+    isGlobalLeader: true,
+    factionId: 'ronin',
+    avatarStyle: {
+      hairColor: '#0f172a',
+      hairStyle: 'Long Bound Mane',
+      armorColor: '#f8fafc',
+      accessory: 'Engraved Commander Sword',
+      expression: 'Brilliant Calm',
+      bgGradient: 'from-sky-950 via-indigo-950 to-slate-950'
+    },
+    stats: {
+      leadership: 78,
+      force: 88,
+      intelligence: 98,
+      politics: 72,
+      charisma: 100
+    },
+    traits: [
+      '诗仙剑圣 (斗酒百篇，仗剑天涯，策谋奇袭暴击与个人魅力冠绝天下)',
+      '美周郎 (大幅提高我方士气及水军行军移动)',
+      '神算 (奇门陷阱与火计策略之成功率、杀伤力大幅增强)'
+    ],
+    skills: [
+      '青莲剑歌 (十步杀一人，千里不留行，以疾风骤雨般的快剑发动无双刺杀)',
+      '单挑 (开启惊心动魄的1对1武将武艺对决)',
+      '奇袭 (穿越丛林灌木发动奔袭，无视城墙防守防线)',
+      '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)'
+    ],
+    biography: '唐代伟大的浪漫主义诗人，字太白，号青莲居士，世称“诗仙”、“酒中仙”。十五好剑术、遍干诸侯，三十成文章、历抵卿相。天宝初供奉翰林，因醉草吓蛮书名动长安，后仗剑漫游神州大川。“十步杀一人，千里不留行”，兼备惊世才情与盖世剑侠豪气。'
   }
 ];
 
@@ -715,7 +848,16 @@ export const FAMOUS_RELATIONSHIPS: RelationshipRelation[] = [
   { fromOfficerId: 'ardashir', toOfficerId: 'alexander', type: 'Rival' },
   { fromOfficerId: 'napoleon', toOfficerId: 'caesar', type: 'Trust' },
   { fromOfficerId: 'napoleon', toOfficerId: 'alexander', type: 'Trust' },
-  { fromOfficerId: 'catherine', toOfficerId: 'cleopatra', type: 'Trust' }
+  { fromOfficerId: 'catherine', toOfficerId: 'cleopatra', type: 'Trust' },
+  { fromOfficerId: 'wuzetian', toOfficerId: 'catherine', type: 'Confidant' },
+  { fromOfficerId: 'catherine', toOfficerId: 'wuzetian', type: 'Confidant' },
+  { fromOfficerId: 'wuzetian', toOfficerId: 'cleopatra', type: 'Trust' },
+  { fromOfficerId: 'wuzetian', toOfficerId: 'libai', type: 'Trust' },
+  { fromOfficerId: 'libai', toOfficerId: 'wuzetian', type: 'Confidant' },
+  { fromOfficerId: 'libai', toOfficerId: 'caocao', type: 'Confidant' },
+  { fromOfficerId: 'libai', toOfficerId: 'zhugeliang', type: 'Confidant' },
+  { fromOfficerId: 'qianlong', toOfficerId: 'wuzetian', type: 'Trust' },
+  { fromOfficerId: 'qianlong', toOfficerId: 'napoleon', type: 'Rival' }
 ];
 
 export const SCENARIOS: CampaignScenario[] = [

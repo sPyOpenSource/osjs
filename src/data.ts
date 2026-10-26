@@ -98,6 +98,22 @@ export const FACTIONS: Faction[] = [
     crest: '🏹 匈奴 (苍狼)'
   },
   {
+    id: 'france',
+    name: '法兰西第一帝国',
+    ruler: '拿破仑·波拿巴',
+    color: '#1e40af', // blue-800
+    description: '横扫欧陆的近代炮兵与军团体系革新帝国。以纵队突击与空前集中的炮火碾压旧式王国联軍，大军团行军神速，战无不胜之名震慑四海。',
+    crest: '⚜️ 法兰西 (帝王蓝)'
+  },
+  {
+    id: 'russia',
+    name: '俄罗斯帝国',
+    ruler: '叶卡捷琳娜二世',
+    color: '#15803d', // green-700
+    description: '横跨欧亚的极北双头鹰帝国。哥萨克骑兵神出鬼没，冬将军令一切入侵者葬身雪原，宫廷内政开明与文化科学事业空前繁荣。',
+    crest: '🦅 俄罗斯 (双头鹰绿)'
+  },
+  {
     id: 'ronin',
     name: '在野 (在野武将)',
     ruler: '无',

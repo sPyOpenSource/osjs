@@ -636,6 +636,62 @@ export const FAMOUS_OFFICERS: Officer[] = [
     traits: ['征服者 (远征军行军速度与士气大幅提升，攻击异域要塞有额外斩获)', '军神 (以无双霸道震慑周围低统帅敌军并强行开启单挑)', '威风 (突击攻击时显著削弱周围敌军之防御)'],
     skills: ['帕提亚回马射 (伪装溃退诱敌深入，突然回身射出致命穿透重箭)', '突击 (造成恐怖的近战冲撞伤害)', '奇袭 (穿越丛林灌木发动奔袭，无视城墙防守防线)', '单挑 (开启惊心动魄的1对1武将武艺对决)'],
     biography: '匈奴帝国开国大单于，北方游牧草原文明最杰出的统帅。他发明鸣镝射术统一军纪，东灭东胡，西逐月氏，降服楼烦白羊，开创控弦三十万的北方大帝国，曾于白登山以精骑四十万将汉高祖刘邦层层围困。'
+  },
+  {
+    id: 'napoleon',
+    name: '拿破仑·波拿巴',
+    gender: 'Male',
+    styleName: '科西嘉战神',
+    englishName: 'Napoleon Bonaparte',
+    origin: '法兰西第一帝国',
+    isGlobalLeader: true,
+    factionId: 'france',
+    avatarStyle: {
+      hairColor: '#1e293b',
+      hairStyle: 'Noble Court Crown',
+      armorColor: '#1e40af',
+      accessory: 'Engraved Commander Sword',
+      expression: 'Brilliant Calm',
+      bgGradient: 'from-blue-950 via-indigo-950 to-slate-950'
+    },
+    stats: {
+      leadership: 99,
+      force: 82,
+      intelligence: 97,
+      politics: 93,
+      charisma: 95
+    },
+    traits: ['征服者 (远征军行军速度与士气大幅提升，攻击异域要塞有额外斩获)', '雄心 (提升个人武将统御及兵力募集上限)', '神算 (奇门陷阱与火计策略之成功率、杀伤力大幅增强)'],
+    skills: ['雷霆远征 (以雷霆万钧之势奔袭敌军核心指挥所)', '齐射 (发动大范围远程箭雨压制)', '突击 (造成恐怖的近战冲撞伤害)', '铁壁 (短时间内进入物理与计谋免疫的无敌状态)'],
+    biography: '法兰西第一帝国皇帝、近代军事科学之奠基者，号“科西嘉战神”。出身炮兵少尉，在奥斯特里茨会战中以集中炮火与纵队突击一日击溃俄奥联军，横扫欧陆诸王。其《拿破仑法典》至今仍为欧陆民法之基石，一生六十余役仅尝数败。'
+  },
+  {
+    id: 'catherine',
+    name: '叶卡捷琳娜二世',
+    gender: 'Female',
+    styleName: '女皇大帝',
+    englishName: 'Catharina II Aleksejevna',
+    origin: '俄罗斯帝国 (双头鹰)',
+    isGlobalLeader: true,
+    factionId: 'russia',
+    avatarStyle: {
+      hairColor: '#b45309',
+      hairStyle: 'Scholar Jade Headdress',
+      armorColor: '#15803d',
+      accessory: 'Golden Sovereign Crown',
+      expression: 'Elegant Confident',
+      bgGradient: 'from-green-950 via-emerald-950 to-slate-950'
+    },
+    stats: {
+      leadership: 91,
+      force: 46,
+      intelligence: 94,
+      politics: 98,
+      charisma: 99
+    },
+    traits: ['雄心 (提升个人武将统御及兵力募集上限)', '枭雄 (面对优势敌军时力量获得额外成长)', '仁德 (提升声望与信赖程度)'],
+    skills: ['齐射 (发动大范围远程箭雨压制)', '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)', '治疗 (恢复重伤士兵的编制数并激发高昂士气)', '铁壁 (短时间内进入物理与计谋免疫的无敌状态)'],
+    biography: '俄罗斯帝国罗曼诺夫王朝女皇，德意志公主嫁入俄廷，以雄才大略登基称帝，史称“叶卡捷琳娜大帝”。她开明施政、广兴文教，与伏尔泰狄德罗鸿雁论政；南疆吞并克里米亚、西境瓜分波兰，将双头鹰版图推向极盛，堪称与彼得大帝齐名之一代雄主。'
   }
 ];
 

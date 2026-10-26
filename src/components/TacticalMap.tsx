@@ -874,6 +874,8 @@ export default function TacticalMap({
     setExpeditionLogs([]);
     setExpeditionStep(-1);
     setIsExpeditionRunning(false);
+    setMapZoom(1);
+    setZoomOrigin({ x: 50, y: 50 });
   };
 
   return (

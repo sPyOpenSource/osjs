@@ -130,6 +130,22 @@ export const FACTIONS: Faction[] = [
     crest: '🐉 大清 (黄龙)'
   },
   {
+    id: 'qin',
+    name: '大秦帝国',
+    ruler: '嬴政',
+    color: '#1e293b', // slate-800
+    description: '奋六世之余烈、振长策而御宇内的大秦帝国。车同轨书同文，修筑万里长城，大秦铁鹰锐士与百步连弩军纪森严，气吞山河。',
+    crest: '⚔️ 大秦 (玄黑)'
+  },
+  {
+    id: 'tang',
+    name: '大唐帝国',
+    ruler: '李世民',
+    color: '#ea580c', // orange-600
+    description: '开创“贞观之治”、四海升平的大唐天朝。天策上将亲统黑甲玄甲铁骑横扫诸雄，天下四夷尊为“天可汗”，海纳百川，威仪天下。',
+    crest: '☀️ 大唐 (天策赤金)'
+  },
+  {
     id: 'ronin',
     name: '在野 (在野武将)',
     ruler: '无',
@@ -158,7 +174,10 @@ export const AVAILABLE_TRAITS = [
   '万王之王 (波斯铁骑与精锐弓骑协同突击，杀伤力呈破甲倍增)',
   '日月凌空 (女主临朝，独步千古，治下民心安定且百官忠诚激增)',
   '十全武功 (疆域开拓、万国来朝，远征后勤与八旗兵锋消耗大幅降低)',
-  '诗仙剑圣 (斗酒百篇，仗剑天涯，策谋奇袭暴击与个人魅力冠绝天下)'
+  '诗仙剑圣 (斗酒百篇，仗剑天涯，策谋奇袭暴击与个人魅力冠绝天下)',
+  '千古一帝 (扫灭六国，车同轨书同文，集权统御与攻城拔寨战力极度强大)',
+  '天可汗 (天下四夷万国宗仰，玄甲精骑冲锋势不可挡，且广纳贤士忠诚倍增)',
+  '江南第一才子 (诗书画三绝，行军与计略暴击令人叹服，风流洒脱倾倒世人)'
 ];
 
 export const AVAILABLE_SKILLS = [
@@ -178,7 +197,10 @@ export const AVAILABLE_SKILLS = [
   '鬼道迷离 (施展东海神巫法术使敌全军陷入迷雾与幻境混乱)',
   '日月当空 (以无上女皇威仪震慑敌军全阵，削弱其士气与策谋成功率)',
   '十全平定 (调动满蒙汉八旗与神机营连环火器轰击，阵地固若金汤)',
-  '青莲剑歌 (十步杀一人，千里不留行，以疾风骤雨般的快剑发动无双刺杀)'
+  '青莲剑歌 (十步杀一人，千里不留行，以疾风骤雨般的快剑发动无双刺杀)',
+  '横扫六合 (调动大秦锐士与万弩齐发，对周围敌阵造成毁灭性重创)',
+  '玄甲破阵 (亲率天下无双的大唐玄甲重骑纵横驰骋，强行撕裂敌军防线并震慑诸军)',
+  '桃花绝笔 (以书画墨韵化为惑敌迷雾，使大范围敌军陷入恍惚与士气大跌)'
 ];
 
 export const FAMOUS_OFFICERS: Officer[] = [
@@ -825,6 +847,117 @@ export const FAMOUS_OFFICERS: Officer[] = [
       '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)'
     ],
     biography: '唐代伟大的浪漫主义诗人，字太白，号青莲居士，世称“诗仙”、“酒中仙”。十五好剑术、遍干诸侯，三十成文章、历抵卿相。天宝初供奉翰林，因醉草吓蛮书名动长安，后仗剑漫游神州大川。“十步杀一人，千里不留行”，兼备惊世才情与盖世剑侠豪气。'
+  },
+  {
+    id: 'yingzheng',
+    name: '嬴政',
+    gender: 'Male',
+    styleName: '始皇帝 · 祖龙',
+    englishName: 'Qin Shi Huang (Ying Zheng)',
+    origin: '大秦帝国 · 咸阳',
+    isGlobalLeader: true,
+    factionId: 'qin',
+    avatarStyle: {
+      hairColor: '#0f172a',
+      hairStyle: 'Topknot Imperial',
+      armorColor: '#1e293b',
+      accessory: 'Golden Sovereign Crown',
+      expression: 'Cold Sovereign',
+      bgGradient: 'from-slate-950 via-zinc-900 to-black'
+    },
+    stats: {
+      leadership: 99,
+      force: 75,
+      intelligence: 96,
+      politics: 100,
+      charisma: 97
+    },
+    traits: [
+      '千古一帝 (扫灭六国，车同轨书同文，集权统御与攻城拔寨战力极度强大)',
+      '雄心 (提升个人武将统御及兵力募集上限)',
+      '威风 (突击攻击时显著削弱周围敌军之防御)'
+    ],
+    skills: [
+      '横扫六合 (调动大秦锐士与万弩齐发，对周围敌阵造成毁灭性重创)',
+      '齐射 (发动大范围远程箭雨压制)',
+      '铁壁 (短时间内进入物理与计谋免疫的无敌状态)',
+      '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)'
+    ],
+    biography: '秦庄襄王之子，十三岁继承秦王位，先后荡平韩、赵、魏、楚、燕、齐六国，结束春秋战国数百年割据，建立华夏历史上第一个大一统中央集权王朝，首创“皇帝”尊号。废分封立郡县，车同轨、书同文、统一度量衡，北击匈奴修筑万里长城，南征百越。被明代思想家李贽赞为“千古一帝”。'
+  },
+  {
+    id: 'lishimin',
+    name: '李世民',
+    gender: 'Male',
+    styleName: '唐太宗 · 天策上将',
+    englishName: 'Emperor Taizong of Tang (Li Shimin)',
+    origin: '大唐帝国 · 长安',
+    isGlobalLeader: true,
+    factionId: 'tang',
+    avatarStyle: {
+      hairColor: '#171717',
+      hairStyle: 'Topknot Imperial',
+      armorColor: '#ea580c',
+      accessory: 'Engraved Commander Sword',
+      expression: 'Inspiring General',
+      bgGradient: 'from-amber-950 via-red-950 to-slate-950'
+    },
+    stats: {
+      leadership: 100,
+      force: 90,
+      intelligence: 97,
+      politics: 99,
+      charisma: 99
+    },
+    traits: [
+      '天可汗 (天下四夷万国宗仰，玄甲精骑冲锋势不可挡，且广纳贤士忠诚倍增)',
+      '军神 (以无双霸道震慑周围低统帅敌军并强行开启单挑)',
+      '仁德 (提升声望与信赖程度)'
+    ],
+    skills: [
+      '玄甲破阵 (亲率天下无双的大唐玄甲重骑纵横驰骋，强行撕裂敌军防线并震慑诸军)',
+      '突击 (造成恐怖的近战冲撞伤害)',
+      '单挑 (开启惊心动魄的1对1武将武艺对决)',
+      '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)'
+    ],
+    biography: '唐高祖李渊次子，早年随父起兵晋阳，封秦王、拜天策上将。率天下精锐“玄甲军”先后平薛仁杲、刘武周、王世充、窦建德，一战擒双王，扫定中原。登基后励精图治，开创“贞观之治”，兼听纳谏重用魏征、房玄龄、杜如晦，北破突厥，西平高昌，被北方及西域诸国各民族万民共尊为“天可汗”。'
+  },
+  {
+    id: 'tangbohu',
+    name: '唐伯虎',
+    gender: 'Male',
+    styleName: '唐寅 · 桃花庵主',
+    englishName: 'Tang Bohu (Tang Yin)',
+    origin: '江南姑苏 · 桃花庵',
+    isGlobalLeader: true,
+    factionId: 'ronin',
+    avatarStyle: {
+      hairColor: '#1e293b',
+      hairStyle: 'Topknot Imperial',
+      armorColor: '#fb923c',
+      accessory: 'Engraved Commander Sword',
+      expression: 'Warm Smiling',
+      bgGradient: 'from-rose-950 via-amber-950 to-slate-950'
+    },
+    stats: {
+      leadership: 66,
+      force: 72,
+      intelligence: 96,
+      politics: 65,
+      charisma: 98
+    },
+    traits: [
+      '江南第一才子 (诗书画三绝，行军与计略暴击令人叹服，风流洒脱倾倒世人)',
+      '美周郎 (大幅提高我方士气及水军行军移动)',
+      '神算 (奇门陷阱与火计策略之成功率、杀伤力大幅增强)'
+    ],
+    skills: [
+      '桃花绝笔 (以书画墨韵化为惑敌迷雾，使大范围敌军陷入恍惚与士气大跌)',
+      '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)',
+      '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)',
+      '奇袭 (穿越丛林灌木发动奔袭，无视城墙防守防线)'
+    ],
+    biography: '明代著名书画家、文学家，字伯虎，后改字子畏，号六如居士、桃花庵主，南直隶苏州府吴县人，位列“吴门四家”与“江南四大才子”之首。乡试夺得解元第一，名动天下；其诗书画三绝，行文俊朗洒脱，狂放不羁。“别人笑我忒疯癫，我笑他人看不穿；不见五陵豪杰墓，无花无酒锄作田”，名句传颂四海千古。'
   }
 ];
 
@@ -857,7 +990,18 @@ export const FAMOUS_RELATIONSHIPS: RelationshipRelation[] = [
   { fromOfficerId: 'libai', toOfficerId: 'caocao', type: 'Confidant' },
   { fromOfficerId: 'libai', toOfficerId: 'zhugeliang', type: 'Confidant' },
   { fromOfficerId: 'qianlong', toOfficerId: 'wuzetian', type: 'Trust' },
-  { fromOfficerId: 'qianlong', toOfficerId: 'napoleon', type: 'Rival' }
+  { fromOfficerId: 'qianlong', toOfficerId: 'napoleon', type: 'Rival' },
+  { fromOfficerId: 'yingzheng', toOfficerId: 'caesar', type: 'Rival' },
+  { fromOfficerId: 'yingzheng', toOfficerId: 'lishimin', type: 'Trust' },
+  { fromOfficerId: 'lishimin', toOfficerId: 'yingzheng', type: 'Trust' },
+  { fromOfficerId: 'lishimin', toOfficerId: 'caocao', type: 'Trust' },
+  { fromOfficerId: 'lishimin', toOfficerId: 'zhugeliang', type: 'Trust' },
+  { fromOfficerId: 'lishimin', toOfficerId: 'wuzetian', type: 'Confidant' },
+  { fromOfficerId: 'wuzetian', toOfficerId: 'lishimin', type: 'Confidant' },
+  { fromOfficerId: 'tangbohu', toOfficerId: 'libai', type: 'Confidant' },
+  { fromOfficerId: 'libai', toOfficerId: 'tangbohu', type: 'Confidant' },
+  { fromOfficerId: 'tangbohu', toOfficerId: 'zhouyu', type: 'Confidant' },
+  { fromOfficerId: 'tangbohu', toOfficerId: 'qianlong', type: 'Rival' }
 ];
 
 export const SCENARIOS: CampaignScenario[] = [

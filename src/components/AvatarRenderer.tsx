@@ -28,6 +28,8 @@ export default function AvatarRenderer({ style, size = 120 }: AvatarRendererProp
     '#1e40af': '#1e3a8a', // France Blue
     '#15803d': '#14532d', // Russia Green
     '#be185d': '#831843', // Wu Zhou Imperial Crimson
+    '#1e293b': '#0f172a', // Qin Black Slate
+    '#ea580c': '#9a3412', // Tang Red-Orange
   };
 
   const armorColor = style.armorColor || '#3b82f6';

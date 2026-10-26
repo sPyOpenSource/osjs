@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Faction, TabType, StructureTypeInfo, BuildQueueItem } from '../types';
 import { STRUCTURES_DATA, DEFENSES_DATA } from '../constants/gameData';
 import { playSynthSound } from '../utils/audioSynth';
-import { Coins, Zap, ShieldQuestion, Construction, RefreshCw } from 'lucide-react';
+import { Coins, Zap, ShieldQuestion } from 'lucide-react';
 
 interface BuildSidebarProps {
   faction: Faction;
@@ -25,7 +25,7 @@ export default function BuildSidebar({
 }: BuildSidebarProps) {
   const [activeTab, setActiveTab] = useState<TabType>('STRUCTURES');
   const [queue, setQueue] = useState<BuildQueueItem[]>([]);
-  const [activeBuildingId, setActiveBuildingId] = useState<string | null>(null);
+  const announcedCompletions = useRef(new Set<string>());
 
   // Auto update Power calculations whenever structures list change is handled by parent,
   // but let's provide interactive manual power adjustment or statistics calculation of costs
@@ -36,10 +36,12 @@ export default function BuildSidebar({
 
   // Build Queue progress ticker (100% finished constructs)
   useEffect(() => {
+    let lastTick = performance.now();
     const queueInterval = setInterval(() => {
+      const now = performance.now();
+      const elapsedSeconds = (now - lastTick) / 1000;
+      lastTick = now;
       setQueue(prevQueue => {
-        let completedItemName: string | null = null;
-
         const nextQueue = prevQueue.map(item => {
           if (item.paused || item.progress >= 100) return item;
 
@@ -50,13 +52,8 @@ export default function BuildSidebar({
 
           // Speed factor depends on whether there is power deficit!
           const powerDeficit = powerStatus.cons > powerStatus.prod;
-          const buildSpeed = powerDeficit ? 10.0 : 25.0; // 50% slower if low power
-
-          const nextProgress = Math.min(100, item.progress + buildSpeed);
-          
-          if (nextProgress >= 100) {
-            completedItemName = bInfo.name;
-          }
+          const duration = Math.max(0.12, bInfo.buildTime);
+          const nextProgress = Math.min(100, item.progress + (elapsedSeconds / duration) * 100 * (powerDeficit ? 0.5 : 1));
 
           return {
             ...item,
@@ -64,21 +61,23 @@ export default function BuildSidebar({
           };
         });
 
-        // Trigger side-effects outside of the immediate state update call stack to prevent React rendering errors
-        if (completedItemName) {
-          const nameRef = completedItemName;
-          setTimeout(() => {
-            playSynthSound('construction_complete');
-            onAddLogMessage(`Construction complete: ${nameRef} is ready for tactical placement!`, 'success');
-          }, 0);
-        }
-
         return nextQueue;
       });
     }, 120);
 
     return () => clearInterval(queueInterval);
-  }, [activeStructuresList, activeDefensesList, powerStatus, onAddLogMessage]);
+  }, [activeStructuresList, activeDefensesList, powerStatus.cons, powerStatus.prod]);
+
+  useEffect(() => {
+    for (const item of queue) {
+      if (item.progress < 100 || announcedCompletions.current.has(item.id)) continue;
+      const info = [...activeStructuresList, ...activeDefensesList].find(build => build.id === item.id);
+      if (!info) continue;
+      announcedCompletions.current.add(item.id);
+      playSynthSound('construction_complete');
+      onAddLogMessage(`Construction complete: ${info.name} is ready for tactical placement!`, 'success');
+    }
+  }, [queue, activeStructuresList, activeDefensesList, onAddLogMessage]);
 
   // Click a sidebar option to start building it
   const handleItemClick = (item: StructureTypeInfo) => {
@@ -102,6 +101,7 @@ export default function BuildSidebar({
     onAddLogMessage(`Construction started: Allocating resources to craft ${item.name}...`, 'info');
 
     // Add to local queue
+    announcedCompletions.current.delete(item.id);
     setQueue(prev => [
       ...prev,
       {
@@ -237,19 +237,6 @@ export default function BuildSidebar({
               }}
               className={`bg-neutral-900 border hover:border-amber-500 p-2.5 rounded transition-all cursor-pointer select-none group relative ${isComplete ? 'ring-2 ring-emerald-500 border-emerald-400 animate-pulse bg-emerald-950/20' : 'border-neutral-800'}`}
             >
-              {/* Build Progress overlay */}
-              {isBuilding && (
-                <div className="absolute inset-0 bg-neutral-950/85 rounded flex flex-col justify-center items-center z-10 p-1">
-                  <RefreshCw className="w-4 h-4 text-amber-500 animate-spin mb-1" />
-                  <p className="text-[10px] font-mono text-amber-500 font-bold">
-                    BUILDING {Math.floor(queueItem.progress)}%
-                  </p>
-                  <div className="w-16 h-1.5 bg-neutral-850 rounded mt-1 border border-neutral-800 overflow-hidden">
-                    <div className="h-full bg-amber-500" style={{ width: `${queueItem.progress}%` }} />
-                  </div>
-                </div>
-              )}
-
               {/* Ready placement overlay button */}
               {isComplete && (
                 <div className="absolute top-1 right-2 bg-emerald-600 text-black px-1.5 py-0.5 rounded text-[8px] font-mono font-black animate-bounce">
@@ -280,6 +267,22 @@ export default function BuildSidebar({
                 <span className="text-neutral-500">
                   {item.power > 0 ? `+${item.power} MW` : `${item.power} MW`}
                 </span>
+              </div>
+              <div className="mt-2 h-7">
+                <div className="flex justify-between items-center font-mono text-[10px] text-build-progress mb-1">
+                  <span>{isComplete ? 'READY' : isBuilding ? 'BUILDING' : ''}</span>
+                  <span>{queueItem ? `${Math.floor(queueItem.progress)}%` : ''}</span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-label={`${item.name} construction`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.floor(queueItem?.progress ?? 0)}
+                  className="h-1.5 w-full overflow-hidden rounded-sm bg-build-track"
+                >
+                  <div className="h-full w-full origin-left bg-build-progress transition-transform duration-150 ease-linear motion-reduce:transition-none" style={{ transform: `scaleX(${(queueItem?.progress ?? 0) / 100})` }} />
+                </div>
               </div>
             </div>
           );

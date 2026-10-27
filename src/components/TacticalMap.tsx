@@ -966,6 +966,17 @@ export default function TacticalMap({
             点击地图上的城池标记以查看镇守名将之首领及兵团。您还可以直接手动篡改势力归属，并模拟兵力调配与跨郡攻城决战。
           </p>
         </div>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            id="btn-ai-autoplay"
+            onClick={toggleAutoPlay}
+            aria-pressed={autoPlay}
+            className={`border text-[11px] font-mono font-bold px-3 py-1.5 rounded-lg active:scale-95 transition-all ${autoPlay ? 'bg-emerald-900/60 border-emerald-600 text-emerald-300 animate-pulse' : 'bg-slate-950 hover:bg-slate-900 border-slate-800 text-emerald-400'}`}
+          >
+            {autoPlay ? '⏹ 停止 AI 托管' : '🤖 AI 托管'}
+          </button>
+          {autoStatus && <p className="text-[10px] text-emerald-300/80 max-w-[260px] text-right">{autoStatus}</p>}
+        </div>
         <button
           id="btn-reset-map"
           onClick={handleResetMap}

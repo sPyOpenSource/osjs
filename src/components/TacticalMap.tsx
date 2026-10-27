@@ -424,6 +424,80 @@ export default function TacticalMap({
     }
   }, [expeditionOriginId, cityOwnership]);
 
+  // ===== AI Autoplay (built-in rules) =====
+  const [autoPlay, setAutoPlay] = useState(false);
+  const [autoFaction, setAutoFaction] = useState<string>('');
+  const [autoPending, setAutoPending] = useState<string | null>(null); // best general id to use
+  const [autoStatus, setAutoStatus] = useState<string>('');
+
+  const toggleAutoPlay = () => {
+    if (autoPlay) {
+      setAutoPlay(false);
+      setAutoPending(null);
+      setAutoStatus('AI 已停止托管');
+      return;
+    }
+    const faction = cityOwnership[expeditionOriginId] || 'ronin';
+    setAutoFaction(faction);
+    setAutoPlay(true);
+    const fName = FACTIONS.find(f => f.id === faction)?.name || faction;
+    setAutoStatus(`AI 接管【${fName}】，正在筹划第一次出征…`);
+  };
+
+  // Plan the next move whenever idle
+  useEffect(() => {
+    if (!autoPlay || autoPending) return;
+    if (isExpeditionRunning && expeditionStep !== 4) return;
+    const timer = setTimeout(() => {
+      const owned = CITIES.filter(c => cityOwnership[c.id] === autoFaction);
+      const enemies = CITIES.filter(c => (cityOwnership[c.id] || 'ronin') !== autoFaction);
+      if (owned.length === 0) {
+        setAutoPlay(false);
+        setAutoStatus('💀 我方城池尽失，AI 托管结束。');
+        return;
+      }
+      if (enemies.length === 0) {
+        setAutoPlay(false);
+        setAutoStatus('👑 天下一统！AI 托管结束。');
+        return;
+      }
+      // Pick closest (owned -> enemy) pair; neutral cities are favoured as easier targets
+      let best: { o: City; t: City; score: number } | null = null;
+      for (const o of owned) {
+        for (const t of enemies) {
+          const d = Math.hypot(o.x - t.x, o.y - t.y);
+          const score = d * ((cityOwnership[t.id] || 'ronin') === 'ronin' ? 0.6 : 1) + Math.random() * 3;
+          if (!best || score < best.score) best = { o, t, score };
+        }
+      }
+      if (!best) return;
+      const generals = officers.filter(g => g.factionId === autoFaction);
+      const top = generals.sort((a, b) => {
+        const s = (g: Officer) => g.stats.leadership * 0.4 + g.stats.intelligence * 0.3 + g.stats.force * 0.3;
+        return s(b) - s(a);
+      })[0];
+      setExpeditionOriginId(best.o.id);
+      setExpeditionTargetId(best.t.id);
+      setAutoPending(top ? top.id : '');
+      setAutoStatus(`🤖 AI 决策：自 [${best.o.name}] 发兵攻打 [${best.t.name}]${top ? `，由 ${top.name} 挂帅` : ''}`);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [autoPlay, autoPending, isExpeditionRunning, expeditionStep, cityOwnership, autoFaction, officers]);
+
+  // Launch once selections have settled
+  useEffect(() => {
+    if (!autoPlay || autoPending === null) return;
+    if (autoPending && selectedGeneralId !== autoPending) {
+      setSelectedGeneralId(autoPending);
+      return;
+    }
+    const t = setTimeout(() => {
+      setAutoPending(null);
+      handleLaunchExpedition({ preventDefault: () => {} } as React.FormEvent);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [autoPlay, autoPending, selectedGeneralId, expeditionOriginId, expeditionTargetId]);
+
   // Handle faction revision by user
   const handleModifyController = (cityId: string, factionId: string) => {
     setCityOwnership(prev => ({

@@ -768,21 +768,21 @@ export default function TacticalMap({
     }, 150);
   };
 
-  // Launch Battle/Expedition Expedition Playback
-  const handleLaunchExpedition = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (expeditionOriginId === expeditionTargetId) {
+  // Execute campaign expedition simulation
+  const executeExpedition = (origId: string, targId: string, genId: string) => {
+    if (origId === targId) {
       alert('请选择不同的起源地与目的地，大军无法在同地远征调配！');
       return;
     }
 
-    const originCity = CITIES.find(c => c.id === expeditionOriginId)!;
-    const targetCity = CITIES.find(c => c.id === expeditionTargetId)!;
-    const originFaction = FACTIONS.find(f => f.id === originControllerId)!;
-    const targetControllerId = cityOwnership[expeditionTargetId] || 'ronin';
-    const targetFaction = FACTIONS.find(f => f.id === targetControllerId)!;
+    const originCity = CITIES.find(c => c.id === origId)!;
+    const targetCity = CITIES.find(c => c.id === targId)!;
+    const origOwner = cityOwnership[origId] || 'ronin';
+    const originFaction = FACTIONS.find(f => f.id === origOwner) || FACTIONS[FACTIONS.length - 1];
+    const targetControllerId = cityOwnership[targId] || 'ronin';
+    const targetFaction = FACTIONS.find(f => f.id === targetControllerId) || FACTIONS[FACTIONS.length - 1];
     
-    const commandingGeneral = officers.find(o => o.id === selectedGeneralId);
+    const commandingGeneral = officers.find(o => o.id === genId);
     const genName = commandingGeneral ? commandingGeneral.name : '自立豪杰 (大将)';
     const genLdr = commandingGeneral ? commandingGeneral.stats.leadership : 75;
     const genFor = commandingGeneral ? commandingGeneral.stats.force : 75;
@@ -795,7 +795,7 @@ export default function TacticalMap({
       playDrumSound();
     }
 
-    const isSiege = originControllerId !== targetControllerId;
+    const isSiege = origOwner !== targetControllerId;
     let siegeWin = true;
     let rate = 100;
 
@@ -805,26 +805,21 @@ export default function TacticalMap({
       
       // Integrate Climate modifiers
       if (weatherId === 'rainy') {
-        // Rainy reduces defense and fire potency, penalizing siege rate due to mud
         power -= 12;
       } else if (weatherId === 'foggy') {
-        // Foggy weather makes intelligence 2x more important, while raw mechanical force is less reliable
         power = (genLdr * 0.3 + genInt * 0.6 + genFor * 0.1);
         if (genInt < 70) {
-          power -= 15; // Penalty for low IQ commanders getting ambushed
+          power -= 15;
         } else if (genInt >= 88) {
-          power += 15; // Bonus for strategic masters utilizing fog
+          power += 15;
         }
       } else if (weatherId === 'windy') {
-        // windy weather adds chaotic shift
         power += (Math.random() >= 0.5 ? 8 : -8);
       }
 
-      // Independent/Ronin cities are easier to siege (dif = 55), owned factions cities are tougher (dif = 82)
       const defenseDifficulty = targetControllerId === 'ronin' ? 55 : 82;
       rate = Math.min(Math.max(Math.round((power / (power + defenseDifficulty)) * 100), 10), 95);
       
-      // Specific adjustments based on weather
       if (weatherId === 'rainy') {
         rate = Math.max(10, rate - 10);
       } else if (weatherId === 'foggy' && genInt < 75) {
@@ -832,7 +827,6 @@ export default function TacticalMap({
       }
       
       setExpeditionSuccessRate(rate);
-
       const roll = Math.random() * 100;
       siegeWin = roll <= rate;
     } else {
@@ -840,14 +834,13 @@ export default function TacticalMap({
     }
 
     // Step-by-Step Simulated Playback timeouts
-    // 1. Stage 0: 安营拔寨 (Departure)
     const weatherSlogans: Record<string, string> = {
       sunny: '☀️ 晴空丽日下旗帜招展',
       rainy: '🌧️ 苦雨凄风拍打着军盔',
       windy: '💨 怒号金风撕扯着烈色军旗',
       foggy: '🌫️ 苍迷白雾深锁着三军大营'
     };
-    setExpeditionLogs([`【中军帐点兵】 （${weatherSlogans[weatherId] || '☀️'}） 八万大军浩荡誓师，校阅点兵！`]);
+    setExpeditionLogs([`【中军帐点兵】 （${weatherSlogans[weatherId] || '☀️'}） 领军大将 [${genName}] 校阅精锐八万，誓师直逼 [${targetCity.name}]！`]);
     
     setTimeout(() => {
       setExpeditionStep(1);
@@ -865,82 +858,134 @@ export default function TacticalMap({
       setExpeditionLogs(prev => [...prev, startLog]);
     }, 1000);
 
-    // 2. Stage 1: 险关行军 (Marching)
+    // 2. Stage 1: 险关行军
     setTimeout(() => {
       setExpeditionStep(2);
       let marchLog = '';
       if (weatherId === 'foggy' && genInt >= 82) {
-        marchLog = `👁️ 【重雾玄兵计】: 将军 [${genName}] 借着当空大雾屏障，巧布瞒天疑兵阵法，无声无息越过边郡关隘，已如神兵下降，抄到了 [${targetCity.name}] 防线后侧！`;
+        marchLog = `👁️ 【重雾玄兵计】: 将军 [${genName}] 借着当空大雾屏障，巧布瞒天疑兵阵法，抄到了 [${targetCity.name}] 防线后侧！`;
       } else if (weatherId === 'rainy' && genLdr >= 80) {
-        marchLog = `🌧️ 【借水飞渡】: 暴雨使河域骤涨，大将 [${genName}] 果断变通，弃车换乘快舸竹筏顺流直下，反以惊人速度在水势咆哮中逼近敌前！`;
+        marchLog = `🌧️ 【借水飞渡】: 暴雨使河域骤涨，大将 [${genName}] 果断变通，乘快舸竹筏顺流直下，反以惊人速度在水势咆哮中逼近敌前！`;
       } else if (genLdr > 85) {
-        marchLog = `🏔️ 【兵贵神速】: 领军将领英明强干，深谙地形攻守。大军以不可思议之行军速度，穿林度河，长驱直入。士气如虹 (+15)！`;
+        marchLog = `🏔️ 【兵贵神速】: 领军将领英明强干，深谙地形攻守。大军穿林度河，长驱直入。士气如虹 (+15)！`;
       } else if (genInt > 80) {
-        marchLog = `👁️ 【暗度陈仓】: 军师布下瞒天妙计。巧设疑兵掩护主力，成功避开了敌方边境哨卡的刺探窥伺。辎重毫无折损！`;
+        marchLog = `👁️ 【暗度陈仓】: 军师布下瞒天妙计。巧设疑兵掩护主力，成功避开了敌方哨卡的刺探。辎重毫无折损！`;
       } else {
-        marchLog = `🌲 【翻山越岭】: 关山万重，行军栈道凶险无比。军士冒着 ${weatherId === 'windy' ? '逆风' : weatherId === 'rainy' ? '狂雨' : '烈阳'} 克服险阻，终于成功集结并安下营垒。`;
+        marchLog = `🌲 【翻山越岭】: 关山万重，行军栈道凶险无比。军士克服险阻，终于成功集结并安下营垒。`;
       }
       setExpeditionLogs(prev => [...prev, marchLog]);
     }, 2800);
 
-    // 3. Stage 2: 激战 / 会师 (Siege Clash or Merger)
+    // 3. Stage 2: 激战 / 会师
     setTimeout(() => {
       setExpeditionStep(3);
       let clashLog = '';
       if (isSiege) {
         if (weatherId === 'rainy') {
-          clashLog = `💦 【雨中白刃死斗】: 暴雨如瀑，水势滔天！因暴雨将火药、柴草彻底淋湿，[${genName}] 麾下极擅的【烈焰火箭】等火攻神策遭严格禁绝！敌守将无法施火，双方直接在泥泞中展开野蛮血腥的短兵白刃战！`;
+          clashLog = `💦 【雨中白刃死斗】: 暴雨如瀑，水势滔天！由于柴草湿透火计受阻，双方直接在泥泞中展开野蛮血腥的短兵白刃战！`;
         } else if (weatherId === 'foggy') {
-          clashLog = `🌫️ 【重雾盲击战】: 四野白茫茫一片，两军在重雾中短兵交接，弓弩在浓雾中难以瞄准、齐射受阻！三军只闻厮杀声震原野，[${genName}] 率部施展夜袭突击之法直插敌军中军！`;
+          clashLog = `🌫️ 【重雾盲击战】: 四野白茫茫一片，两军在重雾中短兵交接，[${genName}] 率部施展夜袭突击之法直插敌军中军！`;
         } else if (weatherId === 'windy') {
-          clashLog = `🔥 【狂风烈焰借势】: 逆风盘行使攻城极为艰难，但 [${genName}] 巧断风向，顺风投掷火油火箭！暴烈的风势瞬间将大火送入 [${targetCity.name}] 城关！火海燎原，敌军防线在一片哀嚎中崩溃！`;
+          clashLog = `🔥 【狂风烈焰借势】: [${genName}] 巧断风向，顺风投掷火油火箭！暴烈的风势瞬间将大火送入 [${targetCity.name}] 城关！`;
         } else {
-          clashLog = `💥 【惨烈搏杀】: 两军相搏于 [${targetCity.name}] 城下！攻守战激烈异常，箭雨蔽日！[${genName}] 麾下施展齐射与冲撞，阵斩对方十数员虎校，城脚血流漂橹！`;
+          clashLog = `💥 【惨烈搏杀】: 两军相搏于 [${targetCity.name}] 城下！箭雨蔽日，[${genName}] 麾下施展齐射与冲撞，阵斩对方十数员军校，城脚血流漂橹！`;
         }
         if (soundEnabled) {
           playClashSound();
         }
       } else {
-        clashLog = `🤝 【兵合一处】: 军民同欢！大兵团顺利开进同盟郡 [${targetCity.name}]。守将开城迎客犒赏三军，于${weatherId === 'rainy' ? '暴雨淋漓' : weatherId === 'foggy' ? '漫天大雾' : weatherId === 'windy' ? '呼啸狂风' : '大好晴日'}中完成会师。`;
+        clashLog = `🤝 【兵合一处】: 军民同欢！大兵团顺利开进同盟郡 [${targetCity.name}]。守将开城迎客犒赏三军，完成会师。`;
       }
       setExpeditionLogs(prev => [...prev, clashLog]);
     }, 4600);
 
-    // 4. Stage 3: 凯旋战报 (Conquest Outcome)
+    // 4. Stage 3: 凯旋战报
     setTimeout(() => {
       setExpeditionStep(4);
       let finalLog = '';
       if (isSiege) {
         if (siegeWin) {
           if (weatherId === 'rainy') {
-            finalLog = `🏆 【骤雨破城大捷】: 攻克凯旋！暴雨汇成洪流，彻底冲塌了 [${targetCity.name}] 久疏防范的外围沙堤。大将 [${genName}] 乘势破门，[${targetFaction.name}] 溃败，治权易帜为 【${originFaction.name}】！`;
+            finalLog = `🏆 【骤雨破城大捷】: 攻克凯旋！大将 [${genName}] 乘势破门，[${targetFaction.name}] 溃败，治权易帜为 【${originFaction.name}】！`;
           } else if (weatherId === 'foggy') {
-            finalLog = `🏆 【雾隐收网奇捷】: 雷霆攻克！借助幽灵白雾打乱城上哨防，我军敢死营乘雾缒绳攀上女墙夺下关门，大举克捷，【${originFaction.name}】 旌旗傲然插上 [${targetCity.name}]！`;
+            finalLog = `🏆 【雾隐收网奇捷】: 雷霆攻克！借助幽灵白雾打乱城上哨防，【${originFaction.name}】 旌旗傲然插上 [${targetCity.name}]！`;
           } else if (weatherId === 'windy') {
             finalLog = `🏆 【天风红莲狂捷】: 浴火大捷！狂风掀开了一切掩护，大火烧毁了敌军的大理石箭塔及守备中枢。大举易帜为 【${originFaction.name}】！`;
           } else {
-            finalLog = `🏆 【大获全胜】: 破门易帜！城主府陷落，[${targetFaction.name}] 旌旗大倒。[${targetCity.name}] 的城池治权正式收归 【${originFaction.name}】 麾下，名垂战史！`;
+            finalLog = `🏆 【大获全胜】: 破门易帜！城主府陷落，[${targetCity.name}] 的城池治权正式收归 【${originFaction.name}】 麾下，名垂战史！`;
           }
-          // Dynamically rewrite local state city value
           setCityOwnership(prev => ({
             ...prev,
-            [expeditionTargetId]: originControllerId
+            [targId]: origOwner
           }));
         } else {
           if (weatherId === 'rainy') {
-            finalLog = `❌ 【退溃泥沼】: 残念！大雨将攻城重锤彻底陷在淤泥，粮秣淋湿霉烂，攻坚受严重气象惩罚，[${genName}] 因伤亡难支被迫在茫茫大雨中无奈撤师退防。`;
+            finalLog = `❌ 【退溃泥沼】: 残念！大雨将攻城重锤彻底陷在淤泥，粮秣淋湿霉烂，[${genName}] 因伤亡难支被迫撤师退防。`;
           } else if (weatherId === 'foggy') {
-            finalLog = `❌ 【雾中中伏受阻】: 抱憾折兵！浓雾使我方失去了探路的眼睛，不幸误中敌军在此布好的石桩地雷奇阵，[${genName}] 前部死伤累累，只得连夜狼狈退师。`;
+            finalLog = `❌ 【雾中中伏受阻】: 抱憾折兵！浓雾使我方失去了探路的眼睛，[${genName}] 前部受挫，连夜狼狈退师。`;
           } else {
-            finalLog = `❌ 【功城功亏一篑】: 折戟沉沙！[${targetCity.name}] 守备固若金汤，[${genName}] 攻势被城头礌石滚木挫裂，死伤惨重，不得不鸣金收拢残骸，抱憾退兵。`;
+            finalLog = `❌ 【功城功亏一篑】: 折戟沉沙！[${targetCity.name}] 守备固若金汤，[${genName}] 攻势被城头礌石挫裂，抱憾退兵。`;
           }
         }
       } else {
         finalLog = `⭐ 【天师同德】: 战略调派与防线互联完美达成！郡郭城池大胜合流，江山千秋固若金汤。`;
       }
       setExpeditionLogs(prev => [...prev, finalLog]);
+      setTimeout(() => {
+        setIsExpeditionRunning(false);
+      }, 1500);
     }, 6200);
+  };
 
+  // Launch Battle/Expedition via manual form
+  const handleLaunchExpedition = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeExpedition(expeditionOriginId, expeditionTargetId, selectedGeneralId);
+  };
+
+  // AI Auto-Play: let AI autonomously command factions and expand territory
+  const handleAiAutoPlay = () => {
+    if (isExpeditionRunning) return;
+
+    // Find all cities with a controlling faction that has at least one officer
+    const candidates = CITIES.filter(c => {
+      const owner = cityOwnership[c.id];
+      if (!owner || owner === 'ronin') return false;
+      return officers.some(o => o.factionId === owner);
+    });
+
+    if (candidates.length === 0) {
+      alert('天下兵势未定，尚无可用将领之城！');
+      return;
+    }
+
+    // Pick a candidate origin city
+    const origin = candidates[Math.floor(Math.random() * candidates.length)];
+    const origOwner = cityOwnership[origin.id];
+    const availableOfficers = officers.filter(o => o.factionId === origOwner);
+    const general = availableOfficers[Math.floor(Math.random() * availableOfficers.length)];
+
+    // Target selection: prefer neighboring or rival factions / ronin cities
+    const rivalCities = CITIES.filter(c => c.id !== origin.id && cityOwnership[c.id] !== origOwner);
+    const target = rivalCities.length > 0 
+      ? rivalCities[Math.floor(Math.random() * rivalCities.length)]
+      : CITIES.filter(c => c.id !== origin.id)[0];
+
+    if (!target || !general) return;
+
+    setExpeditionOriginId(origin.id);
+    setExpeditionTargetId(target.id);
+    setSelectedGeneralId(general.id);
+
+    // Provide visual notice and execute
+    setInteriorLogs(prev => [
+      `🤖 【AI军师自主出征】[${origin.name}] 驻将 【${general.name}】 领军发起远征，剑指 [${target.name}]！`,
+      ...prev
+    ]);
+
+    setTimeout(() => {
+      executeExpedition(origin.id, target.id, general.id);
+    }, 200);
   };
 
   const handleResetMap = () => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Officer, Faction } from '../types';
 import AvatarRenderer from './AvatarRenderer';
 import { FACTIONS } from '../data';
@@ -135,6 +135,10 @@ export default function OfficerCard({
   const [isGeneratingBio, setIsGeneratingBio] = useState(false);
   const [localBio, setLocalBio] = useState(officer.biography);
   const [promoSuccessMessage, setPromoSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalBio(officer.biography);
+  }, [officer.biography]);
   
   const promoInfo = getPromotionInfo(officer.stats, officer.promotionLevel || 0, officer.isGlobalLeader);
 

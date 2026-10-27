@@ -146,6 +146,30 @@ export const FACTIONS: Faction[] = [
     crest: '☀️ 大唐 (天策赤金)'
   },
   {
+    id: 'ming',
+    name: '大明帝国',
+    ruler: '朱元璋',
+    color: '#b91c1c', // red-700
+    description: '驱逐胡虏、恢复中华之大明帝国。日月山河永在，封狼居胥，郑和七下西洋扬威四海，神机火器与锦衣卫名震天下。',
+    crest: '☀️ 大明 (日月赤朱)'
+  },
+  {
+    id: 'america',
+    name: '美利坚合众国',
+    ruler: '特朗普',
+    color: '#2563eb', // blue-600
+    description: '跨越大西洋与太平洋的现代工业与金融巨擘。拥有繁荣的全球商贸航路、尖端科技创新与雄厚资本实力。',
+    crest: '🦅 美利坚 (星条蓝)'
+  },
+  {
+    id: 'germany',
+    name: '德意志',
+    ruler: '爱因斯坦',
+    color: '#475569', // slate-600
+    description: '崇尚严谨哲学与近代现代科学探索的欧陆重邦。以深刻的思想革命、工业精密制造与划时代物理相对论理论闻名于世。',
+    crest: '⚙️ 德意志 (铁鹰墨灰)'
+  },
+  {
     id: 'ronin',
     name: '在野 (在野武将)',
     ruler: '无',
@@ -177,7 +201,11 @@ export const AVAILABLE_TRAITS = [
   '诗仙剑圣 (斗酒百篇，仗剑天涯，策谋奇袭暴击与个人魅力冠绝天下)',
   '千古一帝 (扫灭六国，车同轨书同文，集权统御与攻城拔寨战力极度强大)',
   '天可汗 (天下四夷万国宗仰，玄甲精骑冲锋势不可挡，且广纳贤士忠诚倍增)',
-  '江南第一才子 (诗书画三绝，行军与计略暴击令人叹服，风流洒脱倾倒世人)'
+  '江南第一才子 (诗书画三绝，行军与计略暴击令人叹服，风流洒脱倾倒世人)',
+  '商业狂澜 (谈判与交易交涉暴击，金钱税赋收益大幅提升)',
+  '质能神算 (计谋与物理学推演暴击，算无遗策)',
+  '铁腕意志 (全军在严寒雪地与极地逆境中士气不减)',
+  '神机妙算 (精通奇门遁甲与天象推演，策谋识破率100%)'
 ];
 
 export const AVAILABLE_SKILLS = [
@@ -200,7 +228,11 @@ export const AVAILABLE_SKILLS = [
   '青莲剑歌 (十步杀一人，千里不留行，以疾风骤雨般的快剑发动无双刺杀)',
   '横扫六合 (调动大秦锐士与万弩齐发，对周围敌阵造成毁灭性重创)',
   '玄甲破阵 (亲率天下无双的大唐玄甲重骑纵横驰骋，强行撕裂敌军防线并震慑诸军)',
-  '桃花绝笔 (以书画墨韵化为惑敌迷雾，使大范围敌军陷入恍惚与士气大跌)'
+  '桃花绝笔 (以书画墨韵化为惑敌迷雾，使大范围敌军陷入恍惚与士气大跌)',
+  '金权制裁 (以庞大财力与禁运压制敌军士气)',
+  '时空裂解 (引发剧烈质能爆发重创大范围敌军方阵)',
+  '极地风暴 (召唤严寒冰雪阵地削弱敌方移速与战力)',
+  '斩龙神策 (洞悉天时地理，引发天火与落石击溃敌军阵型)'
 ];
 
 export const FAMOUS_OFFICERS: Officer[] = [
@@ -428,6 +460,43 @@ export const FAMOUS_OFFICERS: Officer[] = [
     traits: ['征服者 (远征军行军速度与士气大幅提升，攻击异域要塞有额外斩获)', '帝国方阵 (重装步兵防御与抗骑兵冲击能力显著增强)', '雄心 (提升个人武将统御及兵力募集上限)'],
     skills: ['罗马龟甲阵 (步兵结成严密封闭盾墙，免疫绝大部分远程箭矢伤害)', '突击 (造成恐怖的近战冲撞伤害)', '铁壁 (短时间内进入物理与计谋免疫的无敌状态)', '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)'],
     biography: '罗马共和国终身独裁官、法治奠基人与卓越军事统帅。他征服高卢，渡过卢比孔河，以“我来，我见，我征服”（Veni, vidi, vici）传檄千古。他改革儒略历，其威名成为西方历代皇帝之代名词。'
+  },
+  {
+    id: 'trump',
+    name: '特朗普',
+    gender: 'Male',
+    styleName: '商业大亨 · 地产之王',
+    englishName: 'Donald J. Trump',
+    origin: '北美合众国 · 纽约',
+    isGlobalLeader: true,
+    factionId: 'america',
+    avatarStyle: {
+      hairColor: '#b45309',
+      hairStyle: 'Long Bound Mane',
+      armorColor: '#2563eb',
+      accessory: 'Golden Sovereign Crown',
+      expression: 'Fierce Roaring',
+      bgGradient: 'from-blue-950 via-red-950 to-slate-950'
+    },
+    stats: {
+      leadership: 92,
+      force: 72,
+      intelligence: 85,
+      politics: 95,
+      charisma: 98
+    },
+    traits: [
+      '商业狂澜 (谈判与交易交涉暴击，金钱税赋收益大幅提升)',
+      '雄心 (提升个人武将统御及兵力募集上限)',
+      '威风 (突击攻击时显著削弱周围敌军之防御)'
+    ],
+    skills: [
+      '金权制裁 (以庞大财力与禁运压制敌军士气)',
+      '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)',
+      '铁壁 (短时间内进入物理与计谋免疫的无敌状态)',
+      '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)'
+    ],
+    biography: '美国著名企业家与第45及47任总统。早年叱咤华尔街与曼哈顿房地产界，著有商业畅销书《交易的艺术》，以极具个人特色的谈判风格与大众号召力闻名全球。在国际舞台上推行“美国优先”、强硬关税贸易交涉与商业减税，重塑当代全球地缘政治与经济竞争格局。'
   },
   {
     id: 'alexander',
@@ -682,6 +751,43 @@ export const FAMOUS_OFFICERS: Officer[] = [
     biography: '匈奴帝国开国大单于，北方游牧草原文明最杰出的统帅。他发明鸣镝射术统一军纪，东灭东胡，西逐月氏，降服楼烦白羊，开创控弦三十万的北方大帝国，曾于白登山以精骑四十万将汉高祖刘邦层层围困。'
   },
   {
+    id: 'einstein',
+    name: '爱因斯坦',
+    gender: 'Male',
+    styleName: '相对论宗师 · 现代物理之父',
+    englishName: 'Albert Einstein',
+    origin: '德意志 · 乌尔姆',
+    isGlobalLeader: true,
+    factionId: 'germany',
+    avatarStyle: {
+      hairColor: '#4b5563',
+      hairStyle: 'Scholar Jade Headdress',
+      armorColor: '#6b7280',
+      accessory: 'Feather Daoist Fan',
+      expression: 'Brilliant Calm',
+      bgGradient: 'from-slate-950 via-indigo-950 to-zinc-950'
+    },
+    stats: {
+      leadership: 82,
+      force: 55,
+      intelligence: 100,
+      politics: 80,
+      charisma: 96
+    },
+    traits: [
+      '质能神算 (计谋与物理学推演暴击，算无遗策)',
+      '神算 (奇门陷阱与火计策略之成功率、杀伤力大幅增强)',
+      '仁德 (提升声望与信赖程度)'
+    ],
+    skills: [
+      '时空裂解 (引发剧烈质能爆发重创大范围敌军方阵)',
+      '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)',
+      '火计 (点燃目标区域地格，火焰随风方向蔓延)',
+      '治疗 (恢复重伤士兵的编制数并激发高昂士气)'
+    ],
+    biography: '二十世纪最伟大的物理学家、现代物理学奠基人，相对论创立者。1905年“奇迹年”提出狭义相对论与光量子假说，后创立广义相对论，揭示质能等价方程E=mc²，彻底革新人类对时空、能量与宇宙引力的认知，1921年荣获诺贝尔物理学奖。毕生致力于和平主义与人类理性的真理探索。'
+  },
+  {
     id: 'napoleon',
     name: '拿破仑·波拿巴',
     gender: 'Male',
@@ -708,6 +814,43 @@ export const FAMOUS_OFFICERS: Officer[] = [
     traits: ['征服者 (远征军行军速度与士气大幅提升，攻击异域要塞有额外斩获)', '雄心 (提升个人武将统御及兵力募集上限)', '神算 (奇门陷阱与火计策略之成功率、杀伤力大幅增强)'],
     skills: ['雷霆远征 (以雷霆万钧之势奔袭敌军核心指挥所)', '齐射 (发动大范围远程箭雨压制)', '突击 (造成恐怖的近战冲撞伤害)', '铁壁 (短时间内进入物理与计谋免疫的无敌状态)'],
     biography: '法兰西第一帝国皇帝、近代军事科学之奠基者，号“科西嘉战神”。出身炮兵少尉，在奥斯特里茨会战中以集中炮火与纵队突击一日击溃俄奥联军，横扫欧陆诸王。其《拿破仑法典》至今仍为欧陆民法之基石，一生六十余役仅尝数败。'
+  },
+  {
+    id: 'putin',
+    name: '普丁',
+    gender: 'Male',
+    styleName: '克里姆林铁腕',
+    englishName: 'Vladimir Putin',
+    origin: '俄罗斯 · 莫斯科',
+    isGlobalLeader: true,
+    factionId: 'russia',
+    avatarStyle: {
+      hairColor: '#1e293b',
+      hairStyle: 'Noble Court Crown',
+      armorColor: '#15803d',
+      accessory: 'Engraved Commander Sword',
+      expression: 'Cold Sovereign',
+      bgGradient: 'from-emerald-950 via-slate-950 to-cyan-950'
+    },
+    stats: {
+      leadership: 98,
+      force: 85,
+      intelligence: 94,
+      politics: 96,
+      charisma: 93
+    },
+    traits: [
+      '铁腕意志 (全军在严寒雪地与极地逆境中士气不减)',
+      '警惕 (免疫来自后方的伏击和奇袭包夹)',
+      '雄心 (提升个人武将统御及兵力募集上限)'
+    ],
+    skills: [
+      '极地风暴 (召唤严寒冰雪阵地削弱敌方移速与战力)',
+      '奇袭 (穿越丛林灌木发动奔袭，无视城墙防守防线)',
+      '突击 (造成恐怖的近战冲撞伤害)',
+      '铁壁 (短时间内进入物理与计谋免疫的无敌状态)'
+    ],
+    biography: '俄罗斯联邦卓越政治家与长期最高领导人。早年任职于情报部门，后入主克里姆林宫，以铁腕手段稳定国内动荡局势、整肃寡头、重振能源与军工国防体系。在国际大国地缘博弈中行事极其沉着果断，捍卫欧亚大陆战略纵深，对21世纪全球地缘政治格局产生极其深远之影响。'
   },
   {
     id: 'catherine',
@@ -923,14 +1066,51 @@ export const FAMOUS_OFFICERS: Officer[] = [
     biography: '唐高祖李渊次子，早年随父起兵晋阳，封秦王、拜天策上将。率天下精锐“玄甲军”先后平薛仁杲、刘武周、王世充、窦建德，一战擒双王，扫定中原。登基后励精图治，开创“贞观之治”，兼听纳谏重用魏征、房玄龄、杜如晦，北破突厥，西平高昌，被北方及西域诸国各民族万民共尊为“天可汗”。'
   },
   {
+    id: 'liuji',
+    name: '刘伯温',
+    gender: 'Male',
+    styleName: '诚意伯 · 神机军师',
+    englishName: 'Liu Ji (Liu Bowen)',
+    origin: '大明帝国 · 青田',
+    isGlobalLeader: true,
+    factionId: 'ming',
+    avatarStyle: {
+      hairColor: '#171717',
+      hairStyle: 'Scholar Jade Headdress',
+      armorColor: '#b91c1c',
+      accessory: 'Feather Daoist Fan',
+      expression: 'Brilliant Calm',
+      bgGradient: 'from-red-950 via-amber-950 to-slate-950'
+    },
+    stats: {
+      leadership: 88,
+      force: 58,
+      intelligence: 100,
+      politics: 98,
+      charisma: 95
+    },
+    traits: [
+      '神机妙算 (精通奇门遁甲与天象推演，策谋识破率100%)',
+      '卧龙 (策略消耗大幅降低，且免受计略乾坤)',
+      '神算 (奇门陷阱与火计策略之成功率、杀伤力大幅增强)'
+    ],
+    skills: [
+      '斩龙神策 (洞悉天时地理，引发天火与落石击溃敌军阵型)',
+      '火计 (点燃目标区域地格，火焰随风方向蔓延)',
+      '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)',
+      '奇袭 (穿越丛林灌木发动奔袭，无视城墙防守防线)'
+    ],
+    biography: '明朝开国元勋、杰出政治家、文学家与军事谋略家，字伯温，谥号文成。通晓经史、天文律历与奇门遁甲。辅佐明太祖朱元璋统筹大计，平定陈友谅、张士诚，提出先灭陈后取张之策，并北伐驱逐蒙元，建立大明王朝，封诚意伯。民间广为流传“三分天下诸葛亮，一统江山刘伯温”，被世人尊为与诸葛孔明并驾齐驱之神机军师。'
+  },
+  {
     id: 'tangbohu',
     name: '唐伯虎',
     gender: 'Male',
     styleName: '唐寅 · 桃花庵主',
     englishName: 'Tang Bohu (Tang Yin)',
-    origin: '江南姑苏 · 桃花庵',
+    origin: '大明帝国 · 苏州桃花庵',
     isGlobalLeader: true,
-    factionId: 'ronin',
+    factionId: 'ming',
     avatarStyle: {
       hairColor: '#1e293b',
       hairStyle: 'Topknot Imperial',
@@ -998,6 +1178,11 @@ export const FAMOUS_RELATIONSHIPS: RelationshipRelation[] = [
   { fromOfficerId: 'lishimin', toOfficerId: 'zhugeliang', type: 'Trust' },
   { fromOfficerId: 'lishimin', toOfficerId: 'wuzetian', type: 'Confidant' },
   { fromOfficerId: 'wuzetian', toOfficerId: 'lishimin', type: 'Confidant' },
+  { fromOfficerId: 'trump', toOfficerId: 'putin', type: 'Rival' },
+  { fromOfficerId: 'putin', toOfficerId: 'catherine', type: 'Trust' },
+  { fromOfficerId: 'liuji', toOfficerId: 'zhugeliang', type: 'Confidant' },
+  { fromOfficerId: 'tangbohu', toOfficerId: 'liuji', type: 'Trust' },
+  { fromOfficerId: 'einstein', toOfficerId: 'zhugeliang', type: 'Confidant' },
   { fromOfficerId: 'tangbohu', toOfficerId: 'libai', type: 'Confidant' },
   { fromOfficerId: 'libai', toOfficerId: 'tangbohu', type: 'Confidant' },
   { fromOfficerId: 'tangbohu', toOfficerId: 'zhouyu', type: 'Confidant' },

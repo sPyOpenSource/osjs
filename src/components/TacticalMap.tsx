@@ -72,40 +72,31 @@ const CITIES: City[] = [
   { id: 'purushapura', name: '布路沙布逻', pinyin: 'Purushapura', x: 45, y: 47, region: '犍陀罗', theater: 'silkroad', description: '贵霜帝国冬都（今白沙瓦），迦腻色迦大帝敕造宏伟佛塔之地。希腊佛艺与丝路商道之交汇门户。' },
   { id: 'pataliputra', name: '华氏城', pinyin: 'Pataliputra', x: 53, y: 56, region: '恒河', theater: 'silkroad', description: '古印度孔雀王朝阿育王所建摩揭陀恒河古都。石刻法敕布施四海，身毒佛教鼎盛圣境，西南丝路通达。' },
   { id: 'shule', name: '疏勒', pinyin: 'Shule', x: 49, y: 40, region: '西域', theater: 'silkroad', description: '葱岭脚下绿洲重镇（今喀什），东连塔里木大漠，西出大宛与贵霜。商贾云集，丝绸玉石通衢。' },
-  { id: 'kucha', name: '龟兹', pinyin: 'Kucha', x: 54, y: 37, region: '西域', theater: 'silkroad', description: '西域三十六国中之富庶大邦，汉魏西域长史府所在。绿洲佛国，盛产良马、冶铁与龟兹乐舞。' },
   { id: 'dunhuang', name: '敦煌', pinyin: 'Dunhuang', x: 60, y: 40, region: '河西', theater: 'silkroad', description: '河西四郡之门户，玉门关与阳关扼守东西咽喉。丝绸之路商队与骆驼长旅西出之起点，佛窟禅壁耸立。' },
 
   // 4. 欧亚北方大草原与游牧汗庭 (Eurasian Steppe & Nomads)
   { id: 'pontic_steppe', name: '萨尔马提亚', pinyin: 'Sarmatia', x: 28, y: 26, region: '黑海草原', theater: 'steppe', description: '顿河与黑海北岸欧亚大草原西端。斯基泰与萨尔马提亚重铠具装骑兵驰骋的原野，西方游牧控弦诸部集聚之所。' },
   { id: 'longcheng', name: '漠北龙城', pinyin: 'Dragon City', x: 65, y: 18, region: '瀚海', theater: 'steppe', description: '匈奴单于祭天大会王庭。冒顿单于统一北方草原控弦三十万，鸣镝号令风卷残云，勒石燕然与漠北决战之地。' },
   { id: 'xianbei', name: '鲜卑汗庭', pinyin: 'Xianbei', x: 71, y: 19, region: '漠北', theater: 'steppe', description: '北方草原游牧部落联盟核心。檀石槐一统各部后控弦数十万，轲比能雄踞大漠，骑射如风。' },
-  { id: 'liucheng', name: '柳城', pinyin: 'Liucheng', x: 78, y: 24, region: '塞外', theater: 'steppe', description: '三郡乌桓王庭，白狼山咽喉。建安十二年曹操千里北征大破乌桓，张辽前锋阵斩踏顿单于之古战场。' },
 
-  // 5. 华夏三国核心十四城 (Central Plains & Three Kingdoms)
+  // 5. 华夏三国核心要邑 (Central Plains & Three Kingdoms)
   { id: 'beiping', name: '北平', pinyin: 'Beiping', x: 78, y: 31, region: '幽州', theater: 'central', description: '临近幽燕边陲，盛产战马白马义从之精骑，北方游牧守御要门。' },
   { id: 'ye', name: '邺城', pinyin: 'Ye', x: 74, y: 37, region: '河北', theater: 'central', description: '冀州核心，河北之咽喉。背靠太行山，面濒漳水，城郭高峻，物资富庶，亦是王霸之基。' },
   { id: 'changan', name: '长安', pinyin: 'Chang\'an', x: 67, y: 44, region: '关中', theater: 'central', description: '前汉旧都，雄踞关中平原。东有潼关之险，西接丝路。固若金汤，历代帝王龙兴之地。' },
   { id: 'luoyang', name: '洛阳', pinyin: 'Luoyang', x: 71, y: 43, region: '司隶', theater: 'central', description: '东周、东汉、曹魏之大一统帝都。四面环山，雄关拱卫（虎牢关、函谷关），王气巍峨。' },
   { id: 'xuchang', name: '许昌', pinyin: 'Xuchang', x: 74, y: 47, region: '中原', theater: 'central', description: '迎天子都许县，中原腹地。农耕屯田之重镇，城池宽敞，群贤毕至。' },
   { id: 'xiapi', name: '下邳', pinyin: 'Xiapi', x: 78, y: 46, region: '徐州', theater: 'central', description: '徐州军事枢纽，依泗水、沂水之险。吕布殒命白门楼、关羽屯土山约三事之历史舞台。' },
-  { id: 'wancheng', name: '宛城', pinyin: 'Wancheng', x: 72, y: 50, region: '荆北', theater: 'central', description: '南阳盆地中枢，曹魏之南方坚固屏障，张绣屯兵伏击曹操之古战场。' },
   { id: 'hanzhong', name: '汉中', pinyin: 'Hanzhong', x: 66, y: 51, region: '秦巴', theater: 'central', description: '汉中盆地，巴蜀之北大门。刘备大败曹操进位汉中王之策源，进可图秦川，退可守蜀川。' },
   { id: 'chengdu', name: '成都', pinyin: 'Chengdu', x: 64, y: 60, region: '巴蜀', theater: 'central', description: '天府之国都城，沃野千里。益州天险，崇山峻岭环抱。物产极其繁盛，蜀汉开国之基石。' },
-  { id: 'jianning', name: '建宁', pinyin: 'Jianning', x: 64, y: 70, region: '南中', theater: 'central', description: '蜀汉南中腹地。群山叠嶂，少数武将蛮王聚居。诸葛亮南征平定南蛮、七擒孟获之所。' },
   { id: 'jingzhou', name: '荆州', pinyin: 'Jingzhou', x: 73, y: 56, region: '荆襄', theater: 'central', description: '江陵要塞，天下之枢纽。北连中原，南通岭表，东接江东。刘备借荆州、关羽水淹七军之争地。' },
-  { id: 'chaisang', name: '柴桑', pinyin: 'Chaisang', x: 77, y: 58, region: '江东', theater: 'central', description: '江南水陆军事重镇，依庐山，临鄱阳湖。周瑜操练东吴水军十万，迎击曹操百万大军。' },
   { id: 'jianye', name: '建业', pinyin: 'Jianye', x: 80, y: 52, region: '江东', theater: 'central', description: '东吴帝都。虎踞龙盘，依凭长江天堑。江南经济与水军航运中枢，虎视中原。' },
-  { id: 'kuaiji', name: '会稽', pinyin: 'Kuaiji', x: 83, y: 60, region: '江东', theater: 'central', description: '越地古邑，盛产米粮、丝织。江东腹地防务后方，钱粮极其充足。' },
 
-  // 6. 东北、朝鲜半岛与东海瀛洲 (East Sea, Korea & Yamatai)
+  // 6. 东北与东海瀛洲 (East Sea & Yamatai)
   { id: 'xiangping', name: '襄平', pinyin: 'Xiangping', x: 83, y: 28, region: '辽东', theater: 'eastsea', description: '辽东公孙氏三世割据之都城。雄踞辽东半岛，通航高句丽、濊貊与倭国海路，后为司马懿率魏军平定。' },
-  { id: 'wandu', name: '丸都', pinyin: 'Wandu', x: 87, y: 26, region: '高句丽', theater: 'eastsea', description: '高句丽王国山城都邑。依托险要悬崖石壁修筑，数度与辽东公孙氏及曹魏幽州刺史毌丘俭东征大军交锋。' },
-  { id: 'lelang', name: '乐浪', pinyin: 'Lelang', x: 86, y: 35, region: '朝鲜', theater: 'eastsea', description: '汉武帝所置汉四郡之首。中原王朝管辖朝鲜半岛海陆之府治，魏明帝置带方郡抚慰韩半岛与东海倭人。' },
   { id: 'yamatai', name: '邪马台', pinyin: 'Yamatai', x: 94, y: 40, region: '瀛洲', theater: 'eastsea', description: '东海日本列岛古国，由卑弥呼女王统治。景初二年（239年）遣使泛海朝贡，魏明帝特赐金印紫绶封为「亲魏倭王」。' },
 
-  // 7. 岭南、交趾与东南亚扶南 (Southeast Asia & Maritime)
-  { id: 'jiaozhi', name: '交趾', pinyin: 'Jiaozhi', x: 72, y: 75, region: '交广', theater: 'southeast', description: '汉末士燮割据岭南交州之治所（今越南红河三角洲龙编）。百越通海第一大港，输出象牙、翡翠与南珠，后归孙吴。' },
-  { id: 'funan', name: '扶南', pinyin: 'Funan', x: 72, y: 88, region: '扶南', theater: 'southeast', description: '中南半岛湄公河古王国。吴大帝孙权派遣中郎康泰、宣化从事朱应远航出使扶南诸国，撰成《外国传》，开辟远洋航道。' }
+  // 7. 岭南交州 (Southeast Asia)
+  { id: 'jiaozhi', name: '交趾', pinyin: 'Jiaozhi', x: 72, y: 75, region: '交广', theater: 'southeast', description: '汉末士燮割据岭南交州之治所（今越南红河三角洲龙编）。百越通海第一大港，输出象牙、翡翠与南珠，后归孙吴。' }
 ];
 
 // Helper to get initial ownership according to scenario
@@ -124,13 +115,11 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
     purushapura: 'kushan',
     pataliputra: 'kushan',
     shule: 'ronin',
-    kucha: 'ronin',
     dunhuang: 'ronin',
     // 欧亚草原
     pontic_steppe: 'steppe',
     longcheng: 'steppe',
     xianbei: 'steppe',
-    liucheng: 'ronin',
     // 华夏中原
     beiping: 'ronin',
     ye: 'ronin',
@@ -138,22 +127,15 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
     luoyang: 'ronin',
     xuchang: 'ronin',
     xiapi: 'ronin',
-    wancheng: 'ronin',
     hanzhong: 'ronin',
     chengdu: 'ronin',
-    jianning: 'ronin',
     jingzhou: 'ronin',
-    chaisang: 'ronin',
     jianye: 'ronin',
-    kuaiji: 'ronin',
     // 东海与东北
     xiangping: 'ronin',
-    wandu: 'ronin',
-    lelang: 'ronin',
     yamatai: 'yamatai',
     // 南海交广
-    jiaozhi: 'ronin',
-    funan: 'ronin'
+    jiaozhi: 'ronin'
   };
 
   switch (scenarioId) {
@@ -161,13 +143,11 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
       return {
         ...baseRonin,
         ye: 'yuanshao', // Yuan Shao in Hebei
-        liucheng: 'yuanshao', // Yuan Shao allied with Wuhuan
         xuchang: 'wei', // Cao Cao starting
         luoyang: 'lubu', // Dong Zhuo & Lu Bu
         changan: 'ronin',
         beiping: 'ronin', // Gongsun Zan
         xiapi: 'lubu', // Tao Qian / Lu Bu
-        wancheng: 'ronin', // Zhang Xiu
         hanzhong: 'ronin', // Zhang Lu
         chengdu: 'ronin', // Liu Yan
         jingzhou: 'ronin', // Liu Biao
@@ -185,14 +165,9 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
         luoyang: 'wei',
         xuchang: 'wei',
         xiapi: 'wei',
-        wancheng: 'wei',
-        liucheng: 'wei', // Cao Cao pacified Wuhuan in 207 AD
         dunhuang: 'wei', // Cao Cao secured Hexi
-        lelang: 'wei', // Northern outpost
         jingzhou: 'shu', // Liu Bei core
-        chaisang: 'wu',
         jianye: 'wu',
-        kuaiji: 'wu',
         jiaozhi: 'wu' // Shi Xie pledged allegiance to Sun Quan
       };
     case 'jing': // 219 AD
@@ -205,17 +180,11 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
         luoyang: 'wei',
         xuchang: 'wei',
         xiapi: 'wei',
-        wancheng: 'wei',
-        liucheng: 'wei',
         dunhuang: 'wei',
-        lelang: 'wei',
         hanzhong: 'shu', // Liu Bei captured Hanzhong
         chengdu: 'shu',
-        jianning: 'shu',
         jingzhou: 'shu', // Guan Yu defends Jingzhou
-        chaisang: 'wu',
         jianye: 'wu',
-        kuaiji: 'wu',
         jiaozhi: 'wu'
       };
     case 'northern': // 227 AD
@@ -228,20 +197,12 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
         luoyang: 'wei',
         xuchang: 'wei',
         xiapi: 'wei',
-        wancheng: 'wei',
-        liucheng: 'wei',
         dunhuang: 'wei',
-        kucha: 'wei', // Cao Wei restored Western Protectorate
-        lelang: 'wei',
         hanzhong: 'shu', // Zhuge Liang northern expedition staging
         chengdu: 'shu',
-        jianning: 'shu', // Pacified Nanman
         jingzhou: 'wu', // Wu seized Jingzhou
-        chaisang: 'wu',
         jianye: 'wu',
-        kuaiji: 'wu',
-        jiaozhi: 'wu',
-        funan: 'wu' // Sun Wu maritime tribute from Funan
+        jiaozhi: 'wu'
       };
     default:
       return baseRonin;
@@ -1653,9 +1614,9 @@ export default function TacticalMap({
                 {/* Silk Road & Eurasian Trade Routes Layer */}
                 {showTradeRoutes && (
                   <g id="trade-routes-layer" className="transition-opacity duration-300">
-                    {/* The Great Overland Silk Road: Rome -> Pella -> Antioch -> Ctesiphon -> Samarkand -> Shule -> Kucha -> Dunhuang -> Chang'an -> Luoyang */}
+                    {/* The Great Overland Silk Road: Rome -> Pella -> Antioch -> Ctesiphon -> Samarkand -> Shule -> Dunhuang -> Chang'an -> Luoyang */}
                     <path
-                      d="M 140 273 L 200 285 L 280 291 L 340 310 L 400 236 L 490 248 L 540 229 L 600 248 L 670 273 L 710 267"
+                      d="M 140 273 L 200 285 L 280 291 L 340 310 L 400 236 L 490 248 L 600 248 L 670 273 L 710 267"
                       fill="none"
                       stroke="#eab308"
                       strokeWidth="2.4"
@@ -1711,9 +1672,9 @@ export default function TacticalMap({
                       🍵 蜀身毒道 (Tea Horse Route)
                     </text>
 
-                    {/* Maritime Spice Road: Jianye -> Kuaiji -> Jiaozhi -> Funan */}
+                    {/* Maritime Spice Road: Jianye -> Jiaozhi */}
                     <path
-                      d="M 800 322 L 830 372 L 720 465 L 720 546"
+                      d="M 800 322 Q 810 400 720 465"
                       fill="none"
                       stroke="#14b8a6"
                       strokeWidth="2"
@@ -1722,13 +1683,13 @@ export default function TacticalMap({
                       style={{ animation: 'dash 2.2s linear infinite' }}
                       opacity="0.75"
                     />
-                    <text x="735" y="495" fill="#99f6e4" className="text-[7.5px] font-serif font-bold italic opacity-75">
+                    <text x="735" y="415" fill="#99f6e4" className="text-[7.5px] font-serif font-bold italic opacity-75">
                       ⛵ 南海海上香料航道
                     </text>
 
-                    {/* Eastern Maritime Road to Yamatai: Ye/Luoyang -> Lelang -> Yamatai */}
+                    {/* Eastern Maritime Road to Yamatai: Ye -> Xiangping -> Yamatai */}
                     <path
-                      d="M 740 229 L 860 217 Q 890 230 940 248"
+                      d="M 740 229 L 830 174 Q 880 210 940 248"
                       fill="none"
                       stroke="#f472b6"
                       strokeWidth="1.8"
@@ -1775,7 +1736,7 @@ export default function TacticalMap({
                 )}
               </svg>
 
-              {/* Render All 36 Eurasian Strategic City Nodes */}
+              {/* Render All 24 Eurasian Strategic City Nodes */}
               {CITIES.map(city => {
                 const controllerId = cityOwnership[city.id] || 'ronin';
                 const faction = FACTIONS.find(f => f.id === controllerId) || FACTIONS[5];
@@ -1951,7 +1912,7 @@ export default function TacticalMap({
               <div className="absolute bottom-2.5 left-2.5 bg-slate-950/85 backdrop-blur-sm border border-slate-900 rounded-lg p-2 max-w-md z-10 flex gap-2 items-center">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 <p className="text-[9.5px] text-slate-400 leading-relaxed font-sans">
-                  <strong className="text-amber-400">全域亚洲：</strong>涵盖西域葱岭、贵霜帝国、塞北鲜卑、高句丽、东海邪马台、中原腹地与南海交趾扶南（共 26 邦国郡所）。
+                  <strong className="text-amber-400">欧亚全景：</strong>横跨罗马帝国、波斯萨珊、贵霜身毒、北方草原、华夏中原、东海瀛洲与交州（共 24 大欧亚战略帝国要邑）。
                 </p>
               </div>
             </div>
@@ -2839,30 +2800,21 @@ export default function TacticalMap({
             else if (city.id === 'pontic_steppe') { tag = '黑海草原'; }
             else if (city.id === 'longcheng') { tag = '瀚海龙城'; }
             else if (city.id === 'xianbei') { tag = '漠北穹庐'; }
-            else if (city.id === 'liucheng') { tag = '白狼雄塞'; }
             else if (city.id === 'beiping') { tag = '幽燕边塞'; }
             else if (city.id === 'ye') { tag = '河北要冲'; }
             else if (city.id === 'changan') { tag = '秦关重堑'; }
             else if (city.id === 'luoyang') { tag = '司隶帝都'; }
             else if (city.id === 'xuchang') { tag = '许昌屯田'; }
             else if (city.id === 'xiapi') { tag = '徐州古镇'; }
-            else if (city.id === 'wancheng') { tag = '宛城守备'; }
             else if (city.id === 'hanzhong') { tag = '汉中大门'; }
             else if (city.id === 'chengdu') { tag = '巴蜀天府'; }
-            else if (city.id === 'jianning') { tag = '南中荒蛮'; }
             else if (city.id === 'jingzhou') { tag = '荆襄水路'; }
-            else if (city.id === 'chaisang') { tag = '柴桑要埠'; }
             else if (city.id === 'jianye') { tag = '虎啸江东'; }
-            else if (city.id === 'kuaiji') { tag = '越吴米仓'; }
             else if (city.id === 'dunhuang') { tag = '丝路阳关'; }
-            else if (city.id === 'kucha') { tag = '龟兹佛都'; }
             else if (city.id === 'shule') { tag = '葱岭玉门'; }
             else if (city.id === 'xiangping') { tag = '辽东公孙'; }
-            else if (city.id === 'wandu') { tag = '高句丽岩'; }
-            else if (city.id === 'lelang') { tag = '汉四郡治'; }
             else if (city.id === 'yamatai') { tag = '亲魏倭国'; }
             else if (city.id === 'jiaozhi') { tag = '交州百越'; }
-            else if (city.id === 'funan') { tag = '湄公热海'; }
 
             if (controllerId === 'wei') {
               defenseScore = 90;

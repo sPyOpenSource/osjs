@@ -30,7 +30,11 @@ import {
   Target,
   MessageCircle,
   Users,
-  Building2
+  Building2,
+  Clock,
+  Play,
+  Pause,
+  Calendar
 } from 'lucide-react';
 
 export default function App() {
@@ -41,6 +45,55 @@ export default function App() {
   const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
   const [selectedScenario, setSelectedScenario] = useState<CampaignScenario>(SCENARIOS[0]);
   const [activeTab, setActiveTab] = useState<'roster' | 'creator' | 'bonds' | 'map' | 'duel' | 'affairs'>('roster');
+
+  // Global Background Time State
+  const [gameYear, setGameYear] = useState<number>(() => SCENARIOS[0].year);
+  const [gameMonth, setGameMonth] = useState<number>(1);
+  const [gameXun, setGameXun] = useState<number>(1); // 1 = 上旬, 2 = 中旬, 3 = 下旬
+  const [isAutoTime, setIsAutoTime] = useState<boolean>(true); // auto increase the time in the background
+  const [timeSpeed, setTimeSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
+
+  useEffect(() => {
+    setGameYear(selectedScenario.year);
+    setGameMonth(selectedScenario.id === 'chibi' ? 5 : 1);
+    setGameXun(1);
+  }, [selectedScenario]);
+
+  const handleAdvanceXun = () => {
+    setGameXun(prevXun => {
+      if (prevXun === 1) return 2;
+      if (prevXun === 2) return 3;
+      setGameMonth(prevMonth => {
+        if (prevMonth >= 12) {
+          setGameYear(prevYear => prevYear + 1);
+          return 1;
+        }
+        return prevMonth + 1;
+      });
+      return 1;
+    });
+  };
+
+  const handleAdvanceMonth = () => {
+    setGameXun(1);
+    setGameMonth(prevMonth => {
+      if (prevMonth >= 12) {
+        setGameYear(prevYear => prevYear + 1);
+        return 1;
+      }
+      return prevMonth + 1;
+    });
+  };
+
+  // Background auto-time increment timer
+  useEffect(() => {
+    if (!isAutoTime) return;
+    const intervalMs = timeSpeed === 'fast' ? 1200 : timeSpeed === 'normal' ? 2500 : 5000;
+    const timer = setInterval(() => {
+      handleAdvanceXun();
+    }, intervalMs);
+    return () => clearInterval(timer);
+  }, [isAutoTime, timeSpeed]);
   
   // Roster Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -937,8 +990,91 @@ export default function App() {
               </button>
             </div>
 
-            <div className="text-xs text-slate-400 font-mono px-3">
-              当前剧本年份: <strong className="text-amber-400">公元 {selectedScenario.year} 年</strong>
+            {/* Sovereign Background Time Control Bar */}
+            <div className="flex flex-wrap items-center gap-2.5 px-3 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-inner">
+              <div className="flex items-center gap-2">
+                <span className={`text-xs ${isAutoTime ? 'animate-spin' : ''}`} style={{ animationDuration: timeSpeed === 'fast' ? '3s' : timeSpeed === 'normal' ? '6s' : '10s' }}>
+                  ⏳
+                </span>
+                <div className="leading-tight">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-serif font-black text-amber-300">
+                      公元 {gameYear} 年 · {gameMonth} 月 · {gameXun === 1 ? '上旬' : gameXun === 2 ? '中旬' : '下旬'}
+                    </span>
+                    <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-amber-950/50 border border-amber-900/60 text-amber-400 font-serif">
+                      {gameMonth >= 1 && gameMonth <= 3 ? '🌸 春' : gameMonth >= 4 && gameMonth <= 6 ? '☀️ 夏' : gameMonth >= 7 && gameMonth <= 9 ? '🍂 秋' : '❄️ 冬'}
+                    </span>
+                  </div>
+                  <div className="text-[9.5px] font-mono text-slate-400 flex items-center gap-1 mt-0.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isAutoTime ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+                    <span>{isAutoTime ? '天运后台自转中' : '岁时已暂定'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pause / Play Toggle */}
+              <button
+                id="btn-toggle-auto-time"
+                type="button"
+                onClick={() => setIsAutoTime(!isAutoTime)}
+                title={isAutoTime ? '暂停后台时间流逝' : '开启后台时间流逝'}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-sm ${
+                  isAutoTime
+                    ? 'bg-amber-950/40 text-amber-300 border border-amber-500/40 hover:bg-amber-900/40'
+                    : 'bg-emerald-950/40 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-900/40'
+                }`}
+              >
+                {isAutoTime ? <Pause size={10} /> : <Play size={10} fill="currentColor" />}
+                <span>{isAutoTime ? '暂停' : '岁时自转'}</span>
+              </button>
+
+              {/* Speed Buttons */}
+              <div className="flex items-center rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-[9.5px] font-mono">
+                <button
+                  type="button"
+                  onClick={() => setTimeSpeed('slow')}
+                  className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${timeSpeed === 'slow' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+                  title="慢速 (5秒/旬)"
+                >
+                  1×
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimeSpeed('normal')}
+                  className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${timeSpeed === 'normal' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+                  title="常速 (2.5秒/旬)"
+                >
+                  2×
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimeSpeed('fast')}
+                  className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${timeSpeed === 'fast' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+                  title="急速 (1.2秒/旬)"
+                >
+                  3×
+                </button>
+              </div>
+
+              {/* Manual advance step */}
+              <button
+                id="btn-step-xun"
+                type="button"
+                onClick={handleAdvanceXun}
+                title="手动推进一旬"
+                className="px-2 py-1 rounded bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 text-[10px] font-mono cursor-pointer"
+              >
+                +1旬
+              </button>
+              <button
+                id="btn-step-month"
+                type="button"
+                onClick={handleAdvanceMonth}
+                title="手动推进一月"
+                className="px-2 py-1 rounded bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 text-[10px] font-mono cursor-pointer"
+              >
+                +1月
+              </button>
             </div>
           </div>
 
@@ -1557,7 +1693,7 @@ export default function App() {
           )}
 
           {/* Tab 4: Tactical Map Simulation */}
-          {activeTab === 'map' && (
+          <div className={activeTab === 'map' ? 'block' : 'hidden'}>
             <TacticalMap 
               selectedScenario={selectedScenario} 
               officers={officers} 
@@ -1565,8 +1701,12 @@ export default function App() {
                 setSelectedOfficer(off);
               }} 
               soundEnabled={soundEnabled}
+              gameYear={gameYear}
+              gameMonth={gameMonth}
+              gameXun={gameXun}
+              isAutoTime={isAutoTime}
             />
-          )}
+          </div>
 
           {/* Tab 5: 1v1 Duel Arena */}
           {activeTab === 'duel' && (
@@ -1580,7 +1720,7 @@ export default function App() {
           )}
 
           {/* Tab 6: Internal Affairs (内政经略) */}
-          {activeTab === 'affairs' && (
+          <div className={activeTab === 'affairs' ? 'block' : 'hidden'}>
             <InternalAffairs 
               officers={officers}
               soundEnabled={soundEnabled}
@@ -1590,8 +1730,18 @@ export default function App() {
               onSelectOfficer={(off) => {
                 setSelectedOfficer(off);
               }}
+              gameYear={gameYear}
+              gameMonth={gameMonth}
+              gameXun={gameXun}
+              isAutoTime={isAutoTime}
+              timeSpeed={timeSpeed}
+              onToggleAutoTime={() => setIsAutoTime(!isAutoTime)}
+              onSetTimeSpeed={(s) => setTimeSpeed(s)}
+              onAdvanceXun={handleAdvanceXun}
+              onAdvanceMonth={handleAdvanceMonth}
+              isActiveTab={activeTab === 'affairs'}
             />
-          )}
+          </div>
 
         </section>
 

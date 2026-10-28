@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Officer, InternalTaskType, InternalTaskConfig, TaskAssignment, CityAffairsState } from '../types';
 import AvatarRenderer from './AvatarRenderer';
 import { motion, AnimatePresence } from 'motion/react';
@@ -25,7 +25,8 @@ import {
   Calendar,
   Zap,
   Play,
-  RotateCcw
+  RotateCcw,
+  Pause
 } from 'lucide-react';
 
 interface InternalAffairsProps {
@@ -35,6 +36,16 @@ interface InternalAffairsProps {
   playClashSound: () => void;
   playHarvestSound: () => void;
   onSelectOfficer?: (officer: Officer) => void;
+  gameYear: number;
+  gameMonth: number;
+  gameXun: number;
+  isAutoTime: boolean;
+  timeSpeed: 'slow' | 'normal' | 'fast';
+  onToggleAutoTime: () => void;
+  onSetTimeSpeed: (speed: 'slow' | 'normal' | 'fast') => void;
+  onAdvanceXun: () => void;
+  onAdvanceMonth: () => void;
+  isActiveTab?: boolean;
 }
 
 // Configuration for tasks with detailed mathematical formulas and descriptions
@@ -115,16 +126,26 @@ export default function InternalAffairs({
   playDrumSound,
   playClashSound,
   playHarvestSound,
-  onSelectOfficer
+  onSelectOfficer,
+  gameYear,
+  gameMonth,
+  gameXun,
+  isAutoTime,
+  timeSpeed,
+  onToggleAutoTime,
+  onSetTimeSpeed,
+  onAdvanceXun,
+  onAdvanceMonth,
+  isActiveTab = false
 }: InternalAffairsProps) {
   // City Affairs Status
   const [selectedCityIndex, setSelectedCityIndex] = useState(0);
   const [cityState, setCityState] = useState<CityAffairsState>(PRESET_CITIES[0]);
 
-  // Calendar Timeline State (Year & Month)
-  const [currentYear, setCurrentYear] = useState(208); // 建安十三年 (赤壁之战之年)
-  const [currentMonth, setCurrentMonth] = useState(5); // 孟夏五月
-  const [currentTurnXun, setCurrentTurnXun] = useState(1); // 1 = 上旬, 2 = 中旬, 3 = 下旬
+  // Calendar Timeline Aliases
+  const currentYear = gameYear;
+  const currentMonth = gameMonth;
+  const currentTurnXun = gameXun;
 
   // Task Selection & Officer Assignment
   const [activeTaskType, setActiveTaskType] = useState<InternalTaskType>('agriculture');
@@ -482,7 +503,7 @@ export default function InternalAffairs({
       return next;
     });
 
-    if (soundEnabled) {
+    if (soundEnabled && isActiveTab) {
       if (isCritical) {
         playHarvestSound();
       } else {
@@ -491,7 +512,8 @@ export default function InternalAffairs({
     }
 
     // Prepend chronicle log
-    const dateLabel = `建安${currentYear - 195}年 ${currentMonth}月·第${currentTurnXun}旬`;
+    const xunLabel = currentTurnXun === 1 ? '上旬' : currentTurnXun === 2 ? '中旬' : '下旬';
+    const dateLabel = `公元${currentYear}年 ${currentMonth}月·${xunLabel}`;
     setChronicleLogs(prev => [
       {
         id: `log-${Date.now()}-${Math.random()}`,
@@ -505,52 +527,87 @@ export default function InternalAffairs({
     setLastEventNotice(logText);
   };
 
-  // Advance Month (全国内政大推进)
-  const handleAdvanceMonth = () => {
-    // 1. Advance month / year
-    let nextMonth = currentMonth + 1;
-    let nextYear = currentYear;
-    if (nextMonth > 12) {
-      nextMonth = 1;
-      nextYear += 1;
+  // Auto-advance internal tasks when background time ticks forward
+  const lastTickRef = useRef({ year: gameYear, month: gameMonth, xun: gameXun });
+
+  useEffect(() => {
+    if (
+      lastTickRef.current.year === gameYear &&
+      lastTickRef.current.month === gameMonth &&
+      lastTickRef.current.xun === gameXun
+    ) {
+      return;
     }
-    setCurrentMonth(nextMonth);
-    setCurrentYear(nextYear);
-    setCurrentTurnXun(1);
+    const isMonthAdvance = lastTickRef.current.month !== gameMonth || lastTickRef.current.year !== gameYear;
+    lastTickRef.current = { year: gameYear, month: gameMonth, xun: gameXun };
 
-    // 2. Play sound
-    if (soundEnabled) {
-      playHarvestSound();
-    }
+    setAssignments(prev => {
+      return prev.map(assignment => {
+        const officer = officers.find(o => o.id === assignment.officerId);
+        if (!officer) return assignment;
 
-    // 3. For each active assignment, calculate progress and harvest
-    const updatedAssignments = assignments.map(assignment => {
-      const officer = officers.find(o => o.id === assignment.officerId);
-      if (!officer) return assignment;
+        const { politics: pol, leadership: ldr, force: frc, intelligence: itl, charisma: chr } = officer.stats;
+        let baseYield = 0;
+        if (assignment.taskType === 'fortify') baseYield = Math.floor(pol * 0.60 + ldr * 0.40);
+        else if (assignment.taskType === 'agriculture') baseYield = Math.floor(pol * 0.70 + chr * 0.20 + ldr * 0.10);
+        else if (assignment.taskType === 'drill') baseYield = Math.floor(ldr * 0.60 + frc * 0.40);
+        else if (assignment.taskType === 'patrol') baseYield = Math.floor(frc * 0.50 + ldr * 0.30 + chr * 0.20);
+        else if (assignment.taskType === 'commerce') baseYield = Math.floor(pol * 0.50 + itl * 0.50);
 
-      const { politics: pol, leadership: ldr, force: frc, intelligence: itl, charisma: chr } = officer.stats;
-      let baseYield = 0;
-      if (assignment.taskType === 'fortify') baseYield = Math.floor(pol * 0.60 + ldr * 0.40);
-      else if (assignment.taskType === 'agriculture') baseYield = Math.floor(pol * 0.70 + chr * 0.20 + ldr * 0.10);
-      else if (assignment.taskType === 'drill') baseYield = Math.floor(ldr * 0.60 + frc * 0.40);
-      else if (assignment.taskType === 'patrol') baseYield = Math.floor(frc * 0.50 + ldr * 0.30 + chr * 0.20);
-      else if (assignment.taskType === 'commerce') baseYield = Math.floor(pol * 0.50 + itl * 0.50);
+        const delta = isMonthAdvance 
+          ? Math.floor(baseYield * 1.5)
+          : Math.max(12, Math.floor(baseYield * (0.9 + Math.random() * 0.2)));
 
-      // Monthly advance is 3 xuns
-      const monthlyProgress = Math.floor(baseYield * 1.5);
-      const totalProgress = assignment.progress + monthlyProgress;
-
-      applyTaskOutcome(officer, assignment.taskType, true);
-
-      return {
-        ...assignment,
-        progress: totalProgress % 100,
-        completedCycles: assignment.completedCycles + Math.floor(totalProgress / 100) + 1,
-        lastOutputSummary: `本月整肃经略圆满，成果已全额归库`
-      };
+        const newProgress = assignment.progress + delta;
+        if (newProgress >= 100) {
+          applyTaskOutcome(officer, assignment.taskType, true);
+          return {
+            ...assignment,
+            progress: newProgress % 100,
+            completedCycles: assignment.completedCycles + 1,
+            lastOutputSummary: `🎉 岁时自转达成，功绩成果入库！`
+          };
+        } else {
+          return {
+            ...assignment,
+            progress: newProgress,
+            lastOutputSummary: `本旬督办进度 +${delta}%`
+          };
+        }
+      });
     });
 
-    setAssignments(updatedAssignments);
+    // Seasonal bonuses
+    if (isMonthAdvance) {
+      if (gameMonth === 3) {
+        setCityState(prev => ({ ...prev, gold: prev.gold + 1800 }));
+        setChronicleLogs(prev => [
+          {
+            id: `season-gold-${Date.now()}`,
+            date: `公元${gameYear}年 春三月`,
+            text: '🌸 春阳抚照，全郡行户榷税归库，府库增加税银 +1,800 两！',
+            type: 'gold'
+          },
+          ...prev.slice(0, 15)
+        ]);
+      } else if (gameMonth === 9) {
+        setCityState(prev => ({ ...prev, grain: prev.grain + 6500 }));
+        setChronicleLogs(prev => [
+          {
+            id: `season-grain-${Date.now()}`,
+            date: `公元${gameYear}年 秋九月`,
+            text: '🍂 金秋大熟，阡陌万亩连云，仓廪充盈，军粮入库 +6,500 石！',
+            type: 'grain'
+          },
+          ...prev.slice(0, 15)
+        ]);
+      }
+    }
+  }, [gameYear, gameMonth, gameXun, officers]);
+
+  // Advance Month (全国内政大推进)
+  const handleAdvanceMonth = () => {
+    onAdvanceMonth();
   };
 
   // Reset city defaults
@@ -612,31 +669,94 @@ export default function InternalAffairs({
             </div>
           </div>
 
-          {/* Timeline Date & Advance Month Action */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-            <div className="bg-slate-900/80 border border-slate-800 px-4 py-2.5 rounded-2xl flex items-center justify-between sm:justify-start gap-4">
+          {/* Timeline Date & Background Auto-Time Controls */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+            <div className="bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-2xl flex items-center justify-between sm:justify-start gap-3 shadow-inner">
               <div className="flex items-center gap-2">
                 <Calendar size={16} className="text-amber-400" />
                 <div>
-                  <span className="text-[10px] font-mono text-slate-500 block leading-tight">天运纪年</span>
-                  <span className="text-xs font-serif font-black text-amber-300">
-                    公元 {currentYear} 年 · {currentMonth} 月
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-serif font-black text-amber-300">
+                      公元 {currentYear} 年 · {currentMonth} 月
+                    </span>
+                    <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-amber-950/40 border border-amber-900/50 text-amber-400 font-serif">
+                      {currentMonth >= 1 && currentMonth <= 3 ? '🌸 春季' : currentMonth >= 4 && currentMonth <= 6 ? '☀️ 夏季' : currentMonth >= 7 && currentMonth <= 9 ? '🍂 秋季' : '❄️ 冬季'}
+                    </span>
+                  </div>
+                  <div className="text-[9.5px] font-mono text-slate-400 flex items-center gap-1.5 mt-0.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isAutoTime ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
+                    <span>{isAutoTime ? '天运后台自转中' : '岁时已停步'}</span>
+                    <span className="text-slate-600">|</span>
+                    <span className="text-amber-400/90">{timeSpeed === 'fast' ? '急速 (1.2s)' : timeSpeed === 'normal' ? '常速 (2.5s)' : '慢速 (5.0s)'}</span>
+                  </div>
                 </div>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-400">
+
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-amber-400 font-bold">
                 {currentTurnXun === 1 ? '上旬' : currentTurnXun === 2 ? '中旬' : '下旬'}
               </span>
             </div>
+
+            {/* Auto-Time Pause / Play Toggle */}
+            <button
+              id="btn-toggle-auto-time-affairs"
+              onClick={onToggleAutoTime}
+              className={`px-3 py-2.5 rounded-2xl text-xs font-serif font-black border transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm ${
+                isAutoTime
+                  ? 'bg-amber-950/40 border-amber-500/40 text-amber-300 hover:bg-amber-900/40'
+                  : 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/40'
+              }`}
+            >
+              {isAutoTime ? <Pause size={13} /> : <Play size={13} fill="currentColor" />}
+              <span>{isAutoTime ? '暂停自转' : '岁时自转'}</span>
+            </button>
+
+            {/* Speed Selector */}
+            <div className="flex items-center rounded-2xl bg-slate-900 border border-slate-800 p-1 text-[10px] font-mono">
+              <button
+                type="button"
+                onClick={() => onSetTimeSpeed('slow')}
+                className={`px-2 py-1 rounded-xl cursor-pointer transition-colors ${timeSpeed === 'slow' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+                title="慢速"
+              >
+                1×
+              </button>
+              <button
+                type="button"
+                onClick={() => onSetTimeSpeed('normal')}
+                className={`px-2 py-1 rounded-xl cursor-pointer transition-colors ${timeSpeed === 'normal' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+                title="常速"
+              >
+                2×
+              </button>
+              <button
+                type="button"
+                onClick={() => onSetTimeSpeed('fast')}
+                className={`px-2 py-1 rounded-xl cursor-pointer transition-colors ${timeSpeed === 'fast' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+                title="快速"
+              >
+                3×
+              </button>
+            </div>
+
+            {/* Manual Advance Single Xun */}
+            <button
+              id="btn-advance-xun"
+              onClick={onAdvanceXun}
+              className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-serif px-3 py-2.5 rounded-2xl transition-all cursor-pointer"
+              title="手动推进一旬"
+            >
+              +1旬
+            </button>
 
             {/* Execute Month Advance */}
             <button
               id="btn-advance-month"
               onClick={handleAdvanceMonth}
-              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 text-slate-950 font-serif font-black text-xs px-5 py-3 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 text-slate-950 font-serif font-black text-xs px-4 py-2.5 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <Play size={14} fill="currentColor" />
-              <span>推进一月 · 成果总汇</span>
+              <Play size={12} fill="currentColor" />
+              <span>推进一月</span>
             </button>
           </div>
 

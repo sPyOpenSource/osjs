@@ -263,13 +263,21 @@ interface TacticalMapProps {
   officers: Officer[];
   onSelectOfficer?: (officers: Officer) => void;
   soundEnabled?: boolean;
+  gameYear?: number;
+  gameMonth?: number;
+  gameXun?: number;
+  isAutoTime?: boolean;
 }
 
 export default function TacticalMap({ 
   selectedScenario, 
   officers, 
   onSelectOfficer,
-  soundEnabled = false 
+  soundEnabled = false,
+  gameYear,
+  gameMonth,
+  gameXun,
+  isAutoTime = true
 }: TacticalMapProps) {
   const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode'>('svg-map');
   const [weatherId, setWeatherId] = useState<'sunny' | 'rainy' | 'windy' | 'foggy'>('sunny');
@@ -972,6 +980,28 @@ export default function TacticalMap({
             点击地图上的城池标记以查看镇守名将之首领及兵团。您还可以直接手动篡改势力归属，并模拟兵力调配与跨郡攻城决战。
           </p>
         </div>
+
+        {/* Dynamic Background Game Timeline Indicator */}
+        {gameYear !== undefined && (
+          <div className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-950/90 border border-slate-800 rounded-xl shadow-inner shrink-0">
+            <span className={`text-xs ${isAutoTime ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }}>⏳</span>
+            <div className="text-left font-mono">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-amber-300">
+                  公元 {gameYear} 年 · {gameMonth} 月 · {gameXun === 1 ? '上旬' : gameXun === 2 ? '中旬' : '下旬'}
+                </span>
+                <span className="text-[9.5px] px-1 py-0.2 rounded bg-amber-950/40 text-amber-400 font-serif border border-amber-900/50">
+                  {gameMonth && gameMonth >= 1 && gameMonth <= 3 ? '🌸 春' : gameMonth && gameMonth >= 4 && gameMonth <= 6 ? '☀️ 夏' : gameMonth && gameMonth >= 7 && gameMonth <= 9 ? '🍂 秋' : '❄️ 冬'}
+                </span>
+              </div>
+              <div className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${isAutoTime ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+                <span>{isAutoTime ? '天运岁时后台流逝' : '岁时已暂定'}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col items-end gap-1">
           <button
             id="btn-ai-autoplay"
@@ -1032,7 +1062,7 @@ export default function TacticalMap({
           }`}
         >
           <Layers size={13.5} />
-          全域三十六欧亚名都总览
+          全域二十四欧亚名都总览
         </button>
         <button
           id="tab-map-war-mode"

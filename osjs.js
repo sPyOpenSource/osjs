@@ -204,7 +204,7 @@ __webpack_require__.r(__webpack_exports__);
     }
   },
   ws: {
-    uri: 'wss://xuyi.h4ck.me/ws'
+    uri: 'wss://xuyi.ftp.sh/ws'
   }
 });
 

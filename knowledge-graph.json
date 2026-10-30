@@ -1,0 +1,929 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "WebTorrent-P2P-Streaming",
+    "languages": [
+      "css",
+      "html",
+      "javascript"
+    ],
+    "frameworks": [
+      "Express",
+      "Vite",
+      "WebTorrent",
+      "WS"
+    ],
+    "description": "A peer-to-peer video streaming platform built with WebTorrent and WebRTC, featuring Express server with WebSocket swarm management for real-time P2P video sharing.",
+    "analyzedAt": "2026-06-21T22:48:09.495Z",
+    "gitCommitHash": "none (not a git repo)"
+  },
+  "nodes": [
+    {
+      "id": "file:assets/index-B0GlPGIX.css",
+      "type": "file",
+      "name": "index-B0GlPGIX.css",
+      "filePath": "assets/index-B0GlPGIX.css",
+      "summary": "n8n workflow automation app stylesheet with Tailwind CSS utility classes",
+      "tags": [
+        "css",
+        "styles",
+        "n8n",
+        "tailwind"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Minified production CSS"
+    },
+    {
+      "id": "file:assets/index-BQVfVHrs.css",
+      "type": "file",
+      "name": "index-BQVfVHrs.css",
+      "filePath": "assets/index-BQVfVHrs.css",
+      "summary": "Main application stylesheet with Tailwind CSS utility classes and custom component styles",
+      "tags": [
+        "css",
+        "styles",
+        "tailwind"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Minified production CSS"
+    },
+    {
+      "id": "file:assets/index-BdEkBO7N.css",
+      "type": "file",
+      "name": "index-BdEkBO7N.css",
+      "filePath": "assets/index-BdEkBO7N.css",
+      "summary": "FPV Drone Pilot Simulator stylesheet with Tailwind CSS utility classes",
+      "tags": [
+        "css",
+        "styles",
+        "drone",
+        "tailwind"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Minified production CSS"
+    },
+    {
+      "id": "file:assets/index-DxohFkIj.css",
+      "type": "file",
+      "name": "index-DxohFkIj.css",
+      "filePath": "assets/index-DxohFkIj.css",
+      "summary": "Atom IDE clone app stylesheet with Tailwind CSS utility classes",
+      "tags": [
+        "css",
+        "styles",
+        "atom",
+        "tailwind"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Minified production CSS"
+    },
+    {
+      "id": "file:assets/index-J6ED9I0n.css",
+      "type": "file",
+      "name": "index-J6ED9I0n.css",
+      "filePath": "assets/index-J6ED9I0n.css",
+      "summary": "Blender Web 3D modeling app stylesheet with Tailwind CSS utility classes and Inter/JetBrains Mono fonts",
+      "tags": [
+        "css",
+        "styles",
+        "blender",
+        "tailwind"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Minified production CSS with font imports"
+    },
+    {
+      "id": "file:.understand-anything/.understandignore",
+      "type": "file",
+      "name": ".understandignore",
+      "filePath": ".understand-anything/.understandignore",
+      "summary": "Configuration file for excluding files/directories from knowledge graph analysis",
+      "tags": [
+        "config",
+        "exclude"
+      ],
+      "complexity": "simple",
+      "languageNotes": ".gitignore-style pattern matching"
+    },
+    {
+      "id": "file:server.cjs",
+      "type": "file",
+      "name": "server.cjs",
+      "filePath": "server.cjs",
+      "summary": "Main Express.js server with WebSocket-based WebRTC signaling, room management, video publishing, comments, and peer swarm stats for peer-to-peer video streaming",
+      "tags": [
+        "server",
+        "express",
+        "websocket",
+        "webrtc",
+        "signaling"
+      ],
+      "complexity": "complex",
+      "languageNotes": "CommonJS JavaScript (compiled from TypeScript)"
+    },
+    {
+      "id": "function:server.cjs:startServer",
+      "type": "function",
+      "name": "startServer",
+      "filePath": "server.cjs",
+      "summary": "Main async entry point that sets up Express app, API routes, WebSocket server with room management, WebRTC signaling, comments, video publishing, and serves the frontend via Vite dev or static dist",
+      "tags": [
+        "function"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:server.cjs:broadcastToRoom",
+      "type": "function",
+      "name": "broadcastToRoom",
+      "filePath": "server.cjs",
+      "summary": "Sends a JSON message to all WebSocket connections in a specific video room",
+      "tags": [
+        "function"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:server.cjs:broadcastToAll",
+      "type": "function",
+      "name": "broadcastToAll",
+      "filePath": "server.cjs",
+      "summary": "Sends a JSON message to all active WebSocket connections",
+      "tags": [
+        "function"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:server.cjs:broadcastSwarmStats",
+      "type": "function",
+      "name": "broadcastSwarmStats",
+      "filePath": "server.cjs",
+      "summary": "Aggregates peer statistics (download/upload speed, progress) for a video room and broadcasts them",
+      "tags": [
+        "function"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:index.html",
+      "type": "file",
+      "name": "index.html",
+      "filePath": "index.html",
+      "summary": "Main entry HTML page for the WebTorrent peer-to-peer video streaming application with React root mount point",
+      "tags": [
+        "html",
+        "entry",
+        "main"
+      ],
+      "complexity": "simple",
+      "languageNotes": "HTML5 with Vite module script import"
+    },
+    {
+      "id": "file:app/atom/index.html",
+      "type": "file",
+      "name": "index.html",
+      "filePath": "app/atom/index.html",
+      "summary": "Atom IDE clone app HTML page with React root mount point",
+      "tags": [
+        "html",
+        "atom",
+        "mini-app"
+      ],
+      "complexity": "simple",
+      "languageNotes": "HTML5 with Vite module script import"
+    },
+    {
+      "id": "file:app/atom/server.cjs",
+      "type": "file",
+      "name": "server.cjs",
+      "filePath": "app/atom/server.cjs",
+      "summary": "Atom IDE clone server with Gemini AI copilot chat, autofix, GitHub OAuth integration, and WebSocket-based collaborative editing",
+      "tags": [
+        "server",
+        "express",
+        "gemini-ai",
+        "github-oauth",
+        "collaboration"
+      ],
+      "complexity": "complex",
+      "languageNotes": "CommonJS JavaScript (compiled from TypeScript)"
+    },
+    {
+      "id": "function:app/atom/server.cjs:getGeminiClient",
+      "type": "function",
+      "name": "getGeminiClient",
+      "filePath": "app/atom/server.cjs",
+      "summary": "Lazily initializes and returns a GoogleGenAI client with API key from environment",
+      "tags": [
+        "function"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:app/atom/server.cjs:getGitHubHeaders",
+      "type": "function",
+      "name": "getGitHubHeaders",
+      "filePath": "app/atom/server.cjs",
+      "summary": "Returns authorization headers for GitHub API requests using a provided token",
+      "tags": [
+        "function"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:app/atom/server.cjs:broadcast",
+      "type": "function",
+      "name": "broadcast",
+      "filePath": "app/atom/server.cjs",
+      "summary": "Sends a JSON message to all connected WebSocket clients, excluding an optional sender",
+      "tags": [
+        "function"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:app/atom/server.cjs:start",
+      "type": "function",
+      "name": "start",
+      "filePath": "app/atom/server.cjs",
+      "summary": "Starts the Atom server with Vite dev middleware and Express static serving",
+      "tags": [
+        "function"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/blender/index.html",
+      "type": "file",
+      "name": "index.html",
+      "filePath": "app/blender/index.html",
+      "summary": "Blender Web 3D modeling app HTML page with React root mount point",
+      "tags": [
+        "html",
+        "blender",
+        "mini-app"
+      ],
+      "complexity": "simple",
+      "languageNotes": "HTML5 with Vite module script import"
+    },
+    {
+      "id": "file:app/blender/server.cjs",
+      "type": "file",
+      "name": "server.cjs",
+      "filePath": "app/blender/server.cjs",
+      "summary": "Blender Web 3D modeling server with Gemini AI command translation, real-time chat, and WebSocket-based collaboration with user presence",
+      "tags": [
+        "server",
+        "express",
+        "gemini-ai",
+        "3d",
+        "collaboration",
+        "websocket"
+      ],
+      "complexity": "complex",
+      "languageNotes": "CommonJS JavaScript (compiled from TypeScript)"
+    },
+    {
+      "id": "function:app/blender/server.cjs:getAIClient",
+      "type": "function",
+      "name": "getAIClient",
+      "filePath": "app/blender/server.cjs",
+      "summary": "Lazily initializes and returns a GoogleGenAI client, throwing if API key is missing",
+      "tags": [
+        "function"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:app/blender/server.cjs:broadcastPresence",
+      "type": "function",
+      "name": "broadcastPresence",
+      "filePath": "app/blender/server.cjs",
+      "summary": "Broadcasts the current list of connected users with their names, avatars, and colors to all clients",
+      "tags": [
+        "function"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:app/blender/server.cjs:broadcastToOthers",
+      "type": "function",
+      "name": "broadcastToOthers",
+      "filePath": "app/blender/server.cjs",
+      "summary": "Sends a message to all connected WebSocket clients except the sender",
+      "tags": [
+        "function"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:app/blender/server.cjs:broadcastToAll",
+      "type": "function",
+      "name": "broadcastToAll",
+      "filePath": "app/blender/server.cjs",
+      "summary": "Sends a message to all connected WebSocket clients",
+      "tags": [
+        "function"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:app/blender/server.cjs:startServer",
+      "type": "function",
+      "name": "startServer",
+      "filePath": "app/blender/server.cjs",
+      "summary": "Sets up Express app, WebSocket server with user connection/disconnection handling, chat messaging, presence broadcasting, and serves the frontend via Vite",
+      "tags": [
+        "function"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:app/drone/index.html",
+      "type": "file",
+      "name": "index.html",
+      "filePath": "app/drone/index.html",
+      "summary": "FPV Drone Pilot Simulator HTML page with React root mount point, featuring Three.js-based 3D rendering",
+      "tags": [
+        "html",
+        "drone",
+        "mini-app",
+        "simulator",
+        "threejs"
+      ],
+      "complexity": "simple",
+      "languageNotes": "HTML5 with Vite module script import"
+    },
+    {
+      "id": "file:app/n8n/index.html",
+      "type": "file",
+      "name": "index.html",
+      "filePath": "app/n8n/index.html",
+      "summary": "n8n workflow automation app HTML page with React root mount point",
+      "tags": [
+        "html",
+        "n8n",
+        "mini-app"
+      ],
+      "complexity": "simple",
+      "languageNotes": "HTML5 with Vite module script import"
+    },
+    {
+      "id": "file:app/n8n/server.cjs",
+      "type": "file",
+      "name": "server.cjs",
+      "filePath": "app/n8n/server.cjs",
+      "summary": "n8n workflow automation server with visual workflow node execution, AI-powered sentiment analysis, Gemini integration, and WebSocket-based real-time collaboration",
+      "tags": [
+        "server",
+        "express",
+        "n8n",
+        "workflow",
+        "automation",
+        "gemini-ai"
+      ],
+      "complexity": "complex",
+      "languageNotes": "CommonJS JavaScript (compiled from TypeScript)"
+    },
+    {
+      "id": "function:app/n8n/server.cjs:broadcast",
+      "type": "function",
+      "name": "broadcast",
+      "filePath": "app/n8n/server.cjs",
+      "summary": "Sends a typed JSON message to all collaborators except an optional excluded ID",
+      "tags": [
+        "function"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:app/n8n/server.cjs:serveApp",
+      "type": "function",
+      "name": "serveApp",
+      "filePath": "app/n8n/server.cjs",
+      "summary": "Starts the n8n server with Vite dev middleware and Express static serving on port 3000",
+      "tags": [
+        "function"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:assets/index-DTCbT7dD.js",
+      "type": "file",
+      "name": "index-DTCbT7dD.js",
+      "filePath": "assets/index-DTCbT7dD.js",
+      "summary": "Bundled main React frontend application with React, ReactDOM, and React JSX runtime for the WebTorrent streaming UI",
+      "tags": [
+        "javascript",
+        "bundled",
+        "react",
+        "webtorrent"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Minified production JavaScript bundle"
+    },
+    {
+      "id": "file:assets/index-D6UV2mhv.js",
+      "type": "file",
+      "name": "index-D6UV2mhv.js",
+      "filePath": "assets/index-D6UV2mhv.js",
+      "summary": "Bundled Blender Web 3D modeling app with React, ReactDOM, Three.js, shader materials, and GLSL vertex/fragment shaders",
+      "tags": [
+        "javascript",
+        "bundled",
+        "react",
+        "threejs",
+        "3d"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Minified production JavaScript bundle"
+    },
+    {
+      "id": "file:assets/index-CF1d3mFE.js",
+      "type": "file",
+      "name": "index-CF1d3mFE.js",
+      "filePath": "assets/index-CF1d3mFE.js",
+      "summary": "Bundled FPV Drone Pilot Simulator app with React, ReactDOM, Three.js, and audio management (wind noise, crash sounds, winch, gate pass)",
+      "tags": [
+        "javascript",
+        "bundled",
+        "react",
+        "drone",
+        "threejs",
+        "audio"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Minified production JavaScript bundle"
+    },
+    {
+      "id": "file:assets/index-DJVaGYXO.js",
+      "type": "file",
+      "name": "index-DJVaGYXO.js",
+      "filePath": "assets/index-DJVaGYXO.js",
+      "summary": "Bundled Atom IDE clone app with React, ReactDOM, and React JSX runtime for a code editor interface",
+      "tags": [
+        "javascript",
+        "bundled",
+        "react",
+        "atom",
+        "ide"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Minified production JavaScript bundle"
+    },
+    {
+      "id": "file:assets/index-PG3qlDKg.js",
+      "type": "file",
+      "name": "index-PG3qlDKg.js",
+      "filePath": "assets/index-PG3qlDKg.js",
+      "summary": "Bundled n8n workflow automation app with React, ReactDOM, and React JSX runtime for a visual workflow editor",
+      "tags": [
+        "javascript",
+        "bundled",
+        "react",
+        "n8n",
+        "workflow"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Minified production JavaScript bundle"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:server.cjs",
+      "target": "file:index.html",
+      "type": "serves",
+      "weight": 1,
+      "description": "Main server serves index.html as the SPA entry point",
+      "direction": "forward"
+    },
+    {
+      "source": "file:index.html",
+      "target": "file:assets/index-DTCbT7dD.js",
+      "type": "imports",
+      "weight": 1,
+      "description": "index.html imports the main bundled React app JS",
+      "direction": "forward"
+    },
+    {
+      "source": "file:index.html",
+      "target": "file:assets/index-BQVfVHrs.css",
+      "type": "imports",
+      "weight": 1,
+      "description": "index.html imports the main app stylesheet",
+      "direction": "forward"
+    },
+    {
+      "source": "file:server.cjs",
+      "target": "file:assets/index-DTCbT7dD.js",
+      "type": "serves",
+      "weight": 0.7,
+      "description": "Server statically serves the main JS bundle",
+      "direction": "forward"
+    },
+    {
+      "source": "file:server.cjs",
+      "target": "file:assets/index-BQVfVHrs.css",
+      "type": "serves",
+      "weight": 0.7,
+      "description": "Server statically serves the main CSS bundle",
+      "direction": "forward"
+    },
+    {
+      "source": "function:server.cjs:startServer",
+      "target": "function:server.cjs:broadcastToAll",
+      "type": "calls",
+      "weight": 0.8,
+      "description": "startServer calls broadcastToAll for video updates and reset notifications",
+      "direction": "forward"
+    },
+    {
+      "source": "function:server.cjs:startServer",
+      "target": "function:server.cjs:broadcastToRoom",
+      "type": "calls",
+      "weight": 0.9,
+      "description": "startServer calls broadcastToRoom for room-specific events (peer join/leave, comments)",
+      "direction": "forward"
+    },
+    {
+      "source": "function:server.cjs:startServer",
+      "target": "function:server.cjs:broadcastSwarmStats",
+      "type": "calls",
+      "weight": 0.8,
+      "description": "startServer calls broadcastSwarmStats when peer stats update or room changes",
+      "direction": "forward"
+    },
+    {
+      "source": "function:server.cjs:broadcastSwarmStats",
+      "target": "function:server.cjs:broadcastToRoom",
+      "type": "calls",
+      "weight": 0.9,
+      "description": "broadcastSwarmStats calls broadcastToRoom to send aggregated stats to the room",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/atom/server.cjs",
+      "target": "file:app/atom/index.html",
+      "type": "serves",
+      "weight": 1,
+      "description": "Atom server serves the Atom HTML page",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/atom/index.html",
+      "target": "file:assets/index-DJVaGYXO.js",
+      "type": "imports",
+      "weight": 1,
+      "description": "Atom HTML imports the Atom bundled JS",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/atom/index.html",
+      "target": "file:assets/index-DxohFkIj.css",
+      "type": "imports",
+      "weight": 1,
+      "description": "Atom HTML imports the Atom stylesheet",
+      "direction": "forward"
+    },
+    {
+      "source": "function:app/atom/server.cjs:start",
+      "target": "function:app/atom/server.cjs:broadcast",
+      "type": "calls",
+      "weight": 0.6,
+      "description": "start function sets up WebSocket event handlers that call broadcast",
+      "direction": "forward"
+    },
+    {
+      "source": "function:app/atom/server.cjs:start",
+      "target": "function:app/atom/server.cjs:getGeminiClient",
+      "type": "calls",
+      "weight": 0.5,
+      "description": "start function's API routes may call getGeminiClient for AI features",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/blender/server.cjs",
+      "target": "file:app/blender/index.html",
+      "type": "serves",
+      "weight": 1,
+      "description": "Blender server serves the Blender HTML page",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/blender/index.html",
+      "target": "file:assets/index-D6UV2mhv.js",
+      "type": "imports",
+      "weight": 1,
+      "description": "Blender HTML imports the Blender bundled JS (Three.js)",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/blender/index.html",
+      "target": "file:assets/index-J6ED9I0n.css",
+      "type": "imports",
+      "weight": 1,
+      "description": "Blender HTML imports the Blender stylesheet",
+      "direction": "forward"
+    },
+    {
+      "source": "function:app/blender/server.cjs:startServer",
+      "target": "function:app/blender/server.cjs:broadcastPresence",
+      "type": "calls",
+      "weight": 0.8,
+      "description": "startServer calls broadcastPresence on user connect/disconnect",
+      "direction": "forward"
+    },
+    {
+      "source": "function:app/blender/server.cjs:startServer",
+      "target": "function:app/blender/server.cjs:broadcastToOthers",
+      "type": "calls",
+      "weight": 0.8,
+      "description": "startServer calls broadcastToOthers for chat messages and signals",
+      "direction": "forward"
+    },
+    {
+      "source": "function:app/blender/server.cjs:startServer",
+      "target": "function:app/blender/server.cjs:broadcastToAll",
+      "type": "calls",
+      "weight": 0.7,
+      "description": "startServer calls broadcastToAll for system messages",
+      "direction": "forward"
+    },
+    {
+      "source": "function:app/blender/server.cjs:startServer",
+      "target": "function:app/blender/server.cjs:getAIClient",
+      "type": "calls",
+      "weight": 0.6,
+      "description": "startServer's API routes call getAIClient for Gemini command processing",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/n8n/server.cjs",
+      "target": "file:app/n8n/index.html",
+      "type": "serves",
+      "weight": 1,
+      "description": "n8n server serves the n8n HTML page",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/n8n/index.html",
+      "target": "file:assets/index-PG3qlDKg.js",
+      "type": "imports",
+      "weight": 1,
+      "description": "n8n HTML imports the n8n bundled JS",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/n8n/index.html",
+      "target": "file:assets/index-B0GlPGIX.css",
+      "type": "imports",
+      "weight": 1,
+      "description": "n8n HTML imports the n8n stylesheet",
+      "direction": "forward"
+    },
+    {
+      "source": "function:app/n8n/server.cjs:serveApp",
+      "target": "function:app/n8n/server.cjs:broadcast",
+      "type": "calls",
+      "weight": 0.7,
+      "description": "serveApp sets up WebSocket event handlers that call broadcast",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/drone/index.html",
+      "target": "file:assets/index-CF1d3mFE.js",
+      "type": "imports",
+      "weight": 1,
+      "description": "Drone HTML imports the drone sim bundled JS (Three.js)",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/drone/index.html",
+      "target": "file:assets/index-BdEkBO7N.css",
+      "type": "imports",
+      "weight": 1,
+      "description": "Drone HTML imports the drone sim stylesheet",
+      "direction": "forward"
+    },
+    {
+      "source": "file:assets/index-DTCbT7dD.js",
+      "target": "file:index.html",
+      "type": "related",
+      "weight": 0.9,
+      "description": "Bundled main JS renders the React app into index.html's root div",
+      "direction": "forward"
+    },
+    {
+      "source": "file:assets/index-DJVaGYXO.js",
+      "target": "file:app/atom/index.html",
+      "type": "related",
+      "weight": 0.9,
+      "description": "Bundled Atom JS renders the Atom React app",
+      "direction": "forward"
+    },
+    {
+      "source": "file:assets/index-D6UV2mhv.js",
+      "target": "file:app/blender/index.html",
+      "type": "related",
+      "weight": 0.9,
+      "description": "Bundled Blender JS renders the Blender 3D React app",
+      "direction": "forward"
+    },
+    {
+      "source": "file:assets/index-CF1d3mFE.js",
+      "target": "file:app/drone/index.html",
+      "type": "related",
+      "weight": 0.9,
+      "description": "Bundled Drone JS renders the FPV Drone Simulator React app",
+      "direction": "forward"
+    },
+    {
+      "source": "file:assets/index-PG3qlDKg.js",
+      "target": "file:app/n8n/index.html",
+      "type": "related",
+      "weight": 0.9,
+      "description": "Bundled n8n JS renders the workflow automation React app",
+      "direction": "forward"
+    },
+    {
+      "source": "file:server.cjs",
+      "target": "file:app/drone/index.html",
+      "type": "serves",
+      "weight": 0.5,
+      "description": "Main server serves the drone HTML page via Express static middleware (drone has no server of its own)",
+      "direction": "forward"
+    },
+    {
+      "source": "file:server.cjs",
+      "target": "file:app/atom/server.cjs",
+      "type": "related",
+      "weight": 0.3,
+      "description": "Main server and Atom server share Express/WebSocket pattern but are independent sub-apps",
+      "direction": "forward"
+    },
+    {
+      "source": "file:server.cjs",
+      "target": "file:app/blender/server.cjs",
+      "type": "related",
+      "weight": 0.3,
+      "description": "Main server and Blender server share Express/WebSocket pattern but are independent sub-apps",
+      "direction": "forward"
+    },
+    {
+      "source": "file:server.cjs",
+      "target": "file:app/n8n/server.cjs",
+      "type": "related",
+      "weight": 0.3,
+      "description": "Main server and n8n server share Express/WebSocket pattern but are independent sub-apps",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/atom/server.cjs",
+      "target": "file:app/blender/server.cjs",
+      "type": "related",
+      "weight": 0.4,
+      "description": "Atom and Blender servers both use Gemini AI with similar Express/WebSocket architectures",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/atom/server.cjs",
+      "target": "file:app/n8n/server.cjs",
+      "type": "related",
+      "weight": 0.4,
+      "description": "Atom and n8n servers both use Gemini AI with similar Express/WebSocket architectures",
+      "direction": "forward"
+    },
+    {
+      "source": "file:app/blender/server.cjs",
+      "target": "file:app/n8n/server.cjs",
+      "type": "related",
+      "weight": 0.4,
+      "description": "Blender and n8n servers both use Gemini AI with similar Express/WebSocket architectures",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.understand-anything/.understandignore",
+      "target": "file:server.cjs",
+      "type": "configures",
+      "weight": 0.1,
+      "description": "Ignore config applies to all project files during knowledge graph analysis",
+      "direction": "forward"
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:main-server",
+      "name": "Main Server",
+      "description": "Core P2P streaming server and entry HTML — Express + WebSocket for WebTorrent/WebRTC signaling, room management, video publishing, and peer swarm stats",
+      "nodeIds": [
+        "file:server.cjs",
+        "file:index.html"
+      ]
+    },
+    {
+      "id": "layer:sub-applications",
+      "name": "Sub-Applications",
+      "description": "Mini-app servers and HTML entry points — atom (IDE + Gemini AI), blender (3D modeling + WebSocket chat), drone (FPV sim, static frontend only), n8n (workflow automation). Each has its own Express/WS server",
+      "nodeIds": [
+        "file:app/atom/index.html",
+        "file:app/atom/server.cjs",
+        "file:app/blender/index.html",
+        "file:app/blender/server.cjs",
+        "file:app/drone/index.html",
+        "file:app/n8n/index.html",
+        "file:app/n8n/server.cjs"
+      ]
+    },
+    {
+      "id": "layer:frontend-assets",
+      "name": "Frontend Assets",
+      "description": "Vite-built production JS bundles and CSS stylesheets — one pair per app (main + atom + blender + drone + n8n)",
+      "nodeIds": [
+        "file:assets/index-B0GlPGIX.css",
+        "file:assets/index-BQVfVHrs.css",
+        "file:assets/index-BdEkBO7N.css",
+        "file:assets/index-DxohFkIj.css",
+        "file:assets/index-J6ED9I0n.css",
+        "file:assets/index-DTCbT7dD.js",
+        "file:assets/index-D6UV2mhv.js",
+        "file:assets/index-CF1d3mFE.js",
+        "file:assets/index-DJVaGYXO.js",
+        "file:assets/index-PG3qlDKg.js"
+      ]
+    },
+    {
+      "id": "layer:configuration",
+      "name": "Configuration",
+      "description": "Knowledge graph analysis ignore patterns for the understand-anything tooling",
+      "nodeIds": [
+        "file:.understand-anything/.understandignore"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Application Entry Point",
+      "description": "index.html mounts the React frontend via Vite's module script, importing the main JS bundle (WebTorrent streaming UI) and Tailwind stylesheet. This is where the user's browser session begins.",
+      "nodeIds": [
+        "file:index.html",
+        "file:assets/index-DTCbT7dD.js",
+        "file:assets/index-BQVfVHrs.css"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Main Streaming Server",
+      "description": "server.cjs is the core Express.js server — it manages WebSocket WebRTC signaling for peer-to-peer video streaming, handles video rooms, publishes comments, and serves the frontend bundles. The startServer function orchestrates all routes and WebSocket events.",
+      "nodeIds": [
+        "file:server.cjs",
+        "function:server.cjs:startServer"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "WebSocket Swarm & Room Management",
+      "description": "The server's broadcasting functions enable real-time P2P coordination: broadcastToRoom sends events to peers in a specific video room, broadcastToAll reaches every connected client, and broadcastSwarmStats aggregates per-peer download/upload speeds and progress for the swarm dashboard.",
+      "nodeIds": [
+        "function:server.cjs:broadcastToRoom",
+        "function:server.cjs:broadcastToAll",
+        "function:server.cjs:broadcastSwarmStats"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Atom IDE Sub-App — AI Copilot & Collaboration",
+      "description": "The Atom IDE clone (app/atom/) features a Gemini AI copilot for code chat and autofix, GitHub OAuth integration, and WebSocket-based collaborative editing. Its server (app/atom/server.cjs) follows the same Express + WebSocket pattern as the main server but with AI-focused routes.",
+      "nodeIds": [
+        "file:app/atom/index.html",
+        "file:app/atom/server.cjs",
+        "function:app/atom/server.cjs:start",
+        "function:app/atom/server.cjs:getGeminiClient"
+      ]
+    },
+    {
+      "order": 5,
+      "title": "Blender 3D & FPV Drone Sub-Apps — Three.js Visualizers",
+      "description": "app/blender/ is a 3D modeling environment with Gemini AI command translation, real-time chat, and user presence — backed by Three.js. app/drone/ is an FPV drone flight simulator with Three.js rendering, audio (wind, crash, gate pass), and no server-side logic (purely client-side). Both demonstrate the pattern of embedding rich browser-based 3D experiences.",
+      "nodeIds": [
+        "file:app/blender/index.html",
+        "file:app/blender/server.cjs",
+        "function:app/blender/server.cjs:startServer",
+        "file:app/drone/index.html",
+        "file:assets/index-CF1d3mFE.js"
+      ]
+    },
+    {
+      "order": 6,
+      "title": "n8n Workflow Automation Sub-App",
+      "description": "The n8n clone (app/n8n/) provides a visual workflow editor with drag-and-drop node execution, AI-powered sentiment analysis via Gemini, and real-time collaboration over WebSocket. Its server mirrors the shared Express/WebSocket + Gemini AI architecture seen across the Atom and Blender sub-apps.",
+      "nodeIds": [
+        "file:app/n8n/index.html",
+        "file:app/n8n/server.cjs",
+        "function:app/n8n/server.cjs:serveApp",
+        "function:app/n8n/server.cjs:broadcast"
+      ]
+    }
+  ]
+}

@@ -1417,7 +1417,22 @@ export const FAMOUS_RELATIONSHIPS: RelationshipRelation[] = [
   { fromOfficerId: 'xishi', toOfficerId: 'wuzetian', type: 'Confidant' },
   { fromOfficerId: 'wuzetian', toOfficerId: 'xishi', type: 'Trust' },
   { fromOfficerId: 'xishi', toOfficerId: 'cleopatra', type: 'Trust' },
-  { fromOfficerId: 'cleopatra', toOfficerId: 'xishi', type: 'Trust' }
+  { fromOfficerId: 'cleopatra', toOfficerId: 'xishi', type: 'Trust' },
+  { fromOfficerId: 'diaochan', toOfficerId: 'lubu', type: 'Spouse' },
+  { fromOfficerId: 'lubu', toOfficerId: 'diaochan', type: 'Spouse' },
+  { fromOfficerId: 'diaochan', toOfficerId: 'xishi', type: 'Confidant' },
+  { fromOfficerId: 'xishi', toOfficerId: 'diaochan', type: 'Confidant' },
+  { fromOfficerId: 'diaochan', toOfficerId: 'daqiao', type: 'Trust' },
+  { fromOfficerId: 'wangzhaojun', toOfficerId: 'modu', type: 'Spouse' },
+  { fromOfficerId: 'modu', toOfficerId: 'wangzhaojun', type: 'Spouse' },
+  { fromOfficerId: 'wangzhaojun', toOfficerId: 'cleopatra', type: 'Trust' },
+  { fromOfficerId: 'wangzhaojun', toOfficerId: 'catherine', type: 'Trust' },
+  { fromOfficerId: 'catherine', toOfficerId: 'wangzhaojun', type: 'Trust' },
+  { fromOfficerId: 'yanghuaiyu', toOfficerId: 'guanyu', type: 'Rival' },
+  { fromOfficerId: 'guanyu', toOfficerId: 'yanghuaiyu', type: 'Rival' },
+  { fromOfficerId: 'yanghuaiyu', toOfficerId: 'lishimin', type: 'Trust' },
+  { fromOfficerId: 'lishimin', toOfficerId: 'yanghuaiyu', type: 'Trust' },
+  { fromOfficerId: 'yanghuaiyu', toOfficerId: 'modu', type: 'Rival' }
 ];
 
 export const SCENARIOS: CampaignScenario[] = [

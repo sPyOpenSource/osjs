@@ -1138,6 +1138,115 @@ export const FAMOUS_OFFICERS: Officer[] = [
       '奇袭 (穿越丛林灌木发动奔袭，无视城墙防守防线)'
     ],
     biography: '明代著名书画家、文学家，字伯虎，后改字子畏，号六如居士、桃花庵主，南直隶苏州府吴县人，位列“吴门四家”与“江南四大才子”之首。乡试夺得解元第一，名动天下；其诗书画三绝，行文俊朗洒脱，狂放不羁。“别人笑我忒疯癫，我笑他人看不穿；不见五陵豪杰墓，无花无酒锄作田”，名句传颂四海千古。'
+  },
+  {
+    id: 'daqiao',
+    name: '大乔',
+    gender: 'Female',
+    styleName: '江东二乔 · 国色',
+    englishName: 'Da Qiao',
+    origin: '华夏三国 · 江东庐江皖县',
+    isGlobalLeader: false,
+    factionId: 'wu',
+    avatarStyle: {
+      hairColor: '#0f172a',
+      hairStyle: 'Long Ribbon Hair',
+      armorColor: '#db2777',
+      accessory: 'Golden Phoenix Headdress',
+      expression: 'Warm Serene',
+      bgGradient: 'from-rose-950 via-pink-950 to-purple-950'
+    },
+    stats: {
+      leadership: 62,
+      force: 30,
+      intelligence: 88,
+      politics: 92,
+      charisma: 97
+    },
+    traits: [
+      '国色 (绝世姿容名动江东，大幅提升所在城池民心、治安与招募效率)',
+      '贤淑 (内政建设与抚民成效大幅提升，安定后方)',
+      '姐妹同心 (与妹小乔同阵时，全军士气大振)'
+    ],
+    skills: [
+      '治疗 (恢复重伤士兵的编制数并激发高昂士气)',
+      '安抚 (以温婉贤德安定城内民心，提升治安与士气)',
+      '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)'
+    ],
+    biography: '东汉末年江东庐江皖县乔公长女，与妹妹小乔并称“江东二乔”，皆为绝世美人。嫁与江东小霸王孙策为妻，端庄贤淑，深明大义。孙策早逝之后，其悉心扶持幼弟孙权稳定江东局势，于内室之中默默守护东吴基业，为吴国之稳固贡献良多。'
+  },
+  {
+    id: 'xiaoqiao',
+    name: '小乔',
+    gender: 'Female',
+    styleName: '江东二乔 · 倾城',
+    englishName: 'Xiao Qiao',
+    origin: '华夏三国 · 江东庐江皖县',
+    isGlobalLeader: false,
+    factionId: 'wu',
+    avatarStyle: {
+      hairColor: '#1e293b',
+      hairStyle: 'Long Ribbon Hair',
+      armorColor: '#a855f7',
+      accessory: 'Silk Folding Fan',
+      expression: 'Warm Smiling',
+      bgGradient: 'from-purple-950 via-fuchsia-950 to-indigo-950'
+    },
+    stats: {
+      leadership: 58,
+      force: 32,
+      intelligence: 90,
+      politics: 82,
+      charisma: 98
+    },
+    traits: [
+      '国色 (绝世姿容倾城倾国，大幅提升所在城池民心与招募效率)',
+      '美周郎 (与夫周瑜同心协力，大幅提高我方士气及水军行军移动)',
+      '姐妹同心 (与姊大乔同阵时，全军士气大振)'
+    ],
+    skills: [
+      '鼓舞 (以琴音与笑靥大幅提升我方全军士气与行军速度)',
+      '治疗 (恢复重伤士兵的编制数并激发高昂士气)',
+      '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)'
+    ],
+    biography: '东汉末年乔公次女、大乔之妹，与姊并称“江东二乔”。嫁与东吴大都督周瑜为妻，夫妻恩爱，琴瑟和鸣。周瑜赤壁鏖兵、运筹帷幄之际，小乔于内室操持后方、抚慰军心，其温婉聪慧传为佳话。苏轼《念奴娇》中“小乔初嫁了，雄姿英发”之名句千古流传。'
+  },
+  {
+    id: 'xishi',
+    name: '西施',
+    gender: 'Female',
+    styleName: '西子 · 浣纱女',
+    englishName: 'Xi Shi (Xizi)',
+    origin: '春秋越国 · 苎萝村浣纱溪',
+    isGlobalLeader: false,
+    factionId: 'wu',
+    avatarStyle: {
+      hairColor: '#0f172a',
+      hairStyle: 'Long Flowing Hair',
+      armorColor: '#f8fafc',
+      accessory: 'Pearl Moon Headdress',
+      expression: 'Elegant Confident',
+      bgGradient: 'from-slate-800 via-cyan-950 to-blue-950'
+    },
+    stats: {
+      leadership: 55,
+      force: 25,
+      intelligence: 95,
+      politics: 88,
+      charisma: 100
+    },
+    traits: [
+      '沉鱼 (四大美女之首，鱼见之沉入水底；魅力无远弗届，大幅瓦解敌军斗志)',
+      '美人计 (以绝世姿容迷惑敌军主将，使其沉溺享乐、荒废军政，敌城内政与防御大幅衰退)',
+      '忍辱负重 (身处敌营而初心不改，混乱与挑衅类计策成功率极高)'
+    ],
+    skills: [
+      '倾国 (以绝世姿容迷惑敌军主将，使其部队陷入混乱与士气崩溃)',
+      '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)',
+      '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)',
+      '治疗 (恢复重伤士兵的编制数并激发高昂士气)'
+    ],
+    biography: '春秋末期越国苎萝村浣纱女，位列中国古代“四大美女”之首，有“沉鱼”之貌。越国败于吴国后，西施受越王勾践与范蠡所托，以绝世姿容入吴宫惑吴王夫差，使其沉溺享乐、荒废朝政，终助越国“三千越甲可吞吴”完成复国大业。功成之后相传随范蠡泛舟五湖，杳然遁世。'
   }
 ];
 
@@ -1186,7 +1295,18 @@ export const FAMOUS_RELATIONSHIPS: RelationshipRelation[] = [
   { fromOfficerId: 'tangbohu', toOfficerId: 'libai', type: 'Confidant' },
   { fromOfficerId: 'libai', toOfficerId: 'tangbohu', type: 'Confidant' },
   { fromOfficerId: 'tangbohu', toOfficerId: 'zhouyu', type: 'Confidant' },
-  { fromOfficerId: 'tangbohu', toOfficerId: 'qianlong', type: 'Rival' }
+  { fromOfficerId: 'tangbohu', toOfficerId: 'qianlong', type: 'Rival' },
+  { fromOfficerId: 'daqiao', toOfficerId: 'xiaoqiao', type: 'Confidant' },
+  { fromOfficerId: 'xiaoqiao', toOfficerId: 'daqiao', type: 'Confidant' },
+  { fromOfficerId: 'xiaoqiao', toOfficerId: 'zhouyu', type: 'Spouse' },
+  { fromOfficerId: 'zhouyu', toOfficerId: 'xiaoqiao', type: 'Spouse' },
+  { fromOfficerId: 'daqiao', toOfficerId: 'zhouyu', type: 'Trust' },
+  { fromOfficerId: 'daqiao', toOfficerId: 'sunquan', type: 'Trust' },
+  { fromOfficerId: 'sunquan', toOfficerId: 'daqiao', type: 'Trust' },
+  { fromOfficerId: 'xishi', toOfficerId: 'wuzetian', type: 'Confidant' },
+  { fromOfficerId: 'wuzetian', toOfficerId: 'xishi', type: 'Trust' },
+  { fromOfficerId: 'xishi', toOfficerId: 'cleopatra', type: 'Trust' },
+  { fromOfficerId: 'cleopatra', toOfficerId: 'xishi', type: 'Trust' }
 ];
 
 export const SCENARIOS: CampaignScenario[] = [

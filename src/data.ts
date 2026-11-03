@@ -1247,6 +1247,117 @@ export const FAMOUS_OFFICERS: Officer[] = [
       '治疗 (恢复重伤士兵的编制数并激发高昂士气)'
     ],
     biography: '春秋末期越国苎萝村浣纱女，位列中国古代“四大美女”之首，有“沉鱼”之貌。越国败于吴国后，西施受越王勾践与范蠡所托，以绝世姿容入吴宫惑吴王夫差，使其沉溺享乐、荒废朝政，终助越国“三千越甲可吞吴”完成复国大业。功成之后相传随范蠡泛舟五湖，杳然遁世。'
+  },
+  {
+    id: 'diaochan',
+    name: '貂蝉',
+    gender: 'Female',
+    styleName: '闭月 · 貂蝉舞姬',
+    englishName: 'Diaochan',
+    origin: '华夏三国 · 东汉司徒府歌伎',
+    isGlobalLeader: false,
+    factionId: 'lubu',
+    avatarStyle: {
+      hairColor: '#0f172a',
+      hairStyle: 'Long Ribbon Hair',
+      armorColor: '#be185d',
+      accessory: 'Golden Phoenix Headdress',
+      expression: 'Warm Serene',
+      bgGradient: 'from-rose-950 via-red-950 to-slate-950'
+    },
+    stats: {
+      leadership: 60,
+      force: 28,
+      intelligence: 92,
+      politics: 80,
+      charisma: 99
+    },
+    traits: [
+      '闭月 (四大美女之“闭月”，明月见之亦自惭隐没；魅力深不可测，大幅瓦解敌军斗志)',
+      '连环计 (巧施连环之计离间强敌父子，使其反目相残，敌军内乱、城防大幅衰退)',
+      '舞姬 (歌舞惑敌，敌将斗志与行军速度大幅下降，我方士气提升)'
+    ],
+    skills: [
+      '离间 (以绝世姿容离间敌军主将与其麾下部将，使其互相猜忌、部队哗变)',
+      '倾国 (以绝世姿容迷惑敌军主将，使其部队陷入混乱与士气崩溃)',
+      '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)',
+      '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)'
+    ],
+    biography: '东汉末年传说人物，《三国演义》中位列中国古代“四大美女”，有“闭月”之貌。本为司徒王允府中歌伎，为报答养育之恩，自愿献身连环之计，周旋于权臣董卓与猛将吕布之间，使其父子反目。吕布终怒而诛杀董卓，掀动天下大势。其以柔弱之躯搅动乾坤，功成之后不知所踪，成为千古佳话。'
+  },
+  {
+    id: 'wangzhaojun',
+    name: '王昭君',
+    gender: 'Female',
+    styleName: '落雁 · 明妃',
+    englishName: 'Wang Zhaojun (Ming Fei)',
+    origin: '西汉南郡秭归 · 出塞和亲匈奴',
+    isGlobalLeader: false,
+    factionId: 'steppe',
+    avatarStyle: {
+      hairColor: '#171717',
+      hairStyle: 'Long Flowing Hair',
+      armorColor: '#0284c7',
+      accessory: 'Jade Pipa Headdress',
+      expression: 'Elegant Confident',
+      bgGradient: 'from-cyan-950 via-blue-950 to-slate-950'
+    },
+    stats: {
+      leadership: 65,
+      force: 25,
+      intelligence: 88,
+      politics: 96,
+      charisma: 98
+    },
+    traits: [
+      '落雁 (四大美女之“落雁”，南飞大雁见之竟忘拍翅而坠落；魅力动天地，大幅提升外交与安抚成效)',
+      '出塞和亲 (远嫁塞外而使汉匈数十年无战事，大幅提升相邻势力友好度与边境安定)',
+      '琵琶定边 (一曲琵琶安抚大漠，所在城池治安、民心与外交通商大幅提升)'
+    ],
+    skills: [
+      '安抚 (以温婉贤德安定城内民心，提升治安与士气)',
+      '怀柔 (以亲和之策招抚塞外部落，大幅降低敌军士气并提高招降成功率)',
+      '治疗 (恢复重伤士兵的编制数并激发高昂士气)',
+      '鼓舞 (以琵琶之音大幅提升我方全军士气与行军速度)'
+    ],
+    biography: '西汉南郡秭归人，名嫱，字昭君，与西施、貂蝉、杨玉环并称“四大美女”，有“落雁”之貌。汉元帝时以宫女身份自请出塞和亲，远嫁匈奴呼韩邪单于为“宁胡阏氏”。此后汉匈数十年烽烟不起，边城晏闭、牛马布野。青冢留香，一曲《昭君出塞》千古传唱，以一己之身换得两国太平。'
+  },
+  {
+    id: 'yanghuaiyu',
+    name: '杨怀玉',
+    gender: 'Female',
+    styleName: '杨门女将 · 银枪玉女',
+    englishName: 'Yang Huaiyu',
+    origin: '华夏演义 · 杨家将之后',
+    isGlobalLeader: false,
+    factionId: 'tang',
+    avatarStyle: {
+      hairColor: '#0f172a',
+      hairStyle: 'Ribbon Topknot',
+      armorColor: '#f8fafc',
+      accessory: 'Green Dragon Blade',
+      expression: 'Fierce Roaring',
+      bgGradient: 'from-slate-900 via-sky-950 to-indigo-950'
+    },
+    stats: {
+      leadership: 84,
+      force: 93,
+      intelligence: 62,
+      politics: 55,
+      charisma: 78
+    },
+    traits: [
+      '杨门虎将 (出身满门忠烈的杨家将，率军冲锋时全军攻击力与士气大幅提升)',
+      '银枪无敌 (枪法出神入化，单挑与突击战法之杀伤力大幅增强)',
+      '巾帼不让须眉 (身为女子而武艺冠绝三军，濒死时激发全队死战反击)'
+    ],
+    skills: [
+      '突击 (对敌军发起雷霆冲锋，大幅削减敌方部队与士气)',
+      '单挑 (邀请敌方主将阵前单挑，武艺高强者胜率极高)',
+      '强袭 (无视地形劣势强行突袭敌军，奇袭成功率高)',
+      '坚守 (大幅提升本城与部队之防御，抵御强敌围攻)'
+    ],
+    biography: '民间演义中的杨家将后人、杨门女将，将门虎女，自幼习武，一杆银枪使得出神入化。传说其秉承“杨家将”满门忠烈之风，随军出征屡立战功，于阵前冲杀不让须眉，敌军闻名丧胆。虽为传说人物，其忠勇双全之姿与杨门女将的传奇一同流传后世。'
   }
 ];
 
@@ -1306,7 +1417,22 @@ export const FAMOUS_RELATIONSHIPS: RelationshipRelation[] = [
   { fromOfficerId: 'xishi', toOfficerId: 'wuzetian', type: 'Confidant' },
   { fromOfficerId: 'wuzetian', toOfficerId: 'xishi', type: 'Trust' },
   { fromOfficerId: 'xishi', toOfficerId: 'cleopatra', type: 'Trust' },
-  { fromOfficerId: 'cleopatra', toOfficerId: 'xishi', type: 'Trust' }
+  { fromOfficerId: 'cleopatra', toOfficerId: 'xishi', type: 'Trust' },
+  { fromOfficerId: 'diaochan', toOfficerId: 'lubu', type: 'Spouse' },
+  { fromOfficerId: 'lubu', toOfficerId: 'diaochan', type: 'Spouse' },
+  { fromOfficerId: 'diaochan', toOfficerId: 'xishi', type: 'Confidant' },
+  { fromOfficerId: 'xishi', toOfficerId: 'diaochan', type: 'Confidant' },
+  { fromOfficerId: 'diaochan', toOfficerId: 'daqiao', type: 'Trust' },
+  { fromOfficerId: 'wangzhaojun', toOfficerId: 'modu', type: 'Spouse' },
+  { fromOfficerId: 'modu', toOfficerId: 'wangzhaojun', type: 'Spouse' },
+  { fromOfficerId: 'wangzhaojun', toOfficerId: 'cleopatra', type: 'Trust' },
+  { fromOfficerId: 'wangzhaojun', toOfficerId: 'catherine', type: 'Trust' },
+  { fromOfficerId: 'catherine', toOfficerId: 'wangzhaojun', type: 'Trust' },
+  { fromOfficerId: 'yanghuaiyu', toOfficerId: 'guanyu', type: 'Rival' },
+  { fromOfficerId: 'guanyu', toOfficerId: 'yanghuaiyu', type: 'Rival' },
+  { fromOfficerId: 'yanghuaiyu', toOfficerId: 'lishimin', type: 'Trust' },
+  { fromOfficerId: 'lishimin', toOfficerId: 'yanghuaiyu', type: 'Trust' },
+  { fromOfficerId: 'yanghuaiyu', toOfficerId: 'modu', type: 'Rival' }
 ];
 
 export const SCENARIOS: CampaignScenario[] = [

@@ -281,7 +281,8 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'shu',
     avatarStyle: {
-      portrait: lubuPortrait,      portrait: liubeiPortrait,      hairColor: '#1e293b',
+      portrait: liubeiPortrait,
+      hairColor: '#1e293b',
       hairStyle: 'Topknot Imperial',
       armorColor: '#10b981',
       accessory: 'Golden Sovereign Crown',

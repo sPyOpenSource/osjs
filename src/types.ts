@@ -33,6 +33,7 @@ export interface AvatarStyle {
   accessory: string;
   expression: string;
   bgGradient: string;
+  portrait?: string; // URL of a painted portrait image; when set, replaces the SVG avatar
 }
 
 export interface Faction {

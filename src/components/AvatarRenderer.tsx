@@ -53,6 +53,14 @@ export default function AvatarRenderer({ style, size = 120 }: AvatarRendererProp
       className={`relative rounded-xl overflow-hidden border border-slate-700 shadow-xl bg-gradient-to-b ${style.bgGradient}`}
       style={{ width: size, height: size }}
     >
+      {style.portrait ? (
+        <img
+          src={style.portrait}
+          alt="武将画像"
+          className="w-full h-full object-cover select-none"
+          draggable={false}
+        />
+      ) : (
       <svg
         viewBox="0 0 100 100"
         className="w-full h-full select-none"

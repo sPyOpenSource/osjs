@@ -1,4 +1,39 @@
 import { Faction, Officer, CampaignScenario, RelationshipRelation } from './types';
+import liubeiPortrait from './assets/portraits/liubei.jpg';
+import caocaoPortrait from './assets/portraits/caocao.jpg';
+import sunquanPortrait from './assets/portraits/sunquan.jpg';
+import guanyuPortrait from './assets/portraits/guanyu.jpg';
+import zhugeliangPortrait from './assets/portraits/zhugeliang.jpg';
+import lubuPortrait from './assets/portraits/lubu.jpg';
+import zhouyuPortrait from './assets/portraits/zhouyu.jpg';
+import caesarPortrait from './assets/portraits/caesar.jpg';
+import trumpPortrait from './assets/portraits/trump.jpg';
+import alexanderPortrait from './assets/portraits/alexander.jpg';
+import marcusAureliusPortrait from './assets/portraits/marcus_aurelius.jpg';
+import hannibalPortrait from './assets/portraits/hannibal.jpg';
+import himikoPortrait from './assets/portraits/himiko.jpg';
+import kanishkaPortrait from './assets/portraits/kanishka.jpg';
+import ardashirPortrait from './assets/portraits/ardashir.jpg';
+import ashokaPortrait from './assets/portraits/ashoka.jpg';
+import cleopatraPortrait from './assets/portraits/cleopatra.jpg';
+import moduPortrait from './assets/portraits/modu.jpg';
+import einsteinPortrait from './assets/portraits/einstein.jpg';
+import napoleonPortrait from './assets/portraits/napoleon.jpg';
+import putinPortrait from './assets/portraits/putin.jpg';
+import catherinePortrait from './assets/portraits/catherine.jpg';
+import wuzetianPortrait from './assets/portraits/wuzetian.jpg';
+import qianlongPortrait from './assets/portraits/qianlong.jpg';
+import libaiPortrait from './assets/portraits/libai.jpg';
+import yingzhengPortrait from './assets/portraits/yingzheng.jpg';
+import lishiminPortrait from './assets/portraits/lishimin.jpg';
+import liujiPortrait from './assets/portraits/liuji.jpg';
+import tangbohuPortrait from './assets/portraits/tangbohu.jpg';
+import daqiaoPortrait from './assets/portraits/daqiao.jpg';
+import xiaoqiaoPortrait from './assets/portraits/xiaoqiao.jpg';
+import xishiPortrait from './assets/portraits/xishi.jpg';
+import diaochanPortrait from './assets/portraits/diaochan.jpg';
+import wangzhaojunPortrait from './assets/portraits/wangzhaojun.jpg';
+import yanghuaiyuPortrait from './assets/portraits/yanghuaiyu.jpg';
 
 export const FACTIONS: Faction[] = [
   {
@@ -246,7 +281,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'shu',
     avatarStyle: {
-      hairColor: '#1e293b',
+      portrait: lubuPortrait,      portrait: liubeiPortrait,      hairColor: '#1e293b',
       hairStyle: 'Topknot Imperial',
       armorColor: '#10b981',
       accessory: 'Golden Sovereign Crown',
@@ -274,7 +309,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'wei',
     avatarStyle: {
-      hairColor: '#0f172a',
+      portrait: caocaoPortrait,      hairColor: '#0f172a',
       hairStyle: 'Noble Court Crown',
       armorColor: '#3b82f6',
       accessory: 'Engraved Commander Sword',
@@ -302,7 +337,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'wu',
     avatarStyle: {
-      hairColor: '#c2410c',
+      portrait: sunquanPortrait,      hairColor: '#c2410c',
       hairStyle: 'Red-Bearded Sovereign',
       armorColor: '#ef4444',
       accessory: 'Ancient Tiger Seal',
@@ -330,7 +365,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'shu',
     avatarStyle: {
-      hairColor: '#0f172a',
+      portrait: guanyuPortrait,      hairColor: '#0f172a',
       hairStyle: 'Long Bound Mane',
       armorColor: '#059669',
       accessory: 'Green Dragon Crescent Blade',
@@ -358,7 +393,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'shu',
     avatarStyle: {
-      hairColor: '#1e293b',
+      portrait: zhugeliangPortrait,      hairColor: '#1e293b',
       hairStyle: 'Scholar Jade Headdress',
       armorColor: '#f8fafc',
       accessory: 'Feather Daoist Fan',
@@ -414,7 +449,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'wu',
     avatarStyle: {
-      hairColor: '#1e293b',
+      portrait: zhouyuPortrait,      hairColor: '#1e293b',
       hairStyle: 'Sleek Admiral Knot',
       armorColor: '#fb923c',
       accessory: 'Commander Baton and Lute',
@@ -443,7 +478,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'rome',
     avatarStyle: {
-      hairColor: '#4b5563',
+      portrait: caesarPortrait,      hairColor: '#4b5563',
       hairStyle: 'Noble Court Crown',
       armorColor: '#dc2626',
       accessory: 'Golden Sovereign Crown',
@@ -471,7 +506,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'america',
     avatarStyle: {
-      hairColor: '#b45309',
+      portrait: trumpPortrait,      hairColor: '#b45309',
       hairStyle: 'Long Bound Mane',
       armorColor: '#2563eb',
       accessory: 'Golden Sovereign Crown',
@@ -508,7 +543,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'macedon',
     avatarStyle: {
-      hairColor: '#b45309',
+      portrait: alexanderPortrait,      hairColor: '#b45309',
       hairStyle: 'Long Bound Mane',
       armorColor: '#0284c7',
       accessory: 'Engraved Commander Sword',
@@ -536,7 +571,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'rome',
     avatarStyle: {
-      hairColor: '#4b5563',
+      portrait: marcusAureliusPortrait,      hairColor: '#4b5563',
       hairStyle: 'Red-Bearded Sovereign',
       armorColor: '#dc2626',
       accessory: 'Golden Sovereign Crown',
@@ -564,7 +599,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'carthage',
     avatarStyle: {
-      hairColor: '#1e293b',
+      portrait: hannibalPortrait,      hairColor: '#1e293b',
       hairStyle: 'Noble Court Crown',
       armorColor: '#92400e',
       accessory: 'Engraved Commander Sword',
@@ -592,7 +627,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'yamatai',
     avatarStyle: {
-      hairColor: '#0f172a',
+      portrait: himikoPortrait,      hairColor: '#0f172a',
       hairStyle: 'Scholar Jade Headdress',
       armorColor: '#db2777',
       accessory: 'Feather Daoist Fan',
@@ -620,7 +655,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'kushan',
     avatarStyle: {
-      hairColor: '#171717',
+      portrait: kanishkaPortrait,      hairColor: '#171717',
       hairStyle: 'Topknot Imperial',
       armorColor: '#d97706',
       accessory: 'Golden Sovereign Crown',
@@ -648,7 +683,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'persia',
     avatarStyle: {
-      hairColor: '#0f172a',
+      portrait: ardashirPortrait,      hairColor: '#0f172a',
       hairStyle: 'Red-Bearded Sovereign',
       armorColor: '#0d9488',
       accessory: 'Engraved Commander Sword',
@@ -676,7 +711,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'kushan',
     avatarStyle: {
-      hairColor: '#1e293b',
+      portrait: ashokaPortrait,      hairColor: '#1e293b',
       hairStyle: 'Noble Court Crown',
       armorColor: '#d97706',
       accessory: 'Golden Sovereign Crown',
@@ -704,7 +739,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'carthage',
     avatarStyle: {
-      hairColor: '#0f172a',
+      portrait: cleopatraPortrait,      hairColor: '#0f172a',
       hairStyle: 'Scholar Jade Headdress',
       armorColor: '#92400e',
       accessory: 'Golden Sovereign Crown',
@@ -732,7 +767,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'steppe',
     avatarStyle: {
-      hairColor: '#171717',
+      portrait: moduPortrait,      hairColor: '#171717',
       hairStyle: 'Long Bound Mane',
       armorColor: '#4f46e5',
       accessory: 'Sky Piercer Halberd',
@@ -760,7 +795,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'germany',
     avatarStyle: {
-      hairColor: '#4b5563',
+      portrait: einsteinPortrait,      hairColor: '#4b5563',
       hairStyle: 'Scholar Jade Headdress',
       armorColor: '#6b7280',
       accessory: 'Feather Daoist Fan',
@@ -797,7 +832,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'france',
     avatarStyle: {
-      hairColor: '#1e293b',
+      portrait: napoleonPortrait,      hairColor: '#1e293b',
       hairStyle: 'Noble Court Crown',
       armorColor: '#1e40af',
       accessory: 'Engraved Commander Sword',
@@ -825,7 +860,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'russia',
     avatarStyle: {
-      hairColor: '#1e293b',
+      portrait: putinPortrait,      hairColor: '#1e293b',
       hairStyle: 'Noble Court Crown',
       armorColor: '#15803d',
       accessory: 'Engraved Commander Sword',
@@ -862,7 +897,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'russia',
     avatarStyle: {
-      hairColor: '#b45309',
+      portrait: catherinePortrait,      hairColor: '#b45309',
       hairStyle: 'Scholar Jade Headdress',
       armorColor: '#15803d',
       accessory: 'Golden Sovereign Crown',
@@ -890,7 +925,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'wuzhou',
     avatarStyle: {
-      hairColor: '#0f172a',
+      portrait: wuzetianPortrait,      hairColor: '#0f172a',
       hairStyle: 'Scholar Jade Headdress',
       armorColor: '#be185d',
       accessory: 'Golden Sovereign Crown',
@@ -927,7 +962,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'qing',
     avatarStyle: {
-      hairColor: '#171717',
+      portrait: qianlongPortrait,      hairColor: '#171717',
       hairStyle: 'Topknot Imperial',
       armorColor: '#eab308',
       accessory: 'Golden Sovereign Crown',
@@ -964,7 +999,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'ronin',
     avatarStyle: {
-      hairColor: '#0f172a',
+      portrait: libaiPortrait,      hairColor: '#0f172a',
       hairStyle: 'Long Bound Mane',
       armorColor: '#f8fafc',
       accessory: 'Engraved Commander Sword',
@@ -1001,7 +1036,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'qin',
     avatarStyle: {
-      hairColor: '#0f172a',
+      portrait: yingzhengPortrait,      hairColor: '#0f172a',
       hairStyle: 'Topknot Imperial',
       armorColor: '#1e293b',
       accessory: 'Golden Sovereign Crown',
@@ -1038,7 +1073,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'tang',
     avatarStyle: {
-      hairColor: '#171717',
+      portrait: lishiminPortrait,      hairColor: '#171717',
       hairStyle: 'Topknot Imperial',
       armorColor: '#ea580c',
       accessory: 'Engraved Commander Sword',
@@ -1075,7 +1110,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'ming',
     avatarStyle: {
-      hairColor: '#171717',
+      portrait: liujiPortrait,      hairColor: '#171717',
       hairStyle: 'Scholar Jade Headdress',
       armorColor: '#b91c1c',
       accessory: 'Feather Daoist Fan',
@@ -1112,7 +1147,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: true,
     factionId: 'ming',
     avatarStyle: {
-      hairColor: '#1e293b',
+      portrait: tangbohuPortrait,      hairColor: '#1e293b',
       hairStyle: 'Topknot Imperial',
       armorColor: '#fb923c',
       accessory: 'Engraved Commander Sword',
@@ -1149,7 +1184,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'wu',
     avatarStyle: {
-      hairColor: '#0f172a',
+      portrait: daqiaoPortrait,      hairColor: '#0f172a',
       hairStyle: 'Long Ribbon Hair',
       armorColor: '#db2777',
       accessory: 'Golden Phoenix Headdress',
@@ -1185,7 +1220,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'wu',
     avatarStyle: {
-      hairColor: '#1e293b',
+      portrait: xiaoqiaoPortrait,      hairColor: '#1e293b',
       hairStyle: 'Long Ribbon Hair',
       armorColor: '#a855f7',
       accessory: 'Silk Folding Fan',
@@ -1221,7 +1256,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'wu',
     avatarStyle: {
-      hairColor: '#0f172a',
+      portrait: xishiPortrait,      hairColor: '#0f172a',
       hairStyle: 'Long Flowing Hair',
       armorColor: '#f8fafc',
       accessory: 'Pearl Moon Headdress',
@@ -1258,7 +1293,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'lubu',
     avatarStyle: {
-      hairColor: '#0f172a',
+      portrait: diaochanPortrait,      hairColor: '#0f172a',
       hairStyle: 'Long Ribbon Hair',
       armorColor: '#be185d',
       accessory: 'Golden Phoenix Headdress',
@@ -1295,7 +1330,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'steppe',
     avatarStyle: {
-      hairColor: '#171717',
+      portrait: wangzhaojunPortrait,      hairColor: '#171717',
       hairStyle: 'Long Flowing Hair',
       armorColor: '#0284c7',
       accessory: 'Jade Pipa Headdress',
@@ -1332,7 +1367,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'tang',
     avatarStyle: {
-      hairColor: '#0f172a',
+      portrait: yanghuaiyuPortrait,      hairColor: '#0f172a',
       hairStyle: 'Ribbon Topknot',
       armorColor: '#f8fafc',
       accessory: 'Green Dragon Blade',

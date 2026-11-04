@@ -218,6 +218,7 @@ export default function AvatarRenderer({ style, size = 120 }: AvatarRendererProp
           </g>
         )}
       </svg>
+      )}
     </div>
   );
 }

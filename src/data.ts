@@ -422,6 +422,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     isGlobalLeader: false,
     factionId: 'lubu',
     avatarStyle: {
+      portrait: lubuPortrait,
       hairColor: '#171717',
       hairStyle: 'Pheasant-Tail Ribbon',
       armorColor: '#7e22ce',

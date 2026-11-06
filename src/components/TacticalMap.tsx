@@ -467,6 +467,58 @@ export default function TacticalMap({
     return () => clearTimeout(t);
   }, [autoPlay, autoPending, selectedGeneralId, expeditionOriginId, expeditionTargetId]);
 
+  // ===== Computer rivals: other factions attack on their own =====
+  const [rivalsOn, setRivalsOn] = useState(false);
+  const [playerFaction, setPlayerFaction] = useState<string>('');
+  const [rivalLogs, setRivalLogs] = useState<string[]>([]);
+
+  const toggleRivals = () => {
+    if (rivalsOn) { setRivalsOn(false); return; }
+    const pf = cityOwnership[expeditionOriginId] || 'ronin';
+    setPlayerFaction(pf);
+    setRivalsOn(true);
+    const n = FACTIONS.find(f => f.id === pf)?.name || pf;
+    setRivalLogs([`⚔️ 电脑对手已启动，你执掌【${n}】，诸侯将各自出兵！`]);
+  };
+
+  useEffect(() => {
+    if (!rivalsOn) return;
+    if (isExpeditionRunning && expeditionStep !== 4) return;
+    const timer = setTimeout(() => {
+      const power = (fid: string) => {
+        const gs = officers.filter(g => g.factionId === fid);
+        if (!gs.length) return 30;
+        return Math.max(...gs.map(g => g.stats.leadership * 0.4 + g.stats.intelligence * 0.3 + g.stats.force * 0.3));
+      };
+      const rivals = Array.from(new Set(CITIES.map(c => cityOwnership[c.id]).filter(
+        f => f && f !== 'ronin' && f !== playerFaction && officers.some(o => o.factionId === f)
+      ))) as string[];
+      if (!rivals.length) return;
+      const att = rivals[Math.floor(Math.random() * rivals.length)];
+      const owned = CITIES.filter(c => cityOwnership[c.id] === att);
+      const targets = CITIES.filter(c => (cityOwnership[c.id] || 'ronin') !== att);
+      let best: { o: City; t: City; s: number } | null = null;
+      for (const o of owned) for (const t of targets) {
+        const s = Math.hypot(o.x - t.x, o.y - t.y) * (cityOwnership[t.id] === playerFaction ? 0.8 : 1) + Math.random() * 4;
+        if (!best || s < best.s) best = { o, t, s };
+      }
+      if (!best) return;
+      const def = cityOwnership[best.t.id] || 'ronin';
+      const a = power(att) * (0.7 + Math.random() * 0.6);
+      const d = (def === 'ronin' ? 35 : power(def)) * (0.7 + Math.random() * 0.6) + (cityStats[best.t.id]?.defense || 0) * 0.1;
+      const an = FACTIONS.find(f => f.id === att)?.name || att;
+      const dn = def === 'ronin' ? '在野' : FACTIONS.find(f => f.id === def)?.name || def;
+      const mine = def === playerFaction ? '🚨 ' : '';
+      if (a > d) {
+        setCityOwnership(prev => ({ ...prev, [best!.t.id]: att }));
+        setRivalLogs(prev => [`${mine}【${an}】自 ${best!.o.name} 攻陷 ${best!.t.name}（原属${dn}）`, ...prev].slice(0, 8));
+      } else {
+        setRivalLogs(prev => [`${mine}【${an}】进攻 ${best!.t.name} 被${dn}击退`, ...prev].slice(0, 8));
+      }
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [rivalsOn, playerFaction, cityOwnership, isExpeditionRunning, expeditionStep, officers, cityStats]);
+
   // Handle faction revision by user
   const handleModifyController = (cityId: string, factionId: string) => {
     setCityOwnership(prev => ({
@@ -1012,6 +1064,19 @@ export default function TacticalMap({
             {autoPlay ? '⏹ 停止 AI 托管' : '🤖 AI 托管'}
           </button>
           {autoStatus && <p className="text-[10px] text-emerald-300/80 max-w-[260px] text-right">{autoStatus}</p>}
+          <button
+            id="btn-rivals"
+            onClick={toggleRivals}
+            aria-pressed={rivalsOn}
+            className={`border text-[11px] font-mono font-bold px-3 py-1.5 rounded-lg active:scale-95 transition-all ${rivalsOn ? 'bg-red-900/60 border-red-600 text-red-300' : 'bg-slate-950 hover:bg-slate-900 border-slate-800 text-red-400'}`}
+          >
+            {rivalsOn ? '⏹ 停止电脑对手' : '⚔️ 电脑对手'}
+          </button>
+          {rivalsOn && rivalLogs.length > 0 && (
+            <div className="text-[10px] text-red-300/80 max-w-[260px] text-right space-y-0.5">
+              {rivalLogs.slice(0, 4).map((l, i) => <p key={i} className={i ? 'opacity-60' : ''}>{l}</p>)}
+            </div>
+          )}
         </div>
         <button
           id="btn-reset-map"

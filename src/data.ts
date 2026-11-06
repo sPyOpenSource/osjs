@@ -34,6 +34,11 @@ const xishiPortrait = '/portraits/xishi.jpg';
 const diaochanPortrait = '/portraits/diaochan.jpg';
 const wangzhaojunPortrait = '/portraits/wangzhaojun.jpg';
 const yanghuaiyuPortrait = '/portraits/yanghuaiyu.jpg';
+const macronPortrait = '/portraits/macron.jpg';
+const vdlPortrait = '/portraits/von_der_leyen.jpg';
+const merkelPortrait = '/portraits/merkel.jpg';
+const ruttePortrait = '/portraits/rutte.jpg';
+const jettenPortrait = '/portraits/jetten.jpg';
 
 export const FACTIONS: Faction[] = [
   {
@@ -203,6 +208,22 @@ export const FACTIONS: Faction[] = [
     color: '#475569', // slate-600
     description: '崇尚严谨哲学与近代现代科学探索的欧陆重邦。以深刻的思想革命、工业精密制造与划时代物理相对论理论闻名于世。',
     crest: '⚙️ 德意志 (铁鹰墨灰)'
+  },
+  {
+    id: 'europe',
+    name: '欧洲联盟',
+    ruler: '乌尔苏拉·冯德莱恩',
+    color: '#0284c7', // sky-600
+    description: '统合二十七国、以规则与共同市场立身的超国家联盟。没有一兵一卒却能动用空前之制裁、关税与援助杠杆，绿色新政与数字法度为其新剑。',
+    crest: '🌟 欧盟 (星环蓝)'
+  },
+  {
+    id: 'netherlands',
+    name: '尼德兰王国',
+    ruler: '马克·吕特',
+    color: '#ea580c', // orange-600
+    description: '低地之国、围海造田的商人共和国。以运河、港口与转口贸易富甲四方，善以妥协斡旋与务实谈判在强国夹缝中左右逢源。',
+    crest: '🦁 尼德兰 (橙狮)'
   },
   {
     id: 'ronin',
@@ -1395,6 +1416,196 @@ export const FAMOUS_OFFICERS: Officer[] = [
       '坚守 (大幅提升本城与部队之防御，抵御强敌围攻)'
     ],
     biography: '民间演义中的杨家将后人、杨门女将，将门虎女，自幼习武，一杆银枪使得出神入化。传说其秉承“杨家将”满门忠烈之风，随军出征屡立战功，于阵前冲杀不让须眉，敌军闻名丧胆。虽为传说人物，其忠勇双全之姿与杨门女将的传奇一同流传后世。'
+  },
+  {
+    id: 'macron',
+    name: '埃马纽埃尔·马克龙',
+    gender: 'Male',
+    styleName: '爱丽舍雄狮',
+    englishName: 'Emmanuel Jean-Michel Frédéric Macron',
+    origin: '法兰西共和国 (第五共和)',
+    isGlobalLeader: true,
+    factionId: 'france',
+    avatarStyle: {
+      portrait: macronPortrait,
+      hairColor: '#1e293b',
+      hairStyle: 'Noble Court Crown',
+      armorColor: '#1e40af',
+      accessory: 'Engraved Commander Sword',
+      expression: 'Brilliant Calm',
+      bgGradient: 'from-blue-950 via-indigo-950 to-slate-950'
+    },
+    stats: {
+      leadership: 76,
+      force: 45,
+      intelligence: 90,
+      politics: 93,
+      charisma: 85
+    },
+    traits: [
+      '欧洲自主 (倡建独立防务体系，友军士气与外交谈判成功率大幅提升)',
+      '改革锐锋 (内政革新加速，治下商业与治安提升但初期民心略损)',
+      '雄辩 (议会论战与跨国交涉之成功率大幅增强)'
+    ],
+    skills: [
+      '金权制裁 (以庞大财力与禁运压制敌军士气)',
+      '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)',
+      '齐射 (发动大范围远程箭雨压制)',
+      '治疗 (恢复重伤士兵的编制数并激发高昂士气)'
+    ],
+    biography: '法兰西第五共和国总统，1977年生于亚眠，修习哲学后转入投行界，30岁即执掌爱丽舍宫，为法兰西史上最年轻之国家元首。2016年白手创立“前进”运动，以超越左右之姿态横扫大选；任内推动劳动与税制改革，力主欧洲战略自主与共同防务，并于2022年成功连任。其行事果决而锋芒毕露，欧陆政坛之争议与声望并峙。'
+  },
+  {
+    id: 'von_der_leyen',
+    name: '乌尔苏拉·冯德莱恩',
+    gender: 'Female',
+    styleName: '布鲁塞尔星环执政',
+    englishName: 'Ursula von der Leyen',
+    origin: '欧洲联盟 · 布鲁塞尔',
+    isGlobalLeader: true,
+    factionId: 'europe',
+    avatarStyle: {
+      portrait: vdlPortrait,
+      hairColor: '#b45309',
+      hairStyle: 'Scholar Jade Headdress',
+      armorColor: '#0284c7',
+      accessory: 'Golden Sovereign Crown',
+      expression: 'Elegant Confident',
+      bgGradient: 'from-sky-950 via-blue-950 to-slate-950'
+    },
+    stats: {
+      leadership: 78,
+      force: 35,
+      intelligence: 86,
+      politics: 91,
+      charisma: 80
+    },
+    traits: [
+      '联盟统合 (跨邦结盟与共同表决之成功率大幅提升)',
+      '绿色新政 (治下商业与农业长期收益提升，短期投入成本增加)',
+      '铁腕禁运 (对敌国施以经济封锁，敌军士气与后勤持续衰减)'
+    ],
+    skills: [
+      '金权制裁 (以庞大财力与禁运压制敌军士气)',
+      '齐射 (发动大范围远程箭雨压制)',
+      '治疗 (恢复重伤士兵的编制数并激发高昂士气)',
+      '铁壁 (短时间内进入物理与计谋免疫的无敌状态)'
+    ],
+    biography: '欧洲联盟委员会主席，1958年生于布鲁塞尔，医学科班出身，随父居于欧盟摇篮之地。归国后入德国政坛，2013年成为联邦德国首位女性国防部长；2019年执掌欧委会，主导绿色新政与疫后共同举债复苏基金，并于俄乌战起后统合二十七国步调，对俄施以空前制裁、援乌不遗余力，2024年获连任。其以技术官僚之严谨与坚定之立场，重塑欧盟之权柄。'
+  },
+  {
+    id: 'merkel',
+    name: '安格拉·默克尔',
+    gender: 'Female',
+    styleName: '铁娘子 · 量子化学家',
+    englishName: 'Angela Merkel',
+    origin: '德意志联邦共和国 · 柏林',
+    isGlobalLeader: true,
+    factionId: 'germany',
+    avatarStyle: {
+      portrait: merkelPortrait,
+      hairColor: '#4b5563',
+      hairStyle: 'Scholar Jade Headdress',
+      armorColor: '#6b7280',
+      accessory: 'Golden Sovereign Crown',
+      expression: 'Calm Stately',
+      bgGradient: 'from-slate-900 via-zinc-950 to-neutral-950'
+    },
+    stats: {
+      leadership: 84,
+      force: 30,
+      intelligence: 92,
+      politics: 96,
+      charisma: 78
+    },
+    traits: [
+      '长期执政 (每回合稳定累积国力，士气与治安不致崩散)',
+      '稳健 (免疫急进奇谋之伤害，守城时防御力大幅增强)',
+      '量子推演 (以科学理性推演战局，策谋识破率大幅提升)'
+    ],
+    skills: [
+      '铁壁 (短时间内进入物理与计谋免疫的无敌状态)',
+      '坚守 (大幅提升本城与部队之防御，抵御强敌围攻)',
+      '治疗 (恢复重伤士兵的编制数并激发高昂士气)',
+      '齐射 (发动大范围远程箭雨压制)'
+    ],
+    biography: '德意志联邦共和国前联邦总理，1954年生于汉堡，长于东德，物理学博士出身，专研量子化学。柏林墙倾颓后踏入政坛，师承科尔，2005年成为德国首位女性总理，连任四届、主政十六载，为欧洲金融危机、欧债危机、难民潮与疫情之定盘星。其行事冷静克制、不尚空谈，以“我们能办到”之姿主导欧洲秩序，世人号之曰“铁娘子”。'
+  },
+  {
+    id: 'rutte',
+    name: '马克·吕特',
+    gender: 'Male',
+    styleName: '海牙妥协大师',
+    englishName: 'Mark Rutte',
+    origin: '尼德兰王国 · 海牙 (北约)',
+    isGlobalLeader: true,
+    factionId: 'netherlands',
+    avatarStyle: {
+      portrait: ruttePortrait,
+      hairColor: '#171717',
+      hairStyle: 'Noble Court Crown',
+      armorColor: '#ea580c',
+      accessory: 'Engraved Commander Sword',
+      expression: 'Warm Smiling',
+      bgGradient: 'from-orange-950 via-amber-950 to-slate-950'
+    },
+    stats: {
+      leadership: 72,
+      force: 38,
+      intelligence: 85,
+      politics: 92,
+      charisma: 82
+    },
+    traits: [
+      '联合组阁 (可缔结多方同盟，盟军协同作战之增益大幅提升)',
+      '紧缩理财 (金钱税赋收益提升，但兵员募集上限略降)',
+      '北约枢纽 (同盟军援与远程支援之调度效率大幅提升)'
+    ],
+    skills: [
+      '金权制裁 (以庞大财力与禁运压制敌军士气)',
+      '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)',
+      '齐射 (发动大范围远程箭雨压制)',
+      '治疗 (恢复重伤士兵的编制数并激发高昂士气)'
+    ],
+    biography: '尼德兰王国前首相、北大西洋公约组织秘书长，1967年生于海牙，早年任联合利华公关与《人民报》专栏作家。2006年执掌自由民主党，2010年至2024年四度组阁、连任首相十四年，为荷兰宪政史上任期最长之内阁首脑。以务实谈判、妥协斡旋与冷幽默著称，善于在碎片化多党格局中撮合共识。2024年10月入主布鲁塞尔北约总部，统合跨大西洋防务同盟。'
+  },
+  {
+    id: 'jetten',
+    name: '罗布·耶滕',
+    gender: 'Male',
+    styleName: '绿色新雄',
+    englishName: 'Rob Jetten',
+    origin: '尼德兰王国 · 海牙',
+    isGlobalLeader: true,
+    factionId: 'netherlands',
+    avatarStyle: {
+      portrait: jettenPortrait,
+      hairColor: '#0f172a',
+      hairStyle: 'Noble Court Crown',
+      armorColor: '#059669',
+      accessory: 'Engraved Commander Sword',
+      expression: 'Warm Smiling',
+      bgGradient: 'from-emerald-950 via-teal-950 to-slate-950'
+    },
+    stats: {
+      leadership: 62,
+      force: 34,
+      intelligence: 82,
+      politics: 86,
+      charisma: 88
+    },
+    traits: [
+      '青年号召 (新兵募集速度大幅提升，全军士气高昂不衰)',
+      '气候立法 (农业与商业之长期收益提升，短期投入增加)',
+      '联盟新锐 (与盟军协同作战之增益显著提升)'
+    ],
+    skills: [
+      '鼓舞 (以理想与热忱号召全军，大幅提升士气与行军速度)',
+      '治疗 (恢复重伤士兵的编制数并激发高昂士气)',
+      '齐射 (发动大范围远程箭雨压制)',
+      '坚守 (大幅提升本城与部队之防御，抵御强敌围攻)'
+    ],
+    biography: '尼德兰王国首相、民主66党领袖，1987年生于奥斯，19岁即当选国会议员，为荷兰史上最年轻之议员之一。2017年出任气候与能源大臣，主导通过欧洲首部成文《气候法》，将减排目标写入国法，并推动风电、光伏与天然气退出之能源转型。2025年率民主66党赢得大选，2026年组阁执政，成为尼德兰史上最年轻之内阁首脑，以绿色新政与青年理想重新点燃低地之国政坛。'
   }
 ];
 
@@ -1469,7 +1680,24 @@ export const FAMOUS_RELATIONSHIPS: RelationshipRelation[] = [
   { fromOfficerId: 'guanyu', toOfficerId: 'yanghuaiyu', type: 'Rival' },
   { fromOfficerId: 'yanghuaiyu', toOfficerId: 'lishimin', type: 'Trust' },
   { fromOfficerId: 'lishimin', toOfficerId: 'yanghuaiyu', type: 'Trust' },
-  { fromOfficerId: 'yanghuaiyu', toOfficerId: 'modu', type: 'Rival' }
+  { fromOfficerId: 'yanghuaiyu', toOfficerId: 'modu', type: 'Rival' },
+  // 现代欧陆政坛之羁绊
+  { fromOfficerId: 'macron', toOfficerId: 'napoleon', type: 'Trust' },
+  { fromOfficerId: 'macron', toOfficerId: 'merkel', type: 'Trust' },
+  { fromOfficerId: 'merkel', toOfficerId: 'macron', type: 'Trust' },
+  { fromOfficerId: 'macron', toOfficerId: 'trump', type: 'Rival' },
+  { fromOfficerId: 'macron', toOfficerId: 'von_der_leyen', type: 'Confidant' },
+  { fromOfficerId: 'von_der_leyen', toOfficerId: 'merkel', type: 'Trust' },
+  { fromOfficerId: 'merkel', toOfficerId: 'von_der_leyen', type: 'Trust' },
+  { fromOfficerId: 'merkel', toOfficerId: 'einstein', type: 'Trust' },
+  { fromOfficerId: 'merkel', toOfficerId: 'catherine', type: 'Trust' },
+  { fromOfficerId: 'von_der_leyen', toOfficerId: 'putin', type: 'Rival' },
+  { fromOfficerId: 'rutte', toOfficerId: 'putin', type: 'Rival' },
+  { fromOfficerId: 'rutte', toOfficerId: 'napoleon', type: 'Rival' },
+  { fromOfficerId: 'rutte', toOfficerId: 'jetten', type: 'Rival' },
+  { fromOfficerId: 'jetten', toOfficerId: 'rutte', type: 'Rival' },
+  { fromOfficerId: 'jetten', toOfficerId: 'von_der_leyen', type: 'Trust' },
+  { fromOfficerId: 'jetten', toOfficerId: 'macron', type: 'Trust' }
 ];
 
 export const SCENARIOS: CampaignScenario[] = [

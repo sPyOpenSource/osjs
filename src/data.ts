@@ -1680,7 +1680,24 @@ export const FAMOUS_RELATIONSHIPS: RelationshipRelation[] = [
   { fromOfficerId: 'guanyu', toOfficerId: 'yanghuaiyu', type: 'Rival' },
   { fromOfficerId: 'yanghuaiyu', toOfficerId: 'lishimin', type: 'Trust' },
   { fromOfficerId: 'lishimin', toOfficerId: 'yanghuaiyu', type: 'Trust' },
-  { fromOfficerId: 'yanghuaiyu', toOfficerId: 'modu', type: 'Rival' }
+  { fromOfficerId: 'yanghuaiyu', toOfficerId: 'modu', type: 'Rival' },
+  // 现代欧陆政坛之羁绊
+  { fromOfficerId: 'macron', toOfficerId: 'napoleon', type: 'Trust' },
+  { fromOfficerId: 'macron', toOfficerId: 'merkel', type: 'Trust' },
+  { fromOfficerId: 'merkel', toOfficerId: 'macron', type: 'Trust' },
+  { fromOfficerId: 'macron', toOfficerId: 'trump', type: 'Rival' },
+  { fromOfficerId: 'macron', toOfficerId: 'von_der_leyen', type: 'Confidant' },
+  { fromOfficerId: 'von_der_leyen', toOfficerId: 'merkel', type: 'Trust' },
+  { fromOfficerId: 'merkel', toOfficerId: 'von_der_leyen', type: 'Trust' },
+  { fromOfficerId: 'merkel', toOfficerId: 'einstein', type: 'Trust' },
+  { fromOfficerId: 'merkel', toOfficerId: 'catherine', type: 'Trust' },
+  { fromOfficerId: 'von_der_leyen', toOfficerId: 'putin', type: 'Rival' },
+  { fromOfficerId: 'rutte', toOfficerId: 'putin', type: 'Rival' },
+  { fromOfficerId: 'rutte', toOfficerId: 'napoleon', type: 'Rival' },
+  { fromOfficerId: 'rutte', toOfficerId: 'jetten', type: 'Rival' },
+  { fromOfficerId: 'jetten', toOfficerId: 'rutte', type: 'Rival' },
+  { fromOfficerId: 'jetten', toOfficerId: 'von_der_leyen', type: 'Trust' },
+  { fromOfficerId: 'jetten', toOfficerId: 'macron', type: 'Trust' }
 ];
 
 export const SCENARIOS: CampaignScenario[] = [

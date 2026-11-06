@@ -34,6 +34,11 @@ const xishiPortrait = '/portraits/xishi.jpg';
 const diaochanPortrait = '/portraits/diaochan.jpg';
 const wangzhaojunPortrait = '/portraits/wangzhaojun.jpg';
 const yanghuaiyuPortrait = '/portraits/yanghuaiyu.jpg';
+const macronPortrait = '/portraits/macron.jpg';
+const vdlPortrait = '/portraits/von_der_leyen.jpg';
+const merkelPortrait = '/portraits/merkel.jpg';
+const ruttePortrait = '/portraits/rutte.jpg';
+const jettenPortrait = '/portraits/jetten.jpg';
 
 export const FACTIONS: Faction[] = [
   {
@@ -203,6 +208,22 @@ export const FACTIONS: Faction[] = [
     color: '#475569', // slate-600
     description: '崇尚严谨哲学与近代现代科学探索的欧陆重邦。以深刻的思想革命、工业精密制造与划时代物理相对论理论闻名于世。',
     crest: '⚙️ 德意志 (铁鹰墨灰)'
+  },
+  {
+    id: 'europe',
+    name: '欧洲联盟',
+    ruler: '乌尔苏拉·冯德莱恩',
+    color: '#0284c7', // sky-600
+    description: '统合二十七国、以规则与共同市场立身的超国家联盟。没有一兵一卒却能动用空前之制裁、关税与援助杠杆，绿色新政与数字法度为其新剑。',
+    crest: '🌟 欧盟 (星环蓝)'
+  },
+  {
+    id: 'netherlands',
+    name: '尼德兰王国',
+    ruler: '马克·吕特',
+    color: '#ea580c', // orange-600
+    description: '低地之国、围海造田的商人共和国。以运河、港口与转口贸易富甲四方，善以妥协斡旋与务实谈判在强国夹缝中左右逢源。',
+    crest: '🦁 尼德兰 (橙狮)'
   },
   {
     id: 'ronin',

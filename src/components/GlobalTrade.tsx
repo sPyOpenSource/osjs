@@ -3,6 +3,7 @@ import { ArrowLeftRight, Coins, Globe, Wheat } from 'lucide-react';
 import { Faction } from '../types';
 import { TradeCity, TradeStores, quoteTrade } from '../utils/trade';
 import Button from './Button';
+import CountryDebt from './CountryDebt';
 
 interface Props {
   cities: TradeCity[];
@@ -12,10 +13,12 @@ interface Props {
   playerFaction: string;
   gold: number;
   logs: string[];
+  debts: Record<string, number>;
+  onChangeDebt: (amount: number, action: 'borrow' | 'repay') => string | undefined;
   onTrade: (sourceId: string, partnerId: string, quantity: number, side: 'buy' | 'sell') => string | undefined;
 }
 
-export default function GlobalTrade({ cities, ownership, stores, factions, playerFaction, gold, logs, onTrade }: Props) {
+export default function GlobalTrade({ cities, ownership, stores, factions, playerFaction, gold, logs, onTrade, debts, onChangeDebt }: Props) {
   const homeCities = cities.filter(city => ownership[city.id] === playerFaction);
   const partners = cities.filter(city => ownership[city.id] !== playerFaction);
   const [sourceId, setSourceId] = useState(homeCities[0]?.id || '');
@@ -38,6 +41,7 @@ export default function GlobalTrade({ cities, ownership, stores, factions, playe
       <div><h2><Globe size={22} /> 全球贸易</h2><span className="trade-muted">{factionName(playerFaction)}</span></div>
       <strong className="trade-gold"><Coins size={18} /> <span data-testid="trade-gold">{gold.toLocaleString()}</span> 金</strong>
     </header>
+    <CountryDebt factions={factions} debts={debts} playerFaction={playerFaction} gold={gold} onChangeDebt={onChangeDebt} />
     <div className="trade-layout">
       <form className="trade-order" onSubmit={event => {
         event.preventDefault();

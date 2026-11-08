@@ -4,6 +4,9 @@ import { FACTIONS } from '../data';
 import { motion, AnimatePresence } from 'motion/react';
 import { playDrumSound, playClashSound } from '../utils/audio';
 import WarMode from './WarMode';
+import GlobalTrade from './GlobalTrade';
+import Button from './Button';
+import { executeTrade } from '../utils/trade';
 import { 
   Shield, 
   Swords, 
@@ -279,7 +282,9 @@ export default function TacticalMap({
   gameXun,
   isAutoTime = true
 }: TacticalMapProps) {
-  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode'>('svg-map');
+  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade'>('svg-map');
+  const [tradeFaction, setTradeFaction] = useState('ronin');
+  const [tradeLogs, setTradeLogs] = useState<string[]>([]);
   const [weatherId, setWeatherId] = useState<'sunny' | 'rainy' | 'windy' | 'foggy'>('sunny');
   const [selectedTheater, setSelectedTheater] = useState<AsiaTheater>('all');
   const [show190Border, setShow190Border] = useState(true);
@@ -383,6 +388,25 @@ export default function TacticalMap({
   // Potential expeditions leaders available at Origin city's owner faction
   const originControllerId = cityOwnership[expeditionOriginId] || 'ronin';
   const leadersAvailable = officers.filter(o => o.factionId === originControllerId);
+
+  const handleGlobalTrade = (sourceId: string, partnerId: string, quantity: number, side: 'buy' | 'sell') => {
+    const source = CITIES.find(city => city.id === sourceId);
+    const partner = CITIES.find(city => city.id === partnerId);
+    const sourceStores = cityStats[sourceId];
+    const partnerStores = cityStats[partnerId];
+    if (!source || !partner || !sourceStores || !partnerStores) return '商路不可用。';
+    const result = executeTrade({ source, partner, sourceStores, partnerStores, quantity, side,
+      sourceOwner: cityOwnership[sourceId], partnerOwner: cityOwnership[partnerId], playerFaction: tradeFaction, gold: playerGold });
+    if (!result.ok) return result.error;
+    setPlayerGold(result.gold);
+    setCityStats(prev => ({ ...prev,
+      [sourceId]: { ...prev[sourceId], grain: result.sourceGrain },
+      [partnerId]: { ...prev[partnerId], grain: result.partnerGrain },
+    }));
+    const log = `${source.name} ↔ ${partner.name} · ${side === 'buy' ? '购入' : '出售'} ${quantity.toLocaleString()} 石 · ${side === 'buy' ? '支付' : '净得'} ${result.quote.total} 金（运费 ${result.quote.fee} 金）`;
+    setTradeLogs(prev => [log, ...prev].slice(0, 30));
+    setInteriorLogs(prev => [`【全球贸易】${log}`, ...prev]);
+  };
 
   // Auto-select first leader when origin changes
   useEffect(() => {
@@ -1090,6 +1114,9 @@ export default function TacticalMap({
 
       {/* Dynamic Tab Switcher for Sandtable Map VS City Inside VS All Cities Overview */}
       <div className="flex flex-wrap border-b border-slate-900 pb-2.5 gap-2">
+        <Button id="tab-global-trade" aria-pressed={mapTab === 'global-trade'} onClick={() => { setTradeFaction(originControllerId); setMapTab('global-trade'); }}>
+          🌍 全球贸易
+        </Button>
         <button
           id="tab-map-svg"
           type="button"
@@ -1144,7 +1171,10 @@ export default function TacticalMap({
         </button>
       </div>
 
-      {mapTab === 'svg-map' ? (
+      {mapTab === 'global-trade' ? (
+        <GlobalTrade cities={CITIES} ownership={cityOwnership} stores={cityStats} factions={FACTIONS}
+          playerFaction={tradeFaction} gold={playerGold} logs={tradeLogs} onTrade={handleGlobalTrade} />
+      ) : mapTab === 'svg-map' ? (
         <div className="space-y-4">
           
           {/* Weather Controller Panel */}

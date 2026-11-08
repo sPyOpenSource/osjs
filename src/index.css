@@ -73,3 +73,22 @@ body {
 .trade-history p { padding: 10px 0; border-bottom: 1px solid var(--color-trade-border); overflow-wrap: anywhere; }
 @media (max-width: 640px) { .trade-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; } .trade-market-list { grid-template-columns: minmax(0, 1fr); } }
 
+.country-debt { border-bottom: 1px solid var(--color-trade-border); padding: 20px 0; }
+.debt-heading, .debt-heading h3 { display: flex; align-items: center; gap: 8px; }
+.debt-heading { justify-content: space-between; flex-wrap: wrap; }
+.debt-heading h3 { font-weight: 700; }
+.debt-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-top: 16px; }
+.debt-balance { display: block; color: var(--color-trade-accent); font-size: 20px; margin-top: 4px; }
+.debt-controls label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--color-trade-muted); }
+.debt-controls input { width: 150px; max-width: 100%; background: var(--color-trade-surface); border: 1px solid var(--color-trade-border); border-radius: 6px; color: var(--color-trade-text); padding: 9px; }
+.debt-controls input:focus-visible { outline: 2px solid var(--color-trade-accent); outline-offset: 2px; }
+.debt-controls .trade-button { display: flex; gap: 6px; align-items: center; }
+.debt-message { min-height: 24px; font-size: 12px; color: var(--color-trade-success); padding-top: 6px; }
+.debt-table-scroll { max-height: 230px; overflow-y: auto; margin-top: 8px; }
+.debt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.debt-table th { font-weight: 500; text-align: left; }
+.debt-table th, .debt-table td { padding: 9px 12px; border-bottom: 1px solid var(--color-trade-border); overflow-wrap: anywhere; }
+.debt-table td, .debt-table thead th:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.debt-table thead { position: sticky; top: 0; background: var(--color-trade-surface); color: var(--color-trade-muted); }
+.debt-current { color: var(--color-trade-accent); background: var(--color-trade-panel); }
+

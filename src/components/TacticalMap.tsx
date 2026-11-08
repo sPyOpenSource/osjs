@@ -7,6 +7,7 @@ import WarMode from './WarMode';
 import GlobalTrade from './GlobalTrade';
 import Button from './Button';
 import { executeTrade } from '../utils/trade';
+import { createCountryDebts, changeCountryDebt } from '../utils/debt';
 import { 
   Shield, 
   Swords, 
@@ -285,6 +286,7 @@ export default function TacticalMap({
   const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade'>('svg-map');
   const [tradeFaction, setTradeFaction] = useState('ronin');
   const [tradeLogs, setTradeLogs] = useState<string[]>([]);
+  const [countryDebts, setCountryDebts] = useState<Record<string, number>>(() => createCountryDebts(FACTIONS));
   const [weatherId, setWeatherId] = useState<'sunny' | 'rainy' | 'windy' | 'foggy'>('sunny');
   const [selectedTheater, setSelectedTheater] = useState<AsiaTheater>('all');
   const [show190Border, setShow190Border] = useState(true);
@@ -388,6 +390,15 @@ export default function TacticalMap({
   // Potential expeditions leaders available at Origin city's owner faction
   const originControllerId = cityOwnership[expeditionOriginId] || 'ronin';
   const leadersAvailable = officers.filter(o => o.factionId === originControllerId);
+
+  const handleCountryDebt = (amount: number, action: 'borrow' | 'repay') => {
+    const result = changeCountryDebt(countryDebts, tradeFaction, playerGold, amount, action);
+    if (!result.ok) return result.error;
+    setCountryDebts(result.debts);
+    setPlayerGold(result.gold);
+    const name = FACTIONS.find(faction => faction.id === tradeFaction)?.name || tradeFaction;
+    setTradeLogs(prev => [`【国债】${name} · ${action === 'borrow' ? '借入' : '偿还'} ${amount.toLocaleString()} 金 · 未偿 ${result.debts[tradeFaction].toLocaleString()} 金`, ...prev].slice(0, 30));
+  };
 
   const handleGlobalTrade = (sourceId: string, partnerId: string, quantity: number, side: 'buy' | 'sell') => {
     const source = CITIES.find(city => city.id === sourceId);
@@ -1173,7 +1184,8 @@ export default function TacticalMap({
 
       {mapTab === 'global-trade' ? (
         <GlobalTrade cities={CITIES} ownership={cityOwnership} stores={cityStats} factions={FACTIONS}
-          playerFaction={tradeFaction} gold={playerGold} logs={tradeLogs} onTrade={handleGlobalTrade} />
+          playerFaction={tradeFaction} gold={playerGold} logs={tradeLogs} onTrade={handleGlobalTrade}
+          debts={countryDebts} onChangeDebt={handleCountryDebt} />
       ) : mapTab === 'svg-map' ? (
         <div className="space-y-4">
           

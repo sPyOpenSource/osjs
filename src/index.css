@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -6,6 +5,14 @@
   --font-display: "Space Grotesk", sans-serif;
   --font-serif: "Cinzel", serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-trade-surface: #0f172a;
+  --color-trade-panel: #172033;
+  --color-trade-border: #334155;
+  --color-trade-text: #f1f5f9;
+  --color-trade-muted: #94a3b8;
+  --color-trade-accent: #fbbf24;
+  --color-trade-success: #6ee7b7;
+  --color-trade-error: #fda4af;
 }
 
 /* Custom visual theme additions */
@@ -30,4 +37,39 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+.global-trade { color: var(--color-trade-text); padding: 20px 0; }
+.trade-heading, .trade-heading h2, .trade-gold, .trade-order h3 { display: flex; align-items: center; gap: 10px; }
+.trade-heading { justify-content: space-between; flex-wrap: wrap; padding-bottom: 20px; border-bottom: 1px solid var(--color-trade-border); }
+.trade-heading h2 { font-size: 22px; font-weight: 700; }
+.trade-gold { color: var(--color-trade-accent); }
+.trade-muted { color: var(--color-trade-muted); font-size: 12px; }
+.trade-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 28px; padding-top: 24px; }
+.trade-order { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.trade-order h3, .trade-ledger h3 { font-size: 15px; font-weight: 700; }
+.trade-order label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; color: var(--color-trade-muted); }
+.trade-order input, .trade-order select { width: 100%; min-width: 0; border: 1px solid var(--color-trade-border); border-radius: 6px; background: var(--color-trade-surface); color: var(--color-trade-text); padding: 10px; font-size: 14px; }
+.trade-button { border: 1px solid var(--color-trade-border); background: var(--color-trade-surface); color: var(--color-trade-text); border-radius: 6px; padding: 10px 14px; cursor: pointer; font-size: 13px; }
+.trade-button:hover { background: var(--color-trade-panel); }
+.trade-button:focus-visible, .trade-order input:focus-visible, .trade-order select:focus-visible { outline: 2px solid var(--color-trade-accent); outline-offset: 2px; }
+.trade-button[aria-pressed="true"] { border-color: var(--color-trade-accent); color: var(--color-trade-accent); }
+.trade-button:disabled { opacity: 0.45; cursor: not-allowed; }
+.trade-segment { display: flex; gap: 8px; }
+.trade-segment > * { flex: 1; }
+.trade-quote { font-size: 13px; }
+.trade-quote > div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; }
+.trade-quote dt { color: var(--color-trade-muted); }
+.trade-total { border-top: 1px solid var(--color-trade-border); margin-top: 8px; font-weight: 700; color: var(--color-trade-accent); }
+.trade-confirm { display: flex; justify-content: center; align-items: center; gap: 8px; background: var(--color-trade-accent); color: var(--color-trade-surface); font-weight: 700; }
+.trade-confirm:hover { background: var(--color-trade-accent); }
+.trade-error { color: var(--color-trade-error); font-size: 12px; }
+.trade-market-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 300px; overflow-y: auto; margin-top: 14px; }
+.trade-market { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; font-size: 12px; }
+.trade-market span { min-width: 0; overflow-wrap: anywhere; }
+.trade-market strong, .trade-market small { display: block; }
+.trade-market small { color: var(--color-trade-muted); margin-top: 4px; font-size: 10px; }
+.trade-history-heading { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--color-trade-border); }
+.trade-history { max-height: 220px; overflow-y: auto; font-size: 12px; line-height: 1.8; color: var(--color-trade-success); }
+.trade-history p { padding: 10px 0; border-bottom: 1px solid var(--color-trade-border); overflow-wrap: anywhere; }
+@media (max-width: 640px) { .trade-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; } .trade-market-list { grid-template-columns: minmax(0, 1fr); } }
 

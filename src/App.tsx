@@ -871,7 +871,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col font-sans selection:bg-amber-500/30 selection:text-amber-200">
       
       <header className="game-header">
-        <div><h1>三国志 8</h1><span className="trade-muted">{selectedScenario.title}</span></div>
+        <div><h1>三国志</h1><span className="trade-muted">{selectedScenario.title}</span></div>
         <div className="game-header-actions"><span className="trade-muted" role="status">{wsStatus === 'connected' ? '● 已连接' : wsStatus === 'connecting' ? '连接中…' : '离线模式'}</span><Button id="btn-return-start" onClick={() => setShowStartMenu(true)}>返回首页</Button></div>
       </header>
 

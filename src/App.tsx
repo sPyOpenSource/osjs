@@ -5,6 +5,8 @@ import OfficerCard from './components/OfficerCard';
 import AvatarRenderer from './components/AvatarRenderer';
 import TacticalMap from './components/TacticalMap';
 import StartMenu from './components/StartMenu';
+import GameNavigation from './components/GameNavigation';
+import Button from './components/Button';
 import DuelArena from './components/DuelArena';
 import InternalAffairs from './components/InternalAffairs';
 import { playClashSound, playDrumSound, playHarvestSound } from './utils/audio';
@@ -868,215 +870,18 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col font-sans selection:bg-amber-500/30 selection:text-amber-200">
       
-      {/* Top Medieval Sovereign Header */}
-      <header className="relative border-b border-slate-800 bg-slate-950 px-6 py-6 overflow-hidden shadow-2xl">
-        <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-red-500"></div>
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="text-xl px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 font-serif tracking-widest rounded-lg">
-                VIII
-              </span>
-              <h1 className="text-2xl md:text-3xl font-serif font-black tracking-widest text-slate-50 uppercase flex items-center gap-2">
-                三国志 8
-              </h1>
-            </div>
-            <p className="text-xs text-slate-400 mt-1.5 font-mono max-w-2xl leading-relaxed">
-              招募史实与自立名将，自由配置五维属性与独特特质，缔结合契绊或宿怨机制，更有服务端 Gemini AI 军师亲授天下大势与破敌妙策。
-            </p>
-          </div>
-
-          <div className="flex gap-2.5 items-center bg-slate-900 border border-slate-800 rounded-xl p-2 md:self-center">
-            <button
-              id="btn-return-start"
-              onClick={() => setShowStartMenu(true)}
-              className="px-3 py-1 text-[11px] font-sans font-bold text-amber-500 hover:text-amber-400 border border-amber-500/20 hover:border-amber-500/40 bg-amber-950/20 hover:bg-amber-950/40 rounded-lg active:scale-95 transition-all mr-1 flex items-center gap-1 cursor-pointer"
-            >
-              🏯 返回开始界面
-            </button>
-            <span className="text-[11px] font-mono text-slate-400 px-2 border-l border-slate-800 pl-2">军事天盘连线：</span>
-            {wsStatus === 'connecting' ? (
-              <span className="text-[11px] text-amber-500 flex items-center gap-1 animate-pulse">
-                <RefreshCw size={11} className="animate-spin" /> 星曜校准中...
-              </span>
-            ) : wsStatus === 'connected' ? (
-              <span className="text-[11.5px] text-emerald-400 bg-emerald-950/30 px-2.5 py-0.5 rounded-lg border border-emerald-950/80 font-mono flex items-center gap-1.5 shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                实时军政中枢直通
-              </span>
-            ) : (
-              <span className="text-[11.5px] text-rose-400 bg-rose-950/20 px-2.5 py-0.5 rounded-lg border border-rose-950 font-mono inline-flex items-center gap-1.5" title="Attempting reconnection... Make sure the dev server is active.">
-                ● 离线沙盘模式
-              </span>
-            )}
-          </div>
-        </div>
+      <header className="game-header">
+        <div><h1>三国志 8</h1><span className="trade-muted">{selectedScenario.title}</span></div>
+        <div className="game-header-actions"><span className="trade-muted" role="status">{wsStatus === 'connected' ? '● 已连接' : wsStatus === 'connecting' ? '连接中…' : '离线模式'}</span><Button id="btn-return-start" onClick={() => setShowStartMenu(true)}>返回首页</Button></div>
       </header>
 
       {/* Main Workspace Grid Router (Roster / Creator / Relationships Simulator) */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <main className="game-workspace">
         
         {/* Left Section (Column span 8): Primary action and selection board */}
-        <section className="lg:col-span-8 flex flex-col gap-6">
+        <section className="game-primary">
           
-          {/* Navigation Control Toolbar */}
-          <div className="bg-slate-950 p-2 rounded-2xl border border-slate-900 flex justify-between items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-1 p-1 bg-slate-900 rounded-xl border border-slate-800/80">
-              <button
-                id="tab-roster"
-                onClick={() => setActiveTab('roster')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'roster' 
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Users size={12} /> 麾下名将录
-              </button>
-              <button
-                id="tab-creator"
-                onClick={() => setActiveTab('creator')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'creator' 
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <UserPlus size={12} /> 自立武将登用
-              </button>
-              <button
-                id="tab-bonds"
-                onClick={() => setActiveTab('bonds')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'bonds' 
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Heart size={14} /> 人际关系与单挑
-              </button>
-              <button
-                id="tab-affairs"
-                onClick={() => setActiveTab('affairs')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'affairs' 
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Building2 size={12} /> 🏯 内政经略
-              </button>
-              <button
-                id="tab-duel"
-                onClick={() => setActiveTab('duel')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'duel' 
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Swords size={12} /> ⚔️ 1v1 单挑对决
-              </button>
-              <button
-                id="tab-map"
-                onClick={() => setActiveTab('map')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'map' 
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Map size={12} /> 沙盘天盘地图
-              </button>
-            </div>
-
-            {/* Sovereign Background Time Control Bar */}
-            <div className="flex flex-wrap items-center gap-2.5 px-3 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-inner">
-              <div className="flex items-center gap-2">
-                <span className={`text-xs ${isAutoTime ? 'animate-spin' : ''}`} style={{ animationDuration: timeSpeed === 'fast' ? '3s' : timeSpeed === 'normal' ? '6s' : '10s' }}>
-                  ⏳
-                </span>
-                <div className="leading-tight">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-serif font-black text-amber-300">
-                      公元 {gameYear} 年 · {gameMonth} 月 · {gameXun === 1 ? '上旬' : gameXun === 2 ? '中旬' : '下旬'}
-                    </span>
-                    <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-amber-950/50 border border-amber-900/60 text-amber-400 font-serif">
-                      {gameMonth >= 1 && gameMonth <= 3 ? '🌸 春' : gameMonth >= 4 && gameMonth <= 6 ? '☀️ 夏' : gameMonth >= 7 && gameMonth <= 9 ? '🍂 秋' : '❄️ 冬'}
-                    </span>
-                  </div>
-                  <div className="text-[9.5px] font-mono text-slate-400 flex items-center gap-1 mt-0.5">
-                    <span className={`w-1.5 h-1.5 rounded-full ${isAutoTime ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
-                    <span>{isAutoTime ? '天运后台自转中' : '岁时已暂定'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Pause / Play Toggle */}
-              <button
-                id="btn-toggle-auto-time"
-                type="button"
-                onClick={() => setIsAutoTime(!isAutoTime)}
-                title={isAutoTime ? '暂停后台时间流逝' : '开启后台时间流逝'}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-sm ${
-                  isAutoTime
-                    ? 'bg-amber-950/40 text-amber-300 border border-amber-500/40 hover:bg-amber-900/40'
-                    : 'bg-emerald-950/40 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-900/40'
-                }`}
-              >
-                {isAutoTime ? <Pause size={10} /> : <Play size={10} fill="currentColor" />}
-                <span>{isAutoTime ? '暂停' : '岁时自转'}</span>
-              </button>
-
-              {/* Speed Buttons */}
-              <div className="flex items-center rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-[9.5px] font-mono">
-                <button
-                  type="button"
-                  onClick={() => setTimeSpeed('slow')}
-                  className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${timeSpeed === 'slow' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
-                  title="慢速 (5秒/旬)"
-                >
-                  1×
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTimeSpeed('normal')}
-                  className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${timeSpeed === 'normal' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
-                  title="常速 (2.5秒/旬)"
-                >
-                  2×
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTimeSpeed('fast')}
-                  className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${timeSpeed === 'fast' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
-                  title="急速 (1.2秒/旬)"
-                >
-                  3×
-                </button>
-              </div>
-
-              {/* Manual advance step */}
-              <button
-                id="btn-step-xun"
-                type="button"
-                onClick={handleAdvanceXun}
-                title="手动推进一旬"
-                className="px-2 py-1 rounded bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 text-[10px] font-mono cursor-pointer"
-              >
-                +1旬
-              </button>
-              <button
-                id="btn-step-month"
-                type="button"
-                onClick={handleAdvanceMonth}
-                title="手动推进一月"
-                className="px-2 py-1 rounded bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 text-[10px] font-mono cursor-pointer"
-              >
-                +1月
-              </button>
-            </div>
-          </div>
+          <GameNavigation activeTab={activeTab} onSelect={setActiveTab} year={gameYear} month={gameMonth} xun={gameXun} playing={isAutoTime} onToggleTime={() => setIsAutoTime(!isAutoTime)} speed={timeSpeed} onSpeed={setTimeSpeed} onStep={handleAdvanceXun} onMonth={handleAdvanceMonth} />
 
           {/* Tab 1: Officer Roster */}
           {activeTab === 'roster' && (
@@ -1746,7 +1551,7 @@ export default function App() {
         </section>
 
         {/* Right Section (Column span 4): Selected Officer Core and Strategy Advisor Council */}
-        <section className="lg:col-span-4 flex flex-col gap-6">
+        <details className="game-disclosure game-advisor"><summary><AvatarRenderer style={selectedOfficer.avatarStyle} size={32} /><span>{selectedOfficer.name} · 军师建议</span></summary><section className="flex flex-col gap-6 pt-4">
           
           {/* Selected Officer Spotlight focus */}
           <div className="bg-slate-950 p-5 rounded-2xl border border-slate-900">
@@ -1840,17 +1645,11 @@ export default function App() {
             <p className="text-[11px]">✦ 人脉羁绊：武将间若处于“金兰结义”或“金玉良缘”等至交情谊，两军在沙盘天盘中产生战技合力共鸣的连击概率会飙涨。</p>
           </div>
 
-        </section>
+        </section></details>
 
       </main>
 
-      {/* Footer copyright */}
-      <footer className="bg-slate-950 py-6 border-t border-slate-900 mt-auto text-center text-xs text-slate-500 font-mono">
-        <div className="max-w-7xl mx-auto px-6">
-          <p>三国志 8 战术辅助模拟器 — 采用 React、Tailwind CSS V4 精雕细琢，内置服务端 Gemini AI 云脑深度研判。</p>
-          <p className="mt-1 text-[10px] text-slate-600">本辅助工具纯属粉丝同人创作，不含任何商业游戏受版权保护的原始资源，生成和定制的名将及演义细节均源于公开的三国古籍传说知识。</p>
-        </div>
-      </footer>
+      <footer className="game-footer">三国志 8 · 战术模拟</footer>
 
     </div>
   );

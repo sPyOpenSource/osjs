@@ -1056,131 +1056,22 @@ export default function TacticalMap({
   return (
     <div className="space-y-6">
       
-      {/* Top instruction message */}
-      <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="text-sm font-serif font-bold text-slate-200 flex items-center gap-1.5">
-            <Compass size={14} className="text-amber-500" />
-            三国志 8
-          </h2>
-          <p className="text-[11px] text-slate-400">
-            点击地图上的城池标记以查看镇守名将之首领及兵团。您还可以直接手动篡改势力归属，并模拟兵力调配与跨郡攻城决战。
-          </p>
-        </div>
-
-        {/* Dynamic Background Game Timeline Indicator */}
-        {gameYear !== undefined && (
-          <div className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-950/90 border border-slate-800 rounded-xl shadow-inner shrink-0">
-            <span className={`text-xs ${isAutoTime ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }}>⏳</span>
-            <div className="text-left font-mono">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold text-amber-300">
-                  公元 {gameYear} 年 · {gameMonth} 月 · {gameXun === 1 ? '上旬' : gameXun === 2 ? '中旬' : '下旬'}
-                </span>
-                <span className="text-[9.5px] px-1 py-0.2 rounded bg-amber-950/40 text-amber-400 font-serif border border-amber-900/50">
-                  {gameMonth && gameMonth >= 1 && gameMonth <= 3 ? '🌸 春' : gameMonth && gameMonth >= 4 && gameMonth <= 6 ? '☀️ 夏' : gameMonth && gameMonth >= 7 && gameMonth <= 9 ? '🍂 秋' : '❄️ 冬'}
-                </span>
-              </div>
-              <div className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5">
-                <span className={`w-1.5 h-1.5 rounded-full ${isAutoTime ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
-                <span>{isAutoTime ? '天运岁时后台流逝' : '岁时已暂定'}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col items-end gap-1">
-          <button
-            id="btn-ai-autoplay"
-            onClick={toggleAutoPlay}
-            aria-pressed={autoPlay}
-            className={`border text-[11px] font-mono font-bold px-3 py-1.5 rounded-lg active:scale-95 transition-all ${autoPlay ? 'bg-emerald-900/60 border-emerald-600 text-emerald-300 animate-pulse' : 'bg-slate-950 hover:bg-slate-900 border-slate-800 text-emerald-400'}`}
-          >
-            {autoPlay ? '⏹ 停止 AI 托管' : '🤖 AI 托管'}
-          </button>
-          {autoStatus && <p className="text-[10px] text-emerald-300/80 max-w-[260px] text-right">{autoStatus}</p>}
-          <button
-            id="btn-rivals"
-            onClick={toggleRivals}
-            aria-pressed={rivalsOn}
-            className={`border text-[11px] font-mono font-bold px-3 py-1.5 rounded-lg active:scale-95 transition-all ${rivalsOn ? 'bg-red-900/60 border-red-600 text-red-300' : 'bg-slate-950 hover:bg-slate-900 border-slate-800 text-red-400'}`}
-          >
-            {rivalsOn ? '⏹ 停止电脑对手' : '⚔️ 电脑对手'}
-          </button>
-          {rivalsOn && rivalLogs.length > 0 && (
-            <div className="text-[10px] text-red-300/80 max-w-[260px] text-right space-y-0.5">
-              {rivalLogs.slice(0, 4).map((l, i) => <p key={i} className={i ? 'opacity-60' : ''}>{l}</p>)}
-            </div>
-          )}
-        </div>
-        <button
-          id="btn-reset-map"
-          onClick={handleResetMap}
-          className="bg-slate-950 hover:bg-slate-900 border border-slate-800 text-amber-500 text-[11px] font-mono font-bold px-3 py-1.5 rounded-lg active:scale-95 transition-all flex items-center gap-1"
-        >
-          <RefreshCw size={11} />
-          重置并回归剧本初始疆域
-        </button>
+      <div className="map-command-bar">
+        <h2><Compass size={18} />{selectedScenario.title}</h2>
+        <details className="game-disclosure"><summary>电脑玩家与重置</summary><div className="game-settings-body">
+          <Button id="btn-ai-autoplay" onClick={toggleAutoPlay} aria-pressed={autoPlay}>{autoPlay ? '停止 AI 托管' : 'AI 托管'}</Button>
+          <Button id="btn-rivals" onClick={toggleRivals} aria-pressed={rivalsOn}>{rivalsOn ? '停止电脑对手' : '电脑对手'}</Button>
+          <Button id="btn-reset-map" onClick={handleResetMap}><RefreshCw size={14} />重置地图</Button>
+        </div></details>
       </div>
-
-      {/* Dynamic Tab Switcher for Sandtable Map VS City Inside VS All Cities Overview */}
-      <div className="flex flex-wrap border-b border-slate-900 pb-2.5 gap-2">
-        <Button id="tab-global-trade" aria-pressed={mapTab === 'global-trade'} onClick={() => { setTradeFaction(originControllerId); setMapTab('global-trade'); }}>
-          🌍 全球贸易
-        </Button>
-        <button
-          id="tab-map-svg"
-          type="button"
-          onClick={() => setMapTab('svg-map')}
-          className={`px-4 py-2 rounded-xl text-xs font-serif font-black tracking-wider transition-all inline-flex items-center gap-2 cursor-pointer ${
-            mapTab === 'svg-map'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/10'
-              : 'text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-900 hover:border-slate-800'
-          }`}
-        >
-          <Compass size={13.5} />
-          沙盘交互式战略地图
-        </button>
-        <button
-          id="tab-map-city-view"
-          type="button"
-          onClick={() => setMapTab('city-view')}
-          className={`px-4 py-2 rounded-xl text-xs font-serif font-black tracking-wider transition-all inline-flex items-center gap-2 cursor-pointer ${
-            mapTab === 'city-view'
-              ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/10'
-              : 'text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-900 hover:border-slate-800'
-          }`}
-        >
-          <Home size={13.5} />
-          城防郡县内景 ({selectedCity.name})
-        </button>
-        <button
-          id="tab-map-cities"
-          type="button"
-          onClick={() => setMapTab('cities-all')}
-          className={`px-4 py-2 rounded-xl text-xs font-serif font-black tracking-wider transition-all inline-flex items-center gap-2 cursor-pointer ${
-            mapTab === 'cities-all'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/10'
-              : 'text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-900 hover:border-slate-800'
-          }`}
-        >
-          <Layers size={13.5} />
-          全域二十四欧亚名都总览
-        </button>
-        <button
-          id="tab-map-war-mode"
-          type="button"
-          onClick={() => setMapTab('war-mode')}
-          className={`px-4 py-2 rounded-xl text-xs font-serif font-black tracking-wider transition-all inline-flex items-center gap-2 cursor-pointer ${
-            mapTab === 'war-mode'
-              ? 'bg-rose-550 text-slate-950 font-black shadow-md shadow-rose-550/15 border border-rose-450'
-              : 'text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-900 hover:border-slate-800'
-          }`}
-        >
-          <Sword size={13.5} className={mapTab === 'war-mode' ? 'text-slate-950' : 'text-rose-500'} />
-          <span>⚔️ 城防会战实演</span>
-        </button>
-      </div>
+      {(autoPlay || rivalsOn) && <div className="map-activity" aria-live="polite">{autoPlay && <p>{autoStatus}</p>}{rivalsOn && <p>{rivalLogs[0]}</p>}</div>}
+      <nav className="map-tabs" aria-label="地图视图">
+        <Button id="tab-map-svg" aria-pressed={mapTab === 'svg-map'} onClick={() => setMapTab('svg-map')}><Compass size={15} />战略地图</Button>
+        <Button id="tab-map-city-view" aria-pressed={mapTab === 'city-view'} onClick={() => setMapTab('city-view')}><Home size={15} />{selectedCity.name}</Button>
+        <Button id="tab-map-cities" aria-pressed={mapTab === 'cities-all'} onClick={() => setMapTab('cities-all')}><Layers size={15} />城池</Button>
+        <Button id="tab-global-trade" aria-pressed={mapTab === 'global-trade'} onClick={() => { setTradeFaction(originControllerId); setMapTab('global-trade'); }}><Coins size={15} />贸易与债务</Button>
+        <Button id="tab-map-war-mode" aria-pressed={mapTab === 'war-mode'} onClick={() => setMapTab('war-mode')}><Sword size={15} />会战</Button>
+      </nav>
 
       {mapTab === 'global-trade' ? (
         <GlobalTrade cities={CITIES} ownership={cityOwnership} stores={cityStats} factions={FACTIONS}
@@ -1189,142 +1080,15 @@ export default function TacticalMap({
       ) : mapTab === 'svg-map' ? (
         <div className="space-y-4">
           
-          {/* Weather Controller Panel */}
-          <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between z-10 relative">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center text-xl shadow-inner select-none shrink-0">
-                {WEATHERS.find(w => w.id === weatherId)?.icon}
-              </div>
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-serif font-bold text-slate-200 flex items-center gap-2">
-                  天盘天气气象控制：
-                  <span className={`px-2 py-0.5 text-[10px] rounded-md font-bold font-mono border ${WEATHERS.find(w => w.id === weatherId)?.colorClass}`}>
-                    {WEATHERS.find(w => w.id === weatherId)?.nameCn}
-                  </span>
-                </h4>
-                <p className="text-[10.5px] text-slate-400 font-sans leading-normal">
-                  {WEATHERS.find(w => w.id === weatherId)?.modDesc}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-855 gap-1 self-stretch md:self-auto shrink-0 shadow-lg justify-between">
-              {WEATHERS.map(w => {
-                const active = weatherId === w.id;
-                return (
-                  <button
-                    key={w.id}
-                    id={`btn-weather-${w.id}`}
-                    type="button"
-                    onClick={() => setWeatherId(w.id)}
-                    className={`flex-1 md:flex-initial py-1.5 px-3 rounded-lg font-serif font-black flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer ${
-                      active
-                        ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold active:scale-95'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 active:scale-98'
-                    }`}
-                  >
-                    <span className="text-sm shrink-0">{w.icon}</span>
-                    <span className="text-[11px] uppercase tracking-wide font-black">{w.nameCn}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Theater View Filter Bar */}
-          <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-900 flex flex-wrap items-center justify-between gap-2 z-10 relative">
-            <div className="flex items-center gap-2 overflow-x-auto py-0.5 max-w-full">
-              <span className="text-[10px] font-mono text-amber-500 font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 pl-1">
-                <Compass size={12} /> 欧亚战区聚焦:
-              </span>
-              {ASIA_THEATERS.map(th => {
-                const isActive = selectedTheater === th.id;
-                const count = th.id === 'all' ? CITIES.length : CITIES.filter(c => c.theater === th.id).length;
-                return (
-                  <button
-                    key={th.id}
-                    id={`btn-theater-${th.id}`}
-                    type="button"
-                    onClick={() => setSelectedTheater(th.id)}
-                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-serif font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
-                      isActive 
-                        ? 'bg-amber-500 text-slate-950 shadow-md font-black shadow-amber-500/10' 
-                        : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-850 border border-slate-800'
-                    }`}
-                    title={th.desc}
-                  >
-                    <span>{th.icon}</span>
-                    <span>{th.name}</span>
-                    <span className={`text-[9px] font-mono px-1 py-0.2 rounded ${isActive ? 'bg-slate-950/30 text-slate-950' : 'bg-slate-950 text-slate-500'}`}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Quick map options toolbar */}
-            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-              <button
-                type="button"
-                id="toggle-190-border"
-                onClick={() => setShow190Border(p => !p)}
-                className={`px-2 py-1 rounded text-[9.5px] font-serif font-bold cursor-pointer transition-all border flex items-center gap-1 ${
-                  show190Border 
-                    ? 'bg-rose-500/15 text-rose-300 border-rose-500/30 shadow-sm shadow-rose-500/5' 
-                    : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-350'
-                }`}
-                title="切换公元190年汉朝与亚洲边陲古国疆域国界"
-              >
-                <Compass size={9.5} className={show190Border ? 'text-rose-400' : ''} />
-                汉境国界
-              </button>
-
-              <button
-                type="button"
-                id="toggle-trade-routes"
-                onClick={() => setShowTradeRoutes(p => !p)}
-                className={`px-2 py-1 rounded text-[9.5px] font-serif font-bold cursor-pointer transition-all border flex items-center gap-1 ${
-                  showTradeRoutes 
-                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 shadow-sm shadow-amber-500/5' 
-                    : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-350'
-                }`}
-                title="切换陆上海上丝绸之路商队贸易航线"
-              >
-                <span>🐪</span>
-                丝路航线
-              </button>
-
-              <button
-                type="button"
-                id="toggle-topography"
-                onClick={() => setShowTopography(p => !p)}
-                className={`px-2 py-1 rounded text-[9.5px] font-serif font-bold cursor-pointer transition-all border flex items-center gap-1 ${
-                  showTopography 
-                    ? 'bg-sky-500/15 text-sky-300 border-sky-500/30 shadow-sm shadow-sky-500/5' 
-                    : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-350'
-                }`}
-                title="切换喜马拉雅山脉、天山、大漠瀚海与各大水系地貌"
-              >
-                <span>🏔️</span>
-                山川地貌
-              </button>
-
-              <button
-                type="button"
-                id="toggle-wide-view"
-                onClick={() => setIsWideView(p => !p)}
-                className={`px-2 py-1 rounded text-[9.5px] font-serif font-bold cursor-pointer transition-all border flex items-center gap-1 ${
-                  isWideView 
-                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
-                    : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-350'
-                }`}
-                title="切换全屏宽幅亚洲战区推演沙盘"
-              >
-                <Layers size={9.5} />
-                {isWideView ? '收起宽屏' : '全景宽屏'}
-              </button>
-            </div>
+          <div className="map-filter-bar">
+            <label>战区<select aria-label="战区" value={selectedTheater} onChange={event => setSelectedTheater(event.target.value as AsiaTheater)}>{ASIA_THEATERS.map(th => <option key={th.id} value={th.id}>{th.name} · {th.id === 'all' ? CITIES.length : CITIES.filter(city => city.theater === th.id).length}</option>)}</select></label>
+            <details className="game-disclosure"><summary>地图设置</summary><div className="game-settings-body">
+              <label>天气<select aria-label="天气" value={weatherId} onChange={event => setWeatherId(event.target.value as typeof weatherId)}>{WEATHERS.map(w => <option key={w.id} value={w.id}>{w.icon} {w.nameCn}</option>)}</select></label>
+              <label className="game-check"><input id="toggle-190-border" type="checkbox" checked={show190Border} onChange={event => setShow190Border(event.target.checked)} />汉境国界</label>
+              <label className="game-check"><input id="toggle-trade-routes" type="checkbox" checked={showTradeRoutes} onChange={event => setShowTradeRoutes(event.target.checked)} />丝路航线</label>
+              <label className="game-check"><input id="toggle-topography" type="checkbox" checked={showTopography} onChange={event => setShowTopography(event.target.checked)} />山川地貌</label>
+              <label className="game-check"><input id="toggle-wide-view" type="checkbox" checked={isWideView} onChange={event => setIsWideView(event.target.checked)} />全景宽屏</label>
+            </div></details>
           </div>
 
           <div className={`grid grid-cols-1 ${isWideView ? 'lg:grid-cols-1' : 'lg:grid-cols-12'} gap-6`}>

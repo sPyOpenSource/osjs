@@ -1736,5 +1736,14 @@ export const SCENARIOS: CampaignScenario[] = [
     featuredFactions: ['shu', 'wei', 'ronin'],
     victoryCondition: '夺取长安及洛阳，光复汉室克复中原',
     difficulty: 'Medium'
+  },
+  {
+    id: 'millennium',
+    title: '公元2000年：新千年全球格局',
+    year: 2000,
+    description: '千禧年钟声敲响，世界迈入新纪元。美利坚独步全球，俄罗斯在普京治下重整旗鼓，欧洲诸国走向联合，东方巨龙蓄势腾飞。新旧势力纵横捭阖，谁能主宰二十一世纪的天下大势？',
+    featuredFactions: ['america', 'russia', 'europe', 'france'],
+    victoryCondition: '领导你的国家在新千年称雄世界，成为无可争议的头号强国',
+    difficulty: 'Medium'
   }
 ];

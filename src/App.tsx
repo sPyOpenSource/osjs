@@ -1639,7 +1639,7 @@ export default function App() {
           <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-900 text-xs text-slate-400 space-y-1.5 leading-relaxed font-mono">
             <div className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1">
               <HelpCircle size={12} className="text-amber-500" />
-              <span>三国志8 辅助器军机要策 FAQ</span>
+              <span>三国志 辅助器军机要策 FAQ</span>
             </div>
             <p className="text-[11px]">✦ 五维属性加权：【统帅】极大地主导兵力规模上限与阵前基础城防抵抗；【智力】能看破大雾陷阱并识破诸葛亮之流的离间诡计；【武力】则对个人白刃伤害与阵前斩首胜率有极其重要的抵抗。</p>
             <p className="text-[11px]">✦ 人脉羁绊：武将间若处于“金兰结义”或“金玉良缘”等至交情谊，两军在沙盘天盘中产生战技合力共鸣的连击概率会飙涨。</p>
@@ -1649,7 +1649,7 @@ export default function App() {
 
       </main>
 
-      <footer className="game-footer">三国志 8 · 战术模拟</footer>
+      <footer className="game-footer">三国志 · 战术模拟</footer>
 
     </div>
   );

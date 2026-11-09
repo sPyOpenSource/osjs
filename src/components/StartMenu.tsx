@@ -17,7 +17,7 @@ interface StartMenuProps {
 export default function StartMenu({ scenarios, selectedScenario, onSelectScenario, onEnterApp, soundEnabled, onToggleSound }: StartMenuProps) {
   const [showCredits, setShowCredits] = useState(false);
   return <div className="game-start">
-    <header className="game-header"><h1>三国志 8</h1><Button id="btn-sound-toggle" aria-label={soundEnabled ? '关闭音效' : '开启音效'} title={soundEnabled ? '关闭音效' : '开启音效'} onClick={onToggleSound}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</Button></header>
+    <header className="game-header"><h1>三国志</h1><Button id="btn-sound-toggle" aria-label={soundEnabled ? '关闭音效' : '开启音效'} title={soundEnabled ? '关闭音效' : '开启音效'} onClick={onToggleSound}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</Button></header>
     <main className="start-content">
       <div className="start-title"><span className="trade-muted">战役</span><h2>选择剧本</h2></div>
       <div className="start-scenarios">{scenarios.map(scenario => <Button id={`start-sc-${scenario.id}`} key={scenario.id} className="start-scenario" aria-pressed={scenario.id === selectedScenario.id} onClick={() => onSelectScenario(scenario)}><span className="start-year">{scenario.year}</span><strong>{scenario.title.split('：').pop()}</strong><span className="trade-muted">{scenario.difficulty === 'Easy' ? '简单' : scenario.difficulty === 'Medium' ? '普通' : '困难'}</span></Button>)}</div>

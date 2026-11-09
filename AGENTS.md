@@ -7,3 +7,4 @@
 - Global trade uses the tactical map's existing session gold and city grain stores, with quotes and validation in a pure trade utility. Why: commerce and military provisioning must read the same resources without adding separate balances.
 - New trade controls use the shared Button and semantic global CSS trade tokens. Why: keep control states and theming consistent.
 - Country debts are independent faction-keyed session balances owned by TacticalMap; borrowing and repayment share its gold wallet and use a pure validated debt utility. Why: debt must stay country-specific while funding the existing game economy.
+- Primary navigation and game-time controls live in GameNavigation; secondary map settings, advisor content, and country debt lists use disclosures. Why: keep the primary game flow compact without removing existing actions or changing game state.

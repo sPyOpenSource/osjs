@@ -29,10 +29,10 @@ export default function CountryDebt({ factions, debts, playerFaction, gold, onCh
       <Button disabled={!valid || amount > debt || amount > gold} onClick={() => submit('repay')}><ArrowDownLeft size={15} /> 还款</Button>
     </div>
     <p className="debt-message" role="status">{message}</p>
-    <div className="debt-table-scroll"><table className="debt-table"><thead><tr><th scope="col">国家 / 势力</th><th scope="col">未偿债务（金）</th></tr></thead><tbody>
+    <details className="game-disclosure"><summary>各国债务 · {factions.length} 个国家 / 势力</summary><div className="debt-table-scroll"><table className="debt-table"><thead><tr><th scope="col">国家 / 势力</th><th scope="col">未偿债务（金）</th></tr></thead><tbody>
       {factions.map(faction => <tr key={faction.id} data-testid={`debt-row-${faction.id}`} className={faction.id === playerFaction ? 'debt-current' : ''}>
         <th scope="row">{faction.name}{faction.id === playerFaction && <small> · 本方</small>}</th><td>{(debts[faction.id] || 0).toLocaleString()}</td>
       </tr>)}
-    </tbody></table></div>
+    </tbody></table></div></details>
   </section>;
 }

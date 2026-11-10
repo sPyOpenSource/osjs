@@ -9,3 +9,7 @@
 # Simpler game UI
 - [x] Simplify primary navigation and group map controls without changing game rules.
 - [x] Verify main actions and layouts on desktop and small screens.
+
+# 2026 geopolitical events
+- [ ] Add dated fictional events, diplomatic relationships, country stability, and temporary trade effects.
+- [ ] Add event responses and a compact country report; verify campaign and trade flows.

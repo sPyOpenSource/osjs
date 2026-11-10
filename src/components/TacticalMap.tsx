@@ -215,13 +215,21 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
   }
 };
 
+export type WeatherId = 'sunny' | 'rainy' | 'heavy_rain' | 'windy' | 'foggy' | 'dense_fog' | 'snow';
+
 export interface WeatherType {
-  id: 'sunny' | 'rainy' | 'windy' | 'foggy';
+  id: WeatherId;
   name: string;
   nameCn: string;
   icon: string;
   colorClass: string;
   accentColor: string;
+  movementSpeedRatio: number;
+  movementPenaltyLabel: string;
+  intelModLabel: string;
+  fireAttackAllowed: boolean;
+  waterAttackBoosted: boolean;
+  stealthAmbushBoosted: boolean;
   modDesc: string;
 }
 
@@ -233,16 +241,73 @@ export const WEATHERS: WeatherType[] = [
     icon: '☀️', 
     colorClass: 'text-amber-400 border-amber-500/20 bg-amber-500/10', 
     accentColor: '#fbbf24', 
-    modDesc: '烈日晴空：远征战道毫无阻碍，【烽火哨警】及原本的【攻防火箭】等火击全面施展！' 
+    movementSpeedRatio: 1.0,
+    movementPenaltyLabel: '神速进军 (机动力 100% · 道路畅通骑兵疾驰)',
+    intelModLabel: '视野开阔：常规战策正常施展，远程齐射精度极佳',
+    fireAttackAllowed: true,
+    waterAttackBoosted: false,
+    stealthAmbushBoosted: false,
+    modDesc: '烈日晴空：远征战道毫无阻碍，骑兵风驰电掣，【烽火哨警】及【攻防火箭】等火击全面施展！' 
   },
   { 
     id: 'rainy', 
-    name: 'Rainy', 
-    nameCn: '暴雨', 
+    name: 'Light Rain', 
+    nameCn: '细雨', 
     icon: '🌧️', 
-    colorClass: 'text-sky-400 border-sky-500/20 bg-sky-500/10', 
-    accentColor: '#38bdf8', 
-    modDesc: '暴雨连绵：道路积水极度迟滞军道，出征胜算率直扣10%。【烽火哨警】全面受阻熄灭（禁用火攻）！'
+    colorClass: 'text-blue-400 border-blue-500/20 bg-blue-500/10', 
+    accentColor: '#60a5fa', 
+    movementSpeedRatio: 0.8,
+    movementPenaltyLabel: '轻度泥泞 (机动力 80% · 辎重稍滞)',
+    intelModLabel: '雨水湿薪：火计威力折损 25%，诱敌与奇袭小幅增强',
+    fireAttackAllowed: true,
+    waterAttackBoosted: true,
+    stealthAmbushBoosted: false,
+    modDesc: '润物细雨：道路微显泥泞，行军略有迟缓；薪柴微湿致使火计杀伤小幅折损。' 
+  },
+  { 
+    id: 'heavy_rain', 
+    name: 'Heavy Rain', 
+    nameCn: '暴雨', 
+    icon: '⛈️', 
+    colorClass: 'text-sky-400 border-sky-500/30 bg-sky-500/20', 
+    accentColor: '#0284c7', 
+    movementSpeedRatio: 0.45,
+    movementPenaltyLabel: '深沼泥潭 (机动力 45% · 攻城车与骑兵深陷泥沼，水师迅猛)',
+    intelModLabel: '🔥薪柴尽湿【火计完全禁用】！🌊智力≥80解锁【水计·决水破关】，攻城力+80%！',
+    fireAttackAllowed: false,
+    waterAttackBoosted: true,
+    stealthAmbushBoosted: false,
+    modDesc: '暴雨连绵：江河暴涨，道路化为深泥泽沼！全军机动大幅削减，火计完全熄灭禁用；高智谋将帅可借水势策动【水计绝杀】，破关摧寨！' 
+  },
+  { 
+    id: 'foggy', 
+    name: 'Light Fog', 
+    nameCn: '薄雾', 
+    icon: '🌫️', 
+    colorClass: 'text-slate-400 border-slate-700/30 bg-slate-700/10', 
+    accentColor: '#94a3b8', 
+    movementSpeedRatio: 0.75,
+    movementPenaltyLabel: '行军谨慎 (机动力 75% · 需斥候鸣锣开道)',
+    intelModLabel: '视线受阻：敌城防备情报模糊，奇袭成功率 +15%',
+    fireAttackAllowed: true,
+    waterAttackBoosted: false,
+    stealthAmbushBoosted: true,
+    modDesc: '晨烟薄雾：原野远山隐约难测，行军需备铜锣号角，奇谋伏兵略微有利。' 
+  },
+  { 
+    id: 'dense_fog', 
+    name: 'Dense Fog', 
+    nameCn: '浓雾', 
+    icon: '🌁', 
+    colorClass: 'text-indigo-300 border-indigo-500/30 bg-indigo-950/30', 
+    accentColor: '#818cf8', 
+    movementSpeedRatio: 0.5,
+    movementPenaltyLabel: '寸步难移 (机动力 50% · 盲目摸索易偏航，低智极易中伏)',
+    intelModLabel: '👁️全图防务盲锁！🧠智力≥85触发【八阵遁甲·借雾瞒天】直接奇袭破城；智力<75误入险地溃退！',
+    fireAttackAllowed: true,
+    waterAttackBoosted: false,
+    stealthAmbushBoosted: true,
+    modDesc: '弥天重雾：十步之内难辨人兽，敌城防务全盘隐去！低智力将领极易迷失山谷遭受伏击；绝代军师可借雾潜行，瞒天过海一战定乾坤！' 
   },
   { 
     id: 'windy', 
@@ -251,16 +316,28 @@ export const WEATHERS: WeatherType[] = [
     icon: '💨', 
     colorClass: 'text-teal-400 border-teal-500/20 bg-teal-500/10', 
     accentColor: '#2dd4bf', 
-    modDesc: '飓风怒卷：偏斜远程飞矢导致胜负变数上升，但顺风火攻将引发焚城烈焰狂暴连击效果！' 
+    movementSpeedRatio: 0.85,
+    movementPenaltyLabel: '烈风当面 (机动力 85% · 逆风艰难，顺风轻快)',
+    intelModLabel: '飞矢受偏，但顺风火计【赤壁烈焰】爆发焚城连击，杀伤力 +100%！',
+    fireAttackAllowed: true,
+    waterAttackBoosted: false,
+    stealthAmbushBoosted: false,
+    modDesc: '狂风呼啸：偏斜远程飞矢导致胜负变数上升，但顺风火攻将引发焚城烈焰狂暴连击效果！' 
   },
   { 
-    id: 'foggy', 
-    name: 'Foggy', 
-    nameCn: '浓雾', 
-    icon: '🌫️', 
-    colorClass: 'text-slate-400 border-slate-700/30 bg-slate-700/10', 
-    accentColor: '#94a3b8', 
-    modDesc: '迷雾遮锁：军道视界严重受阻，敌地防卫度被大雾隐去（遮蔽视界！）。战果极大依赖武将「智力」属性。' 
+    id: 'snow', 
+    name: 'Blizzard', 
+    nameCn: '暴雪', 
+    icon: '❄️', 
+    colorClass: 'text-cyan-200 border-cyan-400/30 bg-cyan-950/25', 
+    accentColor: '#a5f3fc', 
+    movementSpeedRatio: 0.4,
+    movementPenaltyLabel: '严寒封道 (机动力 40% · 冻土深雪，粮草消耗加剧)',
+    intelModLabel: '关塞冻结：兵卒士气极易动摇，智谋【绝粮道】与【坚守待援】战法大幅增强',
+    fireAttackAllowed: true,
+    waterAttackBoosted: false,
+    stealthAmbushBoosted: false,
+    modDesc: '漫天飞雪：天寒地冻，关隘封锁！粮秣输送艰难，非具装名将易遭冻馁，唯智勇双全者方能克关。' 
   }
 ];
 
@@ -303,7 +380,7 @@ export default function TacticalMap({
   const [tradeFaction, setTradeFaction] = useState('ronin');
   const [tradeLogs, setTradeLogs] = useState<string[]>([]);
   const [countryDebts, setCountryDebts] = useState<Record<string, number>>(() => createCountryDebts(FACTIONS));
-  const [weatherId, setWeatherId] = useState<'sunny' | 'rainy' | 'windy' | 'foggy'>('sunny');
+  const [weatherId, setWeatherId] = useState<WeatherId>('sunny');
   const [selectedTheater, setSelectedTheater] = useState<AsiaTheater>('all');
   const [show190Border, setShow190Border] = useState(true);
   const [showTradeRoutes, setShowTradeRoutes] = useState(true);
@@ -918,31 +995,77 @@ export default function TacticalMap({
     let siegeWin = true;
     let rate = 100;
 
+    const currentWeather = WEATHERS.find(w => w.id === weatherId) || WEATHERS[0];
+    const movementRatio = currentWeather.movementSpeedRatio;
+    // Scale step timeouts based on weather movement speed (lower movement => longer march time)
+    const timeScale = Math.max(0.7, Math.min(2.0, 1 / movementRatio));
+    const step1Delay = Math.round(1000 * timeScale);
+    const step2Delay = Math.round(2800 * timeScale);
+    const step3Delay = Math.round(4600 * timeScale);
+    const step4Delay = Math.round(6200 * timeScale);
+
     if (isSiege) {
       // Base Power calculated by attributes
       let power = (genLdr * 0.4 + genInt * 0.3 + genFor * 0.3);
       
-      // Integrate Climate modifiers
-      if (weatherId === 'rainy') {
-        power -= 12;
-      } else if (weatherId === 'foggy') {
-        power = (genLdr * 0.3 + genInt * 0.6 + genFor * 0.1);
-        if (genInt < 70) {
-          power -= 15;
-        } else if (genInt >= 88) {
-          power += 15;
+      // Integrate Climate & Intelligence Stratagem modifiers
+      if (weatherId === 'heavy_rain') {
+        // Deep mud and torrential rains:
+        // Heavy movement penalty (-18 power base for trudging through waterlogged mud)
+        // Fire attack disabled.
+        // High Intelligence (>=80) commanders devise water-gate / flood strategies (【水淹七军】), giving +26 power!
+        if (genInt >= 80) {
+          power = (genLdr * 0.3 + genInt * 0.6 + genFor * 0.1) + 26;
+        } else if (genInt < 70) {
+          power -= 24; // Mired in mud, heavy baggage and rams lost
+        } else {
+          power -= 14;
         }
+      } else if (weatherId === 'dense_fog') {
+        // Zero visibility: battle is dominated by Intelligence & Stratagems
+        power = (genLdr * 0.2 + genInt * 0.7 + genFor * 0.1);
+        if (genInt >= 85) {
+          // Master tactician uses mist as shroud: 【八阵遁甲·借雾瞒天】
+          power += 28;
+        } else if (genInt < 72) {
+          // Disoriented and ambushed in fog
+          power -= 25;
+        }
+      } else if (weatherId === 'rainy') {
+        power -= 8;
+        if (genInt >= 80) power += 10;
+      } else if (weatherId === 'foggy') {
+        power = (genLdr * 0.3 + genInt * 0.55 + genFor * 0.15);
+        if (genInt < 70) power -= 10;
+        else if (genInt >= 85) power += 14;
       } else if (weatherId === 'windy') {
-        power += (Math.random() >= 0.5 ? 8 : -8);
+        power += (Math.random() >= 0.5 ? 10 : -6);
+      } else if (weatherId === 'snow') {
+        power = (genLdr * 0.5 + genFor * 0.3 + genInt * 0.2) - 16;
+        if (genLdr >= 85) power += 18;
       }
 
       const defenseDifficulty = targetControllerId === 'ronin' ? 55 : 82;
-      rate = Math.min(Math.max(Math.round((power / (power + defenseDifficulty)) * 100), 10), 95);
+      rate = Math.min(Math.max(Math.round((power / (power + defenseDifficulty)) * 100), 8), 96);
       
-      if (weatherId === 'rainy') {
-        rate = Math.max(10, rate - 10);
+      if (weatherId === 'heavy_rain') {
+        if (genInt >= 80) {
+          rate = Math.min(95, rate + 16); // Water strategy devastating to walls
+        } else {
+          rate = Math.max(8, rate - 16); // Bogged down
+        }
+      } else if (weatherId === 'dense_fog') {
+        if (genInt >= 85) {
+          rate = Math.min(96, rate + 18); // Ghost ambush guarantees penetration
+        } else if (genInt < 72) {
+          rate = Math.max(6, rate - 18); // Blind in fog
+        }
+      } else if (weatherId === 'rainy') {
+        rate = Math.max(10, rate - 6);
       } else if (weatherId === 'foggy' && genInt < 75) {
-        rate = Math.max(8, rate - 12);
+        rate = Math.max(8, rate - 10);
+      } else if (weatherId === 'snow' && genLdr < 78) {
+        rate = Math.max(6, rate - 15);
       }
       
       setExpeditionSuccessRate(rate);
@@ -955,36 +1078,62 @@ export default function TacticalMap({
     // Step-by-Step Simulated Playback timeouts
     const weatherSlogans: Record<string, string> = {
       sunny: '☀️ 晴空丽日下旗帜招展',
-      rainy: '🌧️ 苦雨凄风拍打着军盔',
+      rainy: '🌧️ 细雨霏霏拍打着军盔',
+      heavy_rain: '⛈️ 瓢泼豪雨如瀑，泽国泥泞难移',
       windy: '💨 怒号金风撕扯着烈色军旗',
-      foggy: '🌫️ 苍迷白雾深锁着三军大营'
+      foggy: '🌫️ 苍迷白雾隐隐深锁军营',
+      dense_fog: '🌁 弥天浓雾障目，十步莫辨人马',
+      snow: '❄️ 朔雪寒风如刀，千山冰封'
     };
-    setExpeditionLogs([`【中军帐点兵】 （${weatherSlogans[weatherId] || '☀️'}） 领军大将 [${genName}] 校阅精锐八万，誓师直逼 [${targetCity.name}]！`]);
+    setExpeditionLogs([`【中军帐点兵】 （${weatherSlogans[weatherId] || '☀️'}） 领军大将 [${genName}] (统帅 ${genLdr} | 智力 ${genInt}) 校阅精锐，誓师直逼 [${targetCity.name}]！`]);
     
+    // 1. Stage 0: 大军启程 (Scaled with movement speed)
     setTimeout(() => {
       setExpeditionStep(1);
       let weatherMarchMod = '';
-      if (weatherId === 'rainy') {
-        weatherMarchMod = `道路如沼中乱泥，战马及攻城车行进受阻，辎重拉运极度沉重迟缓。`;
+      if (weatherId === 'heavy_rain') {
+        weatherMarchMod = `道路化为深泞沼池，攻城车与辎重深陷泥坑，战马打滑步伐沉重（机动力降至45%）。`;
+      } else if (weatherId === 'dense_fog') {
+        weatherMarchMod = `漫天浓雾如白障遮天，近在咫尺不辨敌我，三军以铜钲相呼应摸索行进（机动力降至50%）。`;
+      } else if (weatherId === 'rainy') {
+        weatherMarchMod = `道路如沼中乱泥，战马及攻城车行进受阻，辎重拉运略显迟缓。`;
       } else if (weatherId === 'foggy') {
-        weatherMarchMod = `茫茫大雾吞噬了前哨退路，百步不见深谷，将士点起长明火，沿栈壁小心探路。`;
+        weatherMarchMod = `茫茫大雾吞噬了前哨视界，百步不见深谷，将士点起长明火，沿栈壁小心探路。`;
       } else if (weatherId === 'windy') {
         weatherMarchMod = `狂沙迎面，强风卷树，战马因啸响而受惊狂吟，大军不得不抱紧袍襟破风挺进。`;
+      } else if (weatherId === 'snow') {
+        weatherMarchMod = `大雪封山，积雪没膝，全军顶风冒雪艰难推进，粮秣损耗加剧。`;
       } else {
         weatherMarchMod = `天清气爽，四野视野极佳，粮道畅通无阻，士卒精气神旺盛至极。`;
       }
       const startLog = `⚔️ 【大军启程】: 领军大将 [${genName}] (统帅 ${genLdr}，武力 ${genFor}) 挂帅征伐 [${targetCity.name}]。${weatherMarchMod}大军直奔目标郡隘！`;
       setExpeditionLogs(prev => [...prev, startLog]);
-    }, 1000);
+    }, step1Delay);
 
-    // 2. Stage 1: 险关行军
+    // 2. Stage 1: 险关行军 & 智略技能触发
     setTimeout(() => {
       setExpeditionStep(2);
       let marchLog = '';
-      if (weatherId === 'foggy' && genInt >= 82) {
-        marchLog = `👁️ 【重雾玄兵计】: 将军 [${genName}] 借着当空大雾屏障，巧布瞒天疑兵阵法，抄到了 [${targetCity.name}] 防线后侧！`;
+      if (weatherId === 'heavy_rain') {
+        if (genInt >= 80) {
+          marchLog = `🌊 【天时水计·决水开道】: 军师 [${genName}] (智力 ${genInt}) 观天象察洪流，借漫天暴雨构筑木排轻筏，顺暴涨之溪流激荡而下，反以惊人速度穿透深沼阻碍，直达 [${targetCity.name}] 城关防线！`;
+        } else if (genLdr >= 80) {
+          marchLog = `🌧️ 【借水飞渡】: 暴雨使河域骤涨，大将 [${genName}] (统率 ${genLdr}) 果断变通，乘快舸竹筏顺流直下，反以惊人速度在水势咆哮中逼近敌前！`;
+        } else {
+          marchLog = `💦 【深陷泥泽】: 战马与辎重深陷烂泥，大军行进艰难，粮草淋湿霉变，部队士气受到严重挫伤 (-15)！`;
+        }
+      } else if (weatherId === 'dense_fog') {
+        if (genInt >= 85) {
+          marchLog = `👁️‍🗨️ 【八阵神算·借雾瞒天】: 军师 [${genName}] (智力 ${genInt}) 通晓奇门遁甲，将弥天大雾化为神鬼遮蔽，全军无声无息穿插敌军前哨死角，神不知鬼不觉包抄至 [${targetCity.name}] 背后！`;
+        } else if (genInt >= 75) {
+          marchLog = `🌫️ 【持锣探路】: [${genName}] (智力 ${genInt}) 点燃艾草长明炬，令精锐斥候在前探路，避开险滩暗坑，终于穿透重雾抵达目标外围。`;
+        } else {
+          marchLog = `🧭 【迷雾失道·误中伏击】: 主帅智力不足以识破雾障，先头部队迷失于险谷之中，遭遇敌军哨所冷箭猝然截击，伤亡颇重！`;
+        }
       } else if (weatherId === 'rainy' && genLdr >= 80) {
-        marchLog = `🌧️ 【借水飞渡】: 暴雨使河域骤涨，大将 [${genName}] 果断变通，乘快舸竹筏顺流直下，反以惊人速度在水势咆哮中逼近敌前！`;
+        marchLog = `🌧️ 【借水飞渡】: 细雨促涨江水，大将 [${genName}] 乘快舸轻舟穿梭，进逼敌关！`;
+      } else if (weatherId === 'foggy' && genInt >= 82) {
+        marchLog = `👁️ 【重雾玄兵计】: 将军 [${genName}] 借着当空大雾屏障，巧布瞒天疑兵阵法，抄到了 [${targetCity.name}] 防线后侧！`;
       } else if (genLdr > 85) {
         marchLog = `🏔️ 【兵贵神速】: 领军将领英明强干，深谙地形攻守。大军穿林度河，长驱直入。士气如虹 (+15)！`;
       } else if (genInt > 80) {
@@ -993,19 +1142,33 @@ export default function TacticalMap({
         marchLog = `🌲 【翻山越岭】: 关山万重，行军栈道凶险无比。军士克服险阻，终于成功集结并安下营垒。`;
       }
       setExpeditionLogs(prev => [...prev, marchLog]);
-    }, 2800);
+    }, step2Delay);
 
     // 3. Stage 2: 激战 / 会师
     setTimeout(() => {
       setExpeditionStep(3);
       let clashLog = '';
       if (isSiege) {
-        if (weatherId === 'rainy') {
-          clashLog = `💦 【雨中白刃死斗】: 暴雨如瀑，水势滔天！由于柴草湿透火计受阻，双方直接在泥泞中展开野蛮血腥的短兵白刃战！`;
+        if (weatherId === 'heavy_rain') {
+          if (genInt >= 80) {
+            clashLog = `🌊 【水淹七军·决江破城】: 暴雨狂泻！军师 [${genName}] (智力 ${genInt}) 挥剑喝令掘开上游河堤，滔天浊浪奔涌破城！敌阵箭楼崩塌、军营化为汪洋，守军在惊涛中土崩瓦解！`;
+          } else {
+            clashLog = `💦 【雨中白刃死斗】: 暴雨如瀑！柴草浸透【火计彻底失效禁用】，双方在齐膝泥水中展开最原始血腥的短兵肉搏，伤亡枕藉！`;
+          }
+        } else if (weatherId === 'dense_fog') {
+          if (genInt >= 85) {
+            clashLog = `⚡ 【雾隐奇袭·乱阵斩将】: 守军完全看不见来敌！[${genName}] (智力 ${genInt}) 亲督奇兵从浓雾中悍然杀出，敌将根本不知我军虚实，全线草木皆兵陷入混乱大溃败！`;
+          } else {
+            clashLog = `🌫️ 【重雾盲击战】: 四野白茫茫一片，两军在重雾中盲目短兵交接，飞矢胡乱穿梭，双方陷入惨烈的拉锯厮杀！`;
+          }
+        } else if (weatherId === 'rainy') {
+          clashLog = `💦 【雨中激斗】: 细雨连绵，柴草微湿火计削弱，双方在泥泞中交锋拼杀！`;
         } else if (weatherId === 'foggy') {
-          clashLog = `🌫️ 【重雾盲击战】: 四野白茫茫一片，两军在重雾中短兵交接，[${genName}] 率部施展夜袭突击之法直插敌军中军！`;
+          clashLog = `🌫️ 【轻雾伏击战】: 原野薄雾朦胧，两军短兵相接，突袭与斥候交锋不断！`;
         } else if (weatherId === 'windy') {
           clashLog = `🔥 【狂风烈焰借势】: [${genName}] 巧断风向，顺风投掷火油火箭！暴烈的风势瞬间将大火送入 [${targetCity.name}] 城关！`;
+        } else if (weatherId === 'snow') {
+          clashLog = `❄️ 【雪海鏖战】: 狂雪席卷，白刃凝霜，双方在冰封大地中展开殊死相搏！`;
         } else {
           clashLog = `💥 【惨烈搏杀】: 两军相搏于 [${targetCity.name}] 城下！箭雨蔽日，[${genName}] 麾下施展齐射与冲撞，阵斩对方十数员军校，城脚血流漂橹！`;
         }
@@ -1016,7 +1179,7 @@ export default function TacticalMap({
         clashLog = `🤝 【兵合一处】: 军民同欢！大兵团顺利开进同盟郡 [${targetCity.name}]。守将开城迎客犒赏三军，完成会师。`;
       }
       setExpeditionLogs(prev => [...prev, clashLog]);
-    }, 4600);
+    }, step3Delay);
 
     // 4. Stage 3: 凯旋战报
     setTimeout(() => {
@@ -1024,12 +1187,14 @@ export default function TacticalMap({
       let finalLog = '';
       if (isSiege) {
         if (siegeWin) {
-          if (weatherId === 'rainy') {
-            finalLog = `🏆 【骤雨破城大捷】: 攻克凯旋！大将 [${genName}] 乘势破门，[${targetFaction.name}] 溃败，治权易帜为 【${originFaction.name}】！`;
-          } else if (weatherId === 'foggy') {
-            finalLog = `🏆 【雾隐收网奇捷】: 雷霆攻克！借助幽灵白雾打乱城上哨防，【${originFaction.name}】 旌旗傲然插上 [${targetCity.name}]！`;
+          if (weatherId === 'heavy_rain') {
+            finalLog = `🏆 【骤雨破城大捷】: 洪波破阵！大将 [${genName}] 借水势破门，[${targetFaction.name}] 守军溃散，城池正式收归 【${originFaction.name}】 治下！`;
+          } else if (weatherId === 'dense_fog') {
+            finalLog = `🏆 【雾散旗扬奇捷】: 神兵天降！浓雾散去之时，【${originFaction.name}】 战旗已然傲然插在 [${targetCity.name}] 城头！`;
+          } else if (weatherId === 'rainy') {
+            finalLog = `🏆 【雨战破门捷报】: 鏖战得胜！[${genName}] 冲垮敌卫，治权易帜为 【${originFaction.name}】！`;
           } else if (weatherId === 'windy') {
-            finalLog = `🏆 【天风红莲狂捷】: 浴火大捷！狂风掀开了一切掩护，大火烧毁了敌军的大理石箭塔及守备中枢。大举易帜为 【${originFaction.name}】！`;
+            finalLog = `🏆 【天风红莲狂捷】: 浴火大捷！狂风助长烈焰摧毁了敌守备核心，大举易帜为 【${originFaction.name}】！`;
           } else {
             finalLog = `🏆 【大获全胜】: 破门易帜！城主府陷落，[${targetCity.name}] 的城池治权正式收归 【${originFaction.name}】 麾下，名垂战史！`;
           }
@@ -1038,10 +1203,12 @@ export default function TacticalMap({
             [targId]: origOwner
           }));
         } else {
-          if (weatherId === 'rainy') {
-            finalLog = `❌ 【退溃泥沼】: 残念！大雨将攻城重锤彻底陷在淤泥，粮秣淋湿霉烂，[${genName}] 因伤亡难支被迫撤师退防。`;
-          } else if (weatherId === 'foggy') {
-            finalLog = `❌ 【雾中中伏受阻】: 抱憾折兵！浓雾使我方失去了探路的眼睛，[${genName}] 前部受挫，连夜狼狈退师。`;
+          if (weatherId === 'heavy_rain') {
+            finalLog = `❌ 【退溃深泽泥潭】: 暴雨如注，攻城车陷死泥淖，辎重尽湿，[${genName}] 因伤亡难支被迫撤师退防。`;
+          } else if (weatherId === 'dense_fog') {
+            finalLog = `❌ 【盲雾受挫折兵】: 浓雾阻路且遭敌多路伏击，[${genName}] 失去方向，连夜狼狈退师。`;
+          } else if (weatherId === 'rainy') {
+            finalLog = `❌ 【退溃泥沼】: 道路泥泞难行，攻城受阻，[${genName}] 抱憾退军。`;
           } else {
             finalLog = `❌ 【功城功亏一篑】: 折戟沉沙！[${targetCity.name}] 守备固若金汤，[${genName}] 攻势被城头礌石挫裂，抱憾退兵。`;
           }
@@ -1053,7 +1220,7 @@ export default function TacticalMap({
       setTimeout(() => {
         setIsExpeditionRunning(false);
       }, 1500);
-    }, 6200);
+    }, step4Delay);
   };
 
   // Launch Battle/Expedition via manual form
@@ -1143,15 +1310,47 @@ export default function TacticalMap({
       ) : mapTab === 'svg-map' ? (
         <div className="space-y-4">
           
-          <div className="map-filter-bar">
-            <label>战区<select aria-label="战区" value={selectedTheater} onChange={event => setSelectedTheater(event.target.value as AsiaTheater)}>{ASIA_THEATERS.map(th => <option key={th.id} value={th.id}>{th.name} · {th.id === 'all' ? CITIES.length : CITIES.filter(city => city.theater === th.id).length}</option>)}</select></label>
-            <details className="game-disclosure"><summary>地图设置</summary><div className="game-settings-body">
-              <label>天气<select aria-label="天气" value={weatherId} onChange={event => setWeatherId(event.target.value as typeof weatherId)}>{WEATHERS.map(w => <option key={w.id} value={w.id}>{w.icon} {w.nameCn}</option>)}</select></label>
-              <label className="game-check"><input id="toggle-190-border" type="checkbox" checked={show190Border} onChange={event => setShow190Border(event.target.checked)} />汉境国界</label>
-              <label className="game-check"><input id="toggle-trade-routes" type="checkbox" checked={showTradeRoutes} onChange={event => setShowTradeRoutes(event.target.checked)} />丝路航线</label>
-              <label className="game-check"><input id="toggle-topography" type="checkbox" checked={showTopography} onChange={event => setShowTopography(event.target.checked)} />山川地貌</label>
-              <label className="game-check"><input id="toggle-wide-view" type="checkbox" checked={isWideView} onChange={event => setIsWideView(event.target.checked)} />全景宽屏</label>
-            </div></details>
+          <div className="space-y-2">
+            <div className="map-filter-bar">
+              <label>战区<select aria-label="战区" value={selectedTheater} onChange={event => setSelectedTheater(event.target.value as AsiaTheater)}>{ASIA_THEATERS.map(th => <option key={th.id} value={th.id}>{th.name} · {th.id === 'all' ? CITIES.length : CITIES.filter(city => city.theater === th.id).length}</option>)}</select></label>
+              <details className="game-disclosure"><summary>地图设置</summary><div className="game-settings-body">
+                <label>天气<select aria-label="天气" value={weatherId} onChange={event => setWeatherId(event.target.value as typeof weatherId)}>{WEATHERS.map(w => <option key={w.id} value={w.id}>{w.icon} {w.nameCn}</option>)}</select></label>
+                <label className="game-check"><input id="toggle-190-border" type="checkbox" checked={show190Border} onChange={event => setShow190Border(event.target.checked)} />汉境国界</label>
+                <label className="game-check"><input id="toggle-trade-routes" type="checkbox" checked={showTradeRoutes} onChange={event => setShowTradeRoutes(event.target.checked)} />丝路航线</label>
+                <label className="game-check"><input id="toggle-topography" type="checkbox" checked={showTopography} onChange={event => setShowTopography(event.target.checked)} />山川地貌</label>
+                <label className="game-check"><input id="toggle-wide-view" type="checkbox" checked={isWideView} onChange={event => setIsWideView(event.target.checked)} />全景宽屏</label>
+              </div></details>
+            </div>
+
+            {/* Quick Weather Switching Pills Bar */}
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-950/70 p-2 rounded-xl border border-slate-900/80">
+              <span className="text-[10px] font-mono text-slate-400 font-bold px-1.5 flex items-center gap-1">
+                <Compass size={11} className="text-amber-500" /> 天候兵势:
+              </span>
+              {WEATHERS.map(w => {
+                const isActive = weatherId === w.id;
+                return (
+                  <button
+                    key={w.id}
+                    id={`btn-weather-pill-${w.id}`}
+                    type="button"
+                    onClick={() => setWeatherId(w.id)}
+                    title={`${w.nameCn} (${w.name}): ${w.movementPenaltyLabel} | ${w.intelModLabel}`}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-serif font-bold transition-all cursor-pointer ${
+                      isActive 
+                        ? `${w.colorClass} ring-1 ring-amber-400/60 shadow-md scale-102` 
+                        : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-850 border border-slate-800/80'
+                    }`}
+                  >
+                    <span>{w.icon}</span>
+                    <span>{w.nameCn}</span>
+                    <span className="text-[9px] font-mono opacity-80">
+                      {Math.round(w.movementSpeedRatio * 100)}%速
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className={`grid grid-cols-1 ${isWideView ? 'lg:grid-cols-1' : 'lg:grid-cols-12'} gap-6`}>
@@ -1669,35 +1868,100 @@ export default function TacticalMap({
                 )}
 
                 {/* Draw animated Campaign Expedition Line on SVG if running */}
-                {isExpeditionRunning && expeditionStep >= 1 && (
-                  <>
-                    {/* Glowing Arrow Path connecting any two Eurasian cities */}
-                    <line 
-                      x1={CITIES.find(c => c.id === expeditionOriginId)!.x * 10}
-                      y1={CITIES.find(c => c.id === expeditionOriginId)!.y * 6.2}
-                      x2={CITIES.find(c => c.id === expeditionTargetId)!.x * 10}
-                      y2={CITIES.find(c => c.id === expeditionTargetId)!.y * 6.2}
-                      stroke={originControllerId !== 'ronin' ? (FACTIONS.find(f => f.id === originControllerId)?.color || '#eab308') : '#fb923c'}
-                      strokeWidth="4"
-                      strokeDasharray="8 6"
-                      className="animate-dash"
-                      style={{
-                        strokeDashoffset: 100,
-                        animation: 'dash 1.2s linear infinite'
-                      }}
-                    />
-                    {/* Arrow Pointing Target */}
-                    <circle 
-                      cx={CITIES.find(c => c.id === expeditionTargetId)!.x * 10}
-                      cy={CITIES.find(c => c.id === expeditionTargetId)!.y * 6.2}
-                      r="12"
-                      fill="none"
-                      stroke="#eab308"
-                      strokeWidth="2"
-                      className="animate-ping"
-                    />
-                  </>
-                )}
+                {isExpeditionRunning && expeditionStep >= 1 && (() => {
+                  const origCity = CITIES.find(c => c.id === expeditionOriginId);
+                  const targCity = CITIES.find(c => c.id === expeditionTargetId);
+                  if (!origCity || !targCity) return null;
+                  
+                  const x1 = origCity.x * 10;
+                  const y1 = origCity.y * 6.2;
+                  const x2 = targCity.x * 10;
+                  const y2 = targCity.y * 6.2;
+                  const midX = (x1 + x2) / 2;
+                  const midY = (y1 + y2) / 2 - 12;
+
+                  const marchAnimDuration = weatherId === 'heavy_rain' ? '3.2s'
+                    : weatherId === 'dense_fog' ? '2.4s'
+                    : weatherId === 'snow' ? '2.8s'
+                    : weatherId === 'rainy' ? '1.8s'
+                    : weatherId === 'windy' ? '1.4s' : '1.0s';
+
+                  const marchWeatherTag = weatherId === 'heavy_rain' ? '⛈️ 暴雨深沼: 行军迟滞 (-55%)'
+                    : weatherId === 'dense_fog' ? '🌁 弥天大雾: 鸣锣开道 (-50%)'
+                    : weatherId === 'snow' ? '❄️ 严寒深雪: 封道难行 (-60%)'
+                    : weatherId === 'rainy' ? '🌧️ 微雨湿泥: 辎重稍缓 (-20%)'
+                    : weatherId === 'windy' ? '💨 逆风当面: 箭偏旗翻 (-15%)'
+                    : '☀️ 晴空坦途: 飞驰行军 (100%)';
+
+                  const lineColor = weatherId === 'heavy_rain' ? '#38bdf8'
+                    : weatherId === 'dense_fog' ? '#a5b4fc'
+                    : originControllerId !== 'ronin' ? (FACTIONS.find(f => f.id === originControllerId)?.color || '#eab308') : '#fb923c';
+
+                  return (
+                    <g id="expedition-march-path">
+                      {/* Glow background line */}
+                      <line 
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke={lineColor}
+                        strokeWidth="6"
+                        strokeOpacity="0.3"
+                        strokeLinecap="round"
+                      />
+                      {/* Glowing Arrow Path connecting any two Eurasian cities */}
+                      <line 
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke={lineColor}
+                        strokeWidth="3.5"
+                        strokeDasharray={weatherId === 'heavy_rain' ? '4 8' : weatherId === 'dense_fog' ? '6 6' : '8 6'}
+                        className="animate-dash"
+                        style={{
+                          strokeDashoffset: 100,
+                          animation: `dash ${marchAnimDuration} linear infinite`
+                        }}
+                      />
+                      {/* March Weather condition indicator badge */}
+                      <g transform={`translate(${midX}, ${midY})`} className="pointer-events-none select-none">
+                        <rect 
+                          x="-68" 
+                          y="-10" 
+                          width="136" 
+                          height="20" 
+                          rx="6" 
+                          fill="#020617ee" 
+                          stroke={lineColor} 
+                          strokeWidth="1" 
+                        />
+                        <text 
+                          x="0" 
+                          y="3.5" 
+                          textAnchor="middle" 
+                          fill="#ffffff" 
+                          fontSize="7.5" 
+                          fontWeight="bold" 
+                          fontFamily="sans-serif"
+                        >
+                          {marchWeatherTag}
+                        </text>
+                      </g>
+                      {/* Arrow Pointing Target */}
+                      <circle 
+                        cx={x2}
+                        cy={y2}
+                        r="12"
+                        fill="none"
+                        stroke={lineColor}
+                        strokeWidth="2"
+                        className="animate-ping"
+                      />
+                    </g>
+                  );
+                })()}
               </svg>
 
               {/* Render All 24 Eurasian Strategic City Nodes */}
@@ -1810,6 +2074,14 @@ export default function TacticalMap({
                   0% { background-position: 0px 0px; }
                   100% { background-position: -120px 240px; }
                 }
+                @keyframes heavyRainEffect {
+                  0% { background-position: 0px 0px; }
+                  100% { background-position: -180px 360px; }
+                }
+                @keyframes lightningFlash {
+                  0%, 92%, 96%, 100% { opacity: 0; }
+                  93%, 95% { opacity: 0.35; }
+                }
                 @keyframes windEffect {
                   0% { background-position: 0px 0px; }
                   100% { background-position: 300px 0px; }
@@ -1819,14 +2091,35 @@ export default function TacticalMap({
                   50% { opacity: 0.35; transform: scale(1.05) translate(6px, -4px); }
                   100% { opacity: 0.15; transform: scale(1) translate(0px, 0px); }
                 }
+                @keyframes denseFogEffect {
+                  0% { opacity: 0.4; transform: scale(1) translate(0px, 0px); }
+                  50% { opacity: 0.85; transform: scale(1.1) translate(-20px, 10px); }
+                  100% { opacity: 0.4; transform: scale(1) translate(0px, 0px); }
+                }
+                @keyframes snowEffect {
+                  0% { background-position: 0px 0px; }
+                  100% { background-position: 80px 240px; }
+                }
                 .animate-rain {
                   animation: rainEffect 1s linear infinite;
+                }
+                .animate-heavy-rain {
+                  animation: heavyRainEffect 0.55s linear infinite;
+                }
+                .animate-lightning {
+                  animation: lightningFlash 5s infinite;
                 }
                 .animate-wind {
                   animation: windEffect 2.8s linear infinite;
                 }
                 .animate-fog {
                   animation: fogEffect 7s ease-in-out infinite;
+                }
+                .animate-dense-fog {
+                  animation: denseFogEffect 9s ease-in-out infinite;
+                }
+                .animate-snow {
+                  animation: snowEffect 2.4s linear infinite;
                 }
               `}} />
 
@@ -1844,6 +2137,30 @@ export default function TacticalMap({
                       </pattern>
                     </defs>
                     <rect width="100%" height="100%" fill="url(#rain-pattern)" className="animate-rain" />
+                  </svg>
+                </div>
+              )}
+
+              {weatherId === 'heavy_rain' && (
+                <div id="weather-overlay-heavy-rain" className="absolute inset-0 pointer-events-none z-10 overflow-hidden bg-sky-950/25">
+                  {/* Lightning flash flicker */}
+                  <div className="absolute inset-0 bg-white/20 pointer-events-none animate-lightning" />
+                  <svg className="w-full h-full opacity-80" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <pattern id="heavy-rain-pattern" width="140" height="140" patternUnits="userSpaceOnUse">
+                        <line x1="15" y1="0" x2="0" y2="50" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" opacity="0.75" />
+                        <line x1="45" y1="10" x2="30" y2="60" stroke="#e0f2fe" strokeWidth="2.2" strokeLinecap="round" opacity="0.8" />
+                        <line x1="85" y1="0" x2="70" y2="50" stroke="#7dd3fc" strokeWidth="1.8" strokeLinecap="round" opacity="0.65" />
+                        <line x1="120" y1="20" x2="105" y2="70" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" opacity="0.75" />
+                        <line x1="25" y1="70" x2="10" y2="120" stroke="#7dd3fc" strokeWidth="1.8" strokeLinecap="round" opacity="0.65" />
+                        <line x1="65" y1="80" x2="50" y2="130" stroke="#e0f2fe" strokeWidth="2.4" strokeLinecap="round" opacity="0.85" />
+                        <line x1="105" y1="70" x2="90" y2="120" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" opacity="0.75" />
+                        <circle cx="10" cy="120" r="3" fill="none" stroke="#7dd3fc" strokeWidth="0.8" opacity="0.4" />
+                        <circle cx="50" cy="130" r="4" fill="none" stroke="#e0f2fe" strokeWidth="1" opacity="0.5" />
+                        <circle cx="90" cy="120" r="3" fill="none" stroke="#7dd3fc" strokeWidth="0.8" opacity="0.4" />
+                      </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#heavy-rain-pattern)" className="animate-heavy-rain" />
                   </svg>
                 </div>
               )}
@@ -1875,6 +2192,39 @@ export default function TacticalMap({
                       <rect width="100%" height="100%" filter="url(#fog-filter)" />
                     </svg>
                   </div>
+                </div>
+              )}
+
+              {weatherId === 'dense_fog' && (
+                <div id="weather-overlay-dense-fog" className="absolute inset-0 pointer-events-none z-10 overflow-hidden bg-indigo-950/35">
+                  <div className="absolute inset-0 bg-gradient-to-r from-slate-300/20 via-indigo-200/25 to-slate-300/20 animate-dense-fog" />
+                  <div className="absolute inset-0 mix-blend-color-dodge opacity-45">
+                    <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                      <filter id="dense-fog-filter">
+                        <feTurbulence type="fractalNoise" baseFrequency="0.008" numOctaves="4" result="noise" />
+                        <feColorMatrix type="matrix" values="1 0 0 0 0.8  0 1 0 0 0.85  0 0 1 0 1  0 0 0 0.55 0" />
+                      </filter>
+                      <rect width="100%" height="100%" filter="url(#dense-fog-filter)" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+
+              {weatherId === 'snow' && (
+                <div id="weather-overlay-snow" className="absolute inset-0 pointer-events-none z-10 overflow-hidden bg-cyan-950/15">
+                  <svg className="w-full h-full opacity-70" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <pattern id="snow-pattern" width="100" height="100" patternUnits="userSpaceOnUse">
+                        <circle cx="15" cy="15" r="2.5" fill="#e0f2fe" opacity="0.8" />
+                        <circle cx="45" cy="35" r="1.8" fill="#bae6fd" opacity="0.7" />
+                        <circle cx="80" cy="20" r="3" fill="#ffffff" opacity="0.9" />
+                        <circle cx="25" cy="65" r="2" fill="#bae6fd" opacity="0.6" />
+                        <circle cx="60" cy="80" r="3.2" fill="#ffffff" opacity="0.85" />
+                        <circle cx="90" cy="70" r="1.5" fill="#e0f2fe" opacity="0.75" />
+                      </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#snow-pattern)" className="animate-snow" />
+                  </svg>
                 </div>
               )}
               
@@ -2104,6 +2454,21 @@ export default function TacticalMap({
                       <line x1="390" y1="180" x2="380" y2="210" stroke="#7dd3fc" strokeWidth="1" className="animate-pulse" />
                     </g>
                   )}
+                  {weatherId === 'heavy_rain' && (
+                    <g className="opacity-75">
+                      <line x1="40" y1="10" x2="25" y2="55" stroke="#38bdf8" strokeWidth="1.8" className="animate-pulse" />
+                      <line x1="110" y1="30" x2="95" y2="75" stroke="#e0f2fe" strokeWidth="2.2" className="animate-pulse" />
+                      <line x1="200" y1="15" x2="185" y2="60" stroke="#38bdf8" strokeWidth="1.8" className="animate-pulse" />
+                      <line x1="290" y1="40" x2="275" y2="85" stroke="#e0f2fe" strokeWidth="2" className="animate-pulse" />
+                      <line x1="380" y1="20" x2="365" y2="65" stroke="#38bdf8" strokeWidth="2" className="animate-pulse" />
+                      <line x1="440" y1="50" x2="425" y2="95" stroke="#e0f2fe" strokeWidth="1.8" className="animate-pulse" />
+                      <line x1="70" y1="130" x2="55" y2="175" stroke="#38bdf8" strokeWidth="2" className="animate-pulse" />
+                      <line x1="150" y1="170" x2="135" y2="215" stroke="#e0f2fe" strokeWidth="1.8" className="animate-pulse" />
+                      <line x1="240" y1="140" x2="225" y2="185" stroke="#38bdf8" strokeWidth="2.2" className="animate-pulse" />
+                      <line x1="330" y1="190" x2="315" y2="235" stroke="#38bdf8" strokeWidth="1.8" className="animate-pulse" />
+                      <line x1="410" y1="160" x2="395" y2="205" stroke="#e0f2fe" strokeWidth="2" className="animate-pulse" />
+                    </g>
+                  )}
                   {weatherId === 'windy' && (
                     <g className="opacity-40">
                       <path d="M 20 60 Q 60 50 100 60" fill="none" stroke="#2dd4bf" strokeWidth="1" className="animate-pulse" />
@@ -2116,6 +2481,25 @@ export default function TacticalMap({
                       <ellipse cx="250" cy="180" rx="140" ry="80" fill="none" stroke="#94a3b8" strokeWidth="12" strokeDasharray="30 15" className="animate-pulse" />
                       <ellipse cx="120" cy="110" rx="60" ry="30" fill="none" stroke="#94a3b8" strokeWidth="6" strokeDasharray="10 20" />
                       <ellipse cx="380" cy="250" rx="70" ry="35" fill="none" stroke="#94a3b8" strokeWidth="8" strokeDasharray="20 10" />
+                    </g>
+                  )}
+                  {weatherId === 'dense_fog' && (
+                    <g className="opacity-55">
+                      <ellipse cx="250" cy="180" rx="180" ry="110" fill="#6366f1" fillOpacity="0.12" stroke="#818cf8" strokeWidth="18" strokeDasharray="25 15" className="animate-pulse" />
+                      <ellipse cx="130" cy="120" rx="90" ry="50" fill="#6366f1" fillOpacity="0.1" stroke="#a5b4fc" strokeWidth="12" strokeDasharray="15 20" />
+                      <ellipse cx="370" cy="230" rx="100" ry="60" fill="#6366f1" fillOpacity="0.1" stroke="#818cf8" strokeWidth="14" strokeDasharray="20 15" />
+                    </g>
+                  )}
+                  {weatherId === 'snow' && (
+                    <g className="opacity-60">
+                      <circle cx="80" cy="50" r="3" fill="#e0f2fe" className="animate-pulse" />
+                      <circle cx="170" cy="80" r="2.5" fill="#ffffff" className="animate-pulse" />
+                      <circle cx="280" cy="40" r="3.2" fill="#e0f2fe" className="animate-pulse" />
+                      <circle cx="390" cy="70" r="2.2" fill="#ffffff" className="animate-pulse" />
+                      <circle cx="120" cy="200" r="3" fill="#ffffff" className="animate-pulse" />
+                      <circle cx="230" cy="250" r="2.5" fill="#e0f2fe" className="animate-pulse" />
+                      <circle cx="340" cy="220" r="3.5" fill="#ffffff" className="animate-pulse" />
+                      <circle cx="430" cy="270" r="2" fill="#e0f2fe" className="animate-pulse" />
                     </g>
                   )}
 
@@ -2920,25 +3304,51 @@ export default function TacticalMap({
 
                 {/* Strategic stats & force structure */}
                 <div className="space-y-3.5 border-t border-slate-900/60 pt-3.5">
-                  {weatherId === 'foggy' && !isOrig && !isSelected && controllerId !== originControllerId ? (
-                    <div className="bg-slate-950/60 p-3 rounded-xl border border-dashed border-slate-900 space-y-2 text-center py-5">
-                      <p className="text-[14px] leading-none animate-pulse">🌫️</p>
-                      <h5 className="text-[10px] font-serif font-bold text-slate-400">重雾漫布・视界受阻</h5>
-                      <p className="text-[9px] font-sans text-slate-500 leading-normal">
-                        非我军拥兵、起发或点选的城池防务，由于浓雾弥漫，探子已被阻隔，无法搜集细则情报。
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex justify-between items-center text-[10.5px] font-mono">
-                        <span className="text-slate-500 flex items-center gap-1">
-                          <Shield size={11.5} className="text-amber-500" />
-                          治权防备度
-                        </span>
-                        <span className="text-slate-300">
-                          <strong>{defenseScore}</strong>/100 ({defenseName})
-                        </span>
-                      </div>
+                  {(() => {
+                    const isFogState = (weatherId === 'dense_fog' || weatherId === 'foggy') && !isOrig && !isSelected && controllerId !== originControllerId;
+                    const activeCommander = officers.find(o => o.id === selectedGeneralId);
+                    const isPiercedByIntel = activeCommander && activeCommander.stats.intelligence >= 85;
+
+                    if (isFogState && !isPiercedByIntel) {
+                      return weatherId === 'dense_fog' ? (
+                        <div className="bg-indigo-950/60 p-3 rounded-xl border border-dashed border-indigo-500/40 space-y-2 text-center py-5 shadow-inner">
+                          <p className="text-[18px] leading-none animate-pulse">🌁</p>
+                          <h5 className="text-[10.5px] font-serif font-black text-indigo-300">弥天浓雾・防务全锁</h5>
+                          <p className="text-[9px] font-sans text-indigo-200/70 leading-normal max-w-xs mx-auto">
+                            十步之内难辨人兽，探马斥候尽皆迷途！需于左侧委任【智力 ≥ 85】绝代谋士（如诸葛亮、司马懿、周瑜等），方可神机识破虚实。
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-950/60 p-3 rounded-xl border border-dashed border-slate-900 space-y-2 text-center py-5">
+                          <p className="text-[14px] leading-none animate-pulse">🌫️</p>
+                          <h5 className="text-[10px] font-serif font-bold text-slate-400">重雾漫布・视界受阻</h5>
+                          <p className="text-[9px] font-sans text-slate-500 leading-normal">
+                            非我军拥兵、起发或点选的城池防务，由于晨雾弥漫，探子已被阻隔，无法搜集细则情报。
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <>
+                        {isFogState && isPiercedByIntel && (
+                          <div className="bg-indigo-950/70 border border-indigo-500/50 rounded-lg px-2.5 py-1 text-[9.5px] font-serif font-bold text-indigo-300 flex items-center justify-between shadow-sm">
+                            <span className="flex items-center gap-1">
+                              <Sparkles size={11} className="text-amber-400" />
+                              【神机识破】{activeCommander.name} (智力 {activeCommander.stats.intelligence})
+                            </span>
+                            <span className="text-[8.5px] font-mono text-emerald-400 font-bold">洞若观火</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center text-[10.5px] font-mono">
+                          <span className="text-slate-500 flex items-center gap-1">
+                            <Shield size={11.5} className="text-amber-500" />
+                            治权防备度
+                          </span>
+                          <span className="text-slate-300">
+                            <strong>{defenseScore}</strong>/100 ({defenseName})
+                          </span>
+                        </div>
 
                       {/* Faction Controller display details */}
                       <div className="bg-slate-900/40 p-2.5 rounded-xl border border-slate-900/80 flex justify-between items-center text-[10.5px]">
@@ -2977,8 +3387,9 @@ export default function TacticalMap({
                         )}
                       </div>
                     </>
-                  )}
-                </div>
+                  );
+                })()}
+              </div>
 
                 {/* Local Action Triggers */}
                 <div className="space-y-2 border-t border-slate-900/60 pt-3">
@@ -3148,6 +3559,114 @@ export default function TacticalMap({
                 内部输送调遣胜率必然为 100%；攻伐敌方领地将对领军大将的五维属性（统帅与武力值）有着极高的硬考量，高属性可显著增加克关斩将几率。
               </p>
             </div>
+
+            {/* Weather Troop Movement & Intelligence Stratagem Assessment Card */}
+            {(() => {
+              const currWeather = WEATHERS.find(w => w.id === weatherId) || WEATHERS[0];
+              const selectedGen = officers.find(o => o.id === selectedGeneralId);
+              const genInt = selectedGen?.stats.intelligence || 50;
+              const genLdr = selectedGen?.stats.leadership || 50;
+
+              return (
+                <div className={`p-3 rounded-xl border space-y-2.5 transition-colors ${currWeather.colorClass}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-serif font-black flex items-center gap-1.5 text-slate-100">
+                      <span>{currWeather.icon}</span>
+                      <span>天候行军与军师谋略测算</span>
+                    </span>
+                    <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-950/70 border border-slate-800 text-slate-200">
+                      {currWeather.nameCn} ({currWeather.name})
+                    </span>
+                  </div>
+
+                  {/* Troop Movement Speed Bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] font-mono">
+                      <span className="text-slate-400">大军机动行军率:</span>
+                      <strong className={currWeather.movementSpeedRatio < 0.6 ? 'text-rose-400' : 'text-emerald-400'}>
+                        {Math.round(currWeather.movementSpeedRatio * 100)}%
+                      </strong>
+                    </div>
+                    <div className="w-full bg-slate-950/80 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          currWeather.movementSpeedRatio <= 0.45 ? 'bg-rose-500' 
+                          : currWeather.movementSpeedRatio <= 0.6 ? 'bg-amber-500' 
+                          : 'bg-emerald-400'
+                        }`}
+                        style={{ width: `${Math.round(currWeather.movementSpeedRatio * 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-[9px] font-sans text-slate-400 leading-tight">
+                      {currWeather.movementPenaltyLabel}
+                    </p>
+                  </div>
+
+                  {/* Intelligence Stratagem Assessment */}
+                  <div className="bg-slate-950/75 p-2 rounded-lg border border-slate-800/80 space-y-1">
+                    <div className="flex justify-between items-center text-[10px] font-mono">
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <Brain size={11} className="text-purple-400" />
+                        主帅谋略克应 ({selectedGen ? `${selectedGen.name} · 智力 ${genInt}` : '未定将帅'})
+                      </span>
+                      {weatherId === 'heavy_rain' && (
+                        <span className="text-[8.5px] font-bold text-rose-400">火攻禁用</span>
+                      )}
+                    </div>
+
+                    <div className="text-[9.5px] font-sans leading-relaxed">
+                      {weatherId === 'heavy_rain' ? (
+                        genInt >= 80 ? (
+                          <span className="text-sky-300 font-medium">
+                            🌊 <strong className="text-sky-200">【水淹七军·决水破关】激活！</strong> (智力 {genInt} ≥ 80)：引江汉暴涨波涛倒灌关隘，破城杀伤力额外暴增 <strong>+80%</strong>！
+                          </span>
+                        ) : (
+                          <span className="text-amber-300/90 font-medium">
+                            ⛈️ <strong className="text-amber-200">【泥沼困顿】</strong> (智力 {genInt} &lt; 80)：薪柴全湿火计禁用，泥沼阻滞攻城车，攻关折损提升。
+                          </span>
+                        )
+                      ) : weatherId === 'dense_fog' ? (
+                        genInt >= 85 ? (
+                          <span className="text-indigo-300 font-medium">
+                            👁️‍🗨️ <strong className="text-indigo-200">【八阵遁甲·借雾瞒天】激活！</strong> (智力 {genInt} ≥ 85)：大军如幽灵匿迹绕开敌垒，一击直捣核心要冲，大幅摧毁城防！
+                          </span>
+                        ) : genInt >= 75 ? (
+                          <span className="text-slate-300 font-medium">
+                            🌫️ <strong className="text-slate-200">【结阵探道】</strong> (智力 {genInt})：探骑鸣锣开道谨防伏兵，行军机动受制 (-50%)。
+                          </span>
+                        ) : (
+                          <span className="text-rose-300 font-medium">
+                            ⚠️ <strong className="text-rose-200">【大雾迷踪·极易中伏】</strong> (智力 {genInt} &lt; 75)：领军不识天象，易陷敌伏兵，若敌将设伏将遭惨重溃伤！
+                          </span>
+                        )
+                      ) : weatherId === 'windy' ? (
+                        <span className="text-teal-300 font-medium">
+                          💨 <strong className="text-teal-200">【赤壁烈焰】</strong>：顺风火攻杀伤翻倍 (+100%)，飞矢轨迹微偏。
+                        </span>
+                      ) : weatherId === 'snow' ? (
+                        genLdr >= 80 ? (
+                          <span className="text-cyan-300 font-medium">
+                            ❄️ <strong className="text-cyan-200">【雪夜坚军】</strong> (统帅 {genLdr} ≥ 80)：名帅严明军纪抗击严寒，行军机动 40% 但士气不泄！
+                          </span>
+                        ) : (
+                          <span className="text-rose-300 font-medium">
+                            ❄️ <strong className="text-rose-200">【严寒封冻】</strong> (统帅 {genLdr} &lt; 80)：风雪塞道冻馁难耐，机动力仅 40%，士气易散。
+                          </span>
+                        )
+                      ) : weatherId === 'rainy' ? (
+                        <span className="text-blue-300 font-medium">
+                          🌧️ <strong className="text-blue-200">【细雨湿柴】</strong>：道路微显泥泞 (-20% 移速)，火计威力稍减。
+                        </span>
+                      ) : (
+                        <span className="text-amber-300 font-medium">
+                          ☀️ <strong className="text-amber-200">【烈日平川】</strong>：神速行军 (100% 机动)，远程弓火齐发无阻。
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             <button
               id="btn-launch-exp"

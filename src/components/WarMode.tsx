@@ -23,7 +23,7 @@ interface WarModeProps {
   defenderFaction: Faction;
   attackingOfficer: Officer | null;
   defendingOfficer: Officer | null;
-  weatherId: 'sunny' | 'rainy' | 'windy' | 'foggy';
+  weatherId: 'sunny' | 'rainy' | 'heavy_rain' | 'windy' | 'foggy' | 'dense_fog' | 'snow';
   soundEnabled: boolean;
   onBattleComplete: (winner: 'attacker' | 'defender', goldReward: number, epicRelic?: string, conqueredCityId?: string) => void;
   onClose: () => void;
@@ -209,10 +209,13 @@ export default function WarMode({
     // Weathers adjustments
     const weatherBuffsLog = {
       sunny: '☀️ 今日春和景明，骑士风驰：【骁骑营】突击破敌威力提升 20%！',
-      rainy: '🌧️ 天降倾盆大雨，薪火难燃：【弩弓营】火箭重创战法禁用，泥泞不便，冲车移速受制。',
+      rainy: '🌧️ 天降微雨，薪水微湿：【弩弓营】火箭威力微损，泥泞稍滞冲车。',
+      heavy_rain: '⛈️ 狂澜暴雨倾盆，薪柴尽湿：【弩弓营】火计战法完全禁用！骑兵与冲车深陷泥沼，唯智力高超者可借水攻破城！',
       windy: '💨 朔风呼啸，风助火威：火箭爆裂引燃伤害提升！箭矢精度偶有偏斜。',
-      foggy: '🌫️ 浓雾弥漫，奇兵遮锁：【步兵营】贴身肉搏将无视敌众 50% 防备甲胄！'
-    }[weatherId];
+      foggy: '🌫️ 晨雾弥漫，奇兵遮锁：【步兵营】贴身肉搏将无视敌众 50% 防备甲胄！',
+      dense_fog: '🌁 弥天重雾，咫尺莫辨：【步兵营】隐匿贴身无视敌众 75% 防甲！神机谋士可策动【八阵借雾】奇袭！',
+      snow: '❄️ 冰雪漫野，严寒封塞：兵卒行动受滞，战阵需高统帅凝聚军心！'
+    }[weatherId] || '☀️ 天候平稳，三军进击！';
 
     // Initial log
     setBattleLogs([
@@ -519,21 +522,48 @@ export default function WarMode({
     // Skill adjustments
     let skillText = '';
     
-    // Sunny/Windy modifications
+    // Weather and Intelligence tactical skill adjustments
     if (u.type === 'cavalry') {
       if (weatherId === 'sunny') {
         dmg = Math.floor(dmg * 1.25);
-        skillText = '⚡ 烈阳破袭：骁骑突击威力倍增！';
+        skillText = '⚡ 烈阳破袭：平川飞驰，骁骑突击威力倍增！';
+      } else if (weatherId === 'heavy_rain') {
+        dmg = Math.floor(dmg * 0.75);
+        skillText = '⛈️ 泥泞陷蹄：暴雨深泽使战马陷入泥沼，冲势受挫！';
+      } else if (weatherId === 'snow') {
+        dmg = Math.floor(dmg * 0.8);
+        skillText = '❄️ 冰雪封道：战马蹄下打滑，突击杀伤折损！';
       } else {
         skillText = '🐎 铁骑突袭破阵！';
       }
     }
 
-    if (u.type === 'infantry' && weatherId === 'foggy') {
-      // ignore 50% defense
-      const rawArmorPenDmg = Math.floor(u.atk * (1 - (enemy.def * 0.5) / 150) + Math.random() * 20);
-      dmg = Math.max(dmg, rawArmorPenDmg);
-      skillText = '🌫️ 雾里藏刀：极速切入，刀锋无视敌众半数甲胄！';
+    if (u.type === 'infantry') {
+      if (weatherId === 'dense_fog') {
+        // In dense fog, ignore 75% defense due to total concealment
+        const rawArmorPenDmg = Math.floor(u.atk * (1 - (enemy.def * 0.25) / 150) + Math.random() * 35);
+        dmg = Math.max(dmg, rawArmorPenDmg);
+        skillText = '🌁 幽雾匿袭：步兵在弥天重雾中无声切近，透穿敌众 75% 甲胄！';
+      } else if (weatherId === 'foggy') {
+        // ignore 50% defense
+        const rawArmorPenDmg = Math.floor(u.atk * (1 - (enemy.def * 0.5) / 150) + Math.random() * 20);
+        dmg = Math.max(dmg, rawArmorPenDmg);
+        skillText = '🌫️ 雾里藏刀：极速切入，刀锋无视敌众半数甲胄！';
+      }
+    }
+
+    // High Intelligence commander stratagem in heavy rain (Water flooding gate/troops)
+    if (weatherId === 'heavy_rain' && attackingOfficer && attackingOfficer.stats.intelligence >= 80) {
+      const waterBonus = Math.floor(attackingOfficer.stats.intelligence * 0.7);
+      dmg += waterBonus;
+      skillText += ` 🌊【水淹七军】军师借暴雨引波涛破寨 (+${waterBonus}水计伤害)！`;
+    }
+
+    // High Intelligence commander stratagem in dense fog (Ghost ambush)
+    if (weatherId === 'dense_fog' && attackingOfficer && attackingOfficer.stats.intelligence >= 85) {
+      const fogIntelBonus = Math.floor(attackingOfficer.stats.intelligence * 0.85);
+      dmg += fogIntelBonus;
+      skillText += ` 👁️‍🗨️【八阵遁甲】鬼神莫测之伏兵奇袭 (+${fogIntelBonus}智谋暴击)！`;
     }
 
     if (u.type === 'ram' && enemy.type === 'gate') {
@@ -643,8 +673,10 @@ export default function WarMode({
     }
 
     else if (unit.type === 'archers') {
-      if (weatherId === 'rainy') {
-        addLog('🌧️ 泥泽潮湿：漫天暴雨严重打湿了火引燃薪！火计封锁，无法燃点火矢！');
+      if (weatherId === 'rainy' || weatherId === 'heavy_rain') {
+        addLog(weatherId === 'heavy_rain' 
+          ? '⛈️ 狂澜暴雨倾盆：江河暴涨，薪柴引火完全灭绝！火计遭到绝命封锁，无法引燃火矢！' 
+          : '🌧️ 泥泽潮湿：漫天微雨打湿了火引燃薪！火计封锁，无法燃点火矢！');
         return;
       }
 
@@ -1050,7 +1082,15 @@ export default function WarMode({
           <div className="text-right hidden sm:block">
             <span className="text-[10px] font-mono text-slate-500 block">战局天象</span>
             <span className="text-xs text-amber-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 font-bold font-serif">
-              {{ sunny: '☀️ 晴空万里', rainy: '🌧️ 瓢泼大雨', windy: '💨 朔北狂风', foggy: '🌫️ 满陇毒雾' }[weatherId]}
+              {{
+                sunny: '☀️ 晴空万里',
+                rainy: '🌧️ 细雨湿道',
+                heavy_rain: '⛈️ 狂澜暴雨',
+                windy: '💨 朔北狂风',
+                foggy: '🌫️ 晨烟薄雾',
+                dense_fog: '🌁 弥天浓雾',
+                snow: '❄️ 冰雪封疆'
+              }[weatherId] || '☀️ 晴空万里'}
             </span>
           </div>
 
@@ -1276,6 +1316,26 @@ export default function WarMode({
                 </div>
               )}
 
+              {weatherId === 'heavy_rain' && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-sky-950/20">
+                  {/* Lightning flash flicker */}
+                  <motion.div
+                    className="absolute inset-0 bg-white/10"
+                    animate={{ opacity: [0, 0, 0.4, 0, 0, 0.2, 0] }}
+                    transition={{ duration: 4.8, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                  {[...Array(24)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute w-1 h-8 bg-sky-300/60 rounded-full shadow-[0_0_4px_rgba(56,189,248,0.5)]"
+                      style={{ left: `${(i * 4.2)}%`, top: '-40px' }}
+                      animate={{ y: ['0%', '1200%'], x: ['0px', '-65px'] }}
+                      transition={{ duration: 0.45 + (i % 4) * 0.08, repeat: Infinity, delay: (i % 5) * 0.06, ease: 'linear' }}
+                    />
+                  ))}
+                </div>
+              )}
+
               {weatherId === 'windy' && (
                 <div className="absolute inset-0 pointer-events-none overflow-hidden z-40">
                   {[...Array(8)].map((_, i) => (
@@ -1301,6 +1361,34 @@ export default function WarMode({
                       style={{ left: `${i * 25}%`, top: `${15 + (i % 2) * 40}%` }}
                       animate={{ scale: [1, 1.35, 1], x: [-30, 30, -30] }}
                       transition={{ duration: 5.5 + i * 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {weatherId === 'dense_fog' && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-indigo-950/25 backdrop-blur-[0.5px]">
+                  {[...Array(8)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute w-44 h-44 rounded-full bg-indigo-200/20 blur-2xl"
+                      style={{ left: `${(i % 4) * 28}%`, top: `${Math.floor(i / 4) * 45}%` }}
+                      animate={{ scale: [0.9, 1.4, 0.9], x: [-40, 40, -40], opacity: [0.25, 0.55, 0.25] }}
+                      transition={{ duration: 4.5 + i * 0.8, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {weatherId === 'snow' && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-cyan-950/10">
+                  {[...Array(18)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute w-1.5 h-1.5 rounded-full bg-white/70 shadow-sm"
+                      style={{ left: `${(i * 5.8)}%`, top: '-20px' }}
+                      animate={{ y: ['0%', '1150%'], x: [0, (i % 2 === 0 ? 30 : -30), 0] }}
+                      transition={{ duration: 2.2 + (i % 3) * 0.6, repeat: Infinity, delay: (i % 4) * 0.2, ease: 'linear' }}
                     />
                   ))}
                 </div>

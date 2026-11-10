@@ -39,6 +39,7 @@ const vdlPortrait = '/portraits/von_der_leyen.jpg';
 const merkelPortrait = '/portraits/merkel.jpg';
 const ruttePortrait = '/portraits/rutte.jpg';
 const jettenPortrait = '/portraits/jetten.jpg';
+const guterresPortrait = '/portraits/guterres.jpg';
 
 export const FACTIONS: Faction[] = [
   {
@@ -1606,6 +1607,44 @@ export const FAMOUS_OFFICERS: Officer[] = [
       '坚守 (大幅提升本城与部队之防御，抵御强敌围攻)'
     ],
     biography: '尼德兰王国首相、民主66党领袖，1987年生于奥斯，19岁即当选国会议员，为荷兰史上最年轻之议员之一。2017年出任气候与能源大臣，主导通过欧洲首部成文《气候法》，将减排目标写入国法，并推动风电、光伏与天然气退出之能源转型。2025年率民主66党赢得大选，2026年组阁执政，成为尼德兰史上最年轻之内阁首脑，以绿色新政与青年理想重新点燃低地之国政坛。'
+  },
+  {
+    id: 'guterres',
+    name: '安东尼奥·古特雷斯',
+    gender: 'Male',
+    styleName: '万国和平使 · 人道仲裁之舟',
+    englishName: 'António Manuel de Oliveira Guterres',
+    origin: '葡萄牙里斯本 · 联合国总部',
+    isGlobalLeader: true,
+    factionId: 'europe',
+    avatarStyle: {
+      portrait: guterresPortrait,
+      hairColor: '#cbd5e1',
+      hairStyle: 'Scholar Jade Headdress',
+      armorColor: '#0284c7',
+      accessory: 'Golden Sovereign Crown',
+      expression: 'Warm Smiling',
+      bgGradient: 'from-sky-950 via-blue-950 to-slate-950'
+    },
+    stats: {
+      leadership: 74,
+      force: 28,
+      intelligence: 91,
+      politics: 96,
+      charisma: 94
+    },
+    traits: [
+      '人道斡旋 (善于化解诸侯间之兵戈恶念，同盟与停战之成功率极大提升)',
+      '万国通使 (每回合从外洋与四方使节处获取额外名声与外贸税金)',
+      '难民庇护 (招徕流离失所之百姓，郡城人口与民心增长大幅加快)'
+    ],
+    skills: [
+      '言论 (以雄辩与万国公理规劝敌将，瓦解其战意)',
+      '治疗 (以人道救济抚恤重伤卒旅，恢复编制数)',
+      '鼓舞 (宣谕天下和平大义，令全军士气昂扬不移)',
+      '混乱 (洞悉战局症结，以奇正交错之辞令令敌阵自乱)'
+    ],
+    biography: '联合国第九任秘书长、葡萄牙前总理，1949年生于里斯本。早年以优异成绩毕业于里斯本高等技术学院电机工程专业，青年时代投身社会救济与民主化运动。1995年至2002年出任葡萄牙总理，主导融入欧元区并推动澳门平稳回归；2005年至2015年任联合国难民事务高级专员（UNHCR），十年间奔走战乱前线救济千万流民；2017年就任联合国秘书长，连任至今。精通葡、英、法、西四语，在气候危机、地缘冲突与人道救援中充当全球道德良心与最高斡旋者。'
   }
 ];
 
@@ -1697,7 +1736,16 @@ export const FAMOUS_RELATIONSHIPS: RelationshipRelation[] = [
   { fromOfficerId: 'rutte', toOfficerId: 'jetten', type: 'Rival' },
   { fromOfficerId: 'jetten', toOfficerId: 'rutte', type: 'Rival' },
   { fromOfficerId: 'jetten', toOfficerId: 'von_der_leyen', type: 'Trust' },
-  { fromOfficerId: 'jetten', toOfficerId: 'macron', type: 'Trust' }
+  { fromOfficerId: 'jetten', toOfficerId: 'macron', type: 'Trust' },
+  // 古特雷斯联合国与国际斡旋之羁绊
+  { fromOfficerId: 'guterres', toOfficerId: 'von_der_leyen', type: 'Trust' },
+  { fromOfficerId: 'von_der_leyen', toOfficerId: 'guterres', type: 'Trust' },
+  { fromOfficerId: 'guterres', toOfficerId: 'macron', type: 'Trust' },
+  { fromOfficerId: 'guterres', toOfficerId: 'merkel', type: 'Trust' },
+  { fromOfficerId: 'guterres', toOfficerId: 'rutte', type: 'Trust' },
+  { fromOfficerId: 'guterres', toOfficerId: 'ashoka', type: 'Confidant' },
+  { fromOfficerId: 'guterres', toOfficerId: 'trump', type: 'Rival' },
+  { fromOfficerId: 'guterres', toOfficerId: 'putin', type: 'Rival' }
 ];
 
 export const SCENARIOS: CampaignScenario[] = [

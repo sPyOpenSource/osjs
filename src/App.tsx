@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Officer, Faction, CampaignScenario, RelationshipRelation, AvatarStyle, RpgCharacter, Party } from './types';
 import { FACTIONS, FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS, SCENARIOS, AVAILABLE_SKILLS, AVAILABLE_TRAITS } from './data';
-import { createRpgCharacter } from './utils/rpg';
+import { createRpgCharacter, applyXp } from './utils/rpg';
 import { getCandidateOfficers } from './utils/party';
 import OfficerCard from './components/OfficerCard';
 import AvatarRenderer from './components/AvatarRenderer';
@@ -50,6 +50,7 @@ export default function App() {
   const [protagonistId, setProtagonistId] = useState<string>(defaultProtagonistId);
   const [party, setParty] = useState<Party>(() => ({ protagonistId: defaultProtagonistId, companionIds: [] }));
   const [rpgCharacters, setRpgCharacters] = useState<Record<string, RpgCharacter>>(() => ({ [defaultProtagonistId]: createRpgCharacter(defaultProtagonistId) }));
+  const [rpgLog, setRpgLog] = useState<string[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [officers, setOfficers] = useState<Officer[]>(FAMOUS_OFFICERS);
   const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
@@ -81,6 +82,25 @@ export default function App() {
       prev[protagonistId] ? prev : { ...prev, [protagonistId]: createRpgCharacter(protagonistId) }
     );
   }, [protagonistId]);
+
+  // Apply combat XP to every party member and surface level-ups in the RPG log.
+  const grantBattleXp = useCallback((amount: number) => {
+    const memberIds = [party.protagonistId, ...party.companionIds];
+    const nextCharacters: Record<string, RpgCharacter> = {};
+    const levelUps: string[] = [];
+    for (const id of memberIds) {
+      const current = rpgCharacters[id] ?? createRpgCharacter(id);
+      const updated = applyXp(current, amount);
+      nextCharacters[id] = updated;
+      if (updated.level > current.level) {
+        levelUps.push(`【升级】${current.officerId ? current.officerId : id} 升级到 Lv.${updated.level}，获得 1 点技能点！`);
+      }
+    }
+    setRpgCharacters(prev => ({ ...prev, ...nextCharacters }));
+    if (levelUps.length) {
+      setRpgLog(prev => [...levelUps, ...prev].slice(0, 50));
+    }
+  }, [party, rpgCharacters]);
 
   const handleAdvanceXun = () => {
     setGameXun(prevXun => {
@@ -1540,6 +1560,7 @@ export default function App() {
               playerFactions={playerFactions}
               rpgCharacters={rpgCharacters}
               onRpgCharactersChange={setRpgCharacters}
+              onBattleXp={grantBattleXp}
             />
           </div>
 

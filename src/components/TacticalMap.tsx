@@ -274,6 +274,7 @@ interface TacticalMapProps {
   playerFactions?: string[];
   rpgCharacters?: Record<string, RpgCharacter>;
   onRpgCharactersChange?: React.Dispatch<React.SetStateAction<Record<string, RpgCharacter>>>;
+  onBattleXp?: (amount: number) => void;
 }
 
 export default function TacticalMap({ 
@@ -287,7 +288,8 @@ export default function TacticalMap({
   isAutoTime = true,
   playerFactions: initialPlayerFactions,
   rpgCharacters,
-  onRpgCharactersChange
+  onRpgCharactersChange,
+  onBattleXp
 }: TacticalMapProps) {
   const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade'>('svg-map');
   const [tradeFaction, setTradeFaction] = useState('ronin');
@@ -570,6 +572,7 @@ export default function TacticalMap({
   };
 
   const handleBattleComplete = (winner: 'attacker' | 'defender', goldReward: number, epicRelic?: string, conqueredCityId?: string) => {
+    const xpAmount = winner === 'attacker' ? 120 : 40;
     if (winner === 'attacker' && conqueredCityId) {
       const originControllerId = cityOwnership[expeditionOriginId] || 'ronin';
       setCityOwnership(prev => ({
@@ -596,6 +599,14 @@ export default function TacticalMap({
       ]);
     }
     setMapTab('svg-map');
+
+    // Award combat XP to the party (applied in App). A defeat still grants a
+    // smaller amount for the attempt.
+    onBattleXp?.(xpAmount);
+    setInteriorLogs(prev => [
+      `【战斗经验】队伍获得 ${xpAmount} 经验${winner === 'attacker' ? '，胜利！' : '，尽力了！'}`,
+      ...prev
+    ]);
   };
 
   // Palace Actions

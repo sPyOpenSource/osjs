@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Officer, Faction, CampaignScenario, RelationshipRelation, AvatarStyle, RpgCharacter, Party } from './types';
+import { Officer, Faction, CampaignScenario, RelationshipRelation, AvatarStyle, RpgCharacter, Party, Quest, QuestState, EquipmentSlot } from './types';
 import { FACTIONS, FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS, SCENARIOS, AVAILABLE_SKILLS, AVAILABLE_TRAITS } from './data';
+import { ALL_QUESTS, INITIAL_QUEST_STATES } from './data/quests';
 import { createRpgCharacter, applyXp } from './utils/rpg';
 import { getCandidateOfficers } from './utils/party';
+import { completeObjective, isQuestComplete, markQuestCompleted } from './utils/quest';
 import OfficerCard from './components/OfficerCard';
 import AvatarRenderer from './components/AvatarRenderer';
 import TacticalMap from './components/TacticalMap';
@@ -51,6 +53,7 @@ export default function App() {
   const [party, setParty] = useState<Party>(() => ({ protagonistId: defaultProtagonistId, companionIds: [] }));
   const [rpgCharacters, setRpgCharacters] = useState<Record<string, RpgCharacter>>(() => ({ [defaultProtagonistId]: createRpgCharacter(defaultProtagonistId) }));
   const [rpgLog, setRpgLog] = useState<string[]>([]);
+  const [questStates, setQuestStates] = useState<QuestState[]>(INITIAL_QUEST_STATES);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [officers, setOfficers] = useState<Officer[]>(FAMOUS_OFFICERS);
   const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
@@ -101,6 +104,56 @@ export default function App() {
       setRpgLog(prev => [...levelUps, ...prev].slice(0, 50));
     }
   }, [party, rpgCharacters]);
+
+  // Complete a quest objective. Rewards are paid when the whole quest completes:
+  // XP/officer/equipment are applied here (App owns party & RPG state); gold and
+  // grain are applied by TacticalMap (it owns the economy state) via its own
+  // quest-states effect.
+  const completeQuestObjective = useCallback((questId: string, objectiveId: string) => {
+    const quest = ALL_QUESTS.find(q => q.id === questId);
+    if (!quest) return;
+    const state = questStates.find(s => s.questId === questId);
+    if (!state || state.status === 'completed') return;
+
+    const updated = completeObjective(quest, state, objectiveId);
+    setQuestStates(prev => prev.map(s => (s.questId === questId ? updated : s)));
+
+    if (!isQuestComplete(quest, updated)) return;
+
+    // Mark the quest completed so rewards pay out exactly once.
+    setQuestStates(prev => prev.map(s => (s.questId === questId ? markQuestCompleted(s) : s)));
+    const r = quest.rewards;
+    if (!r) return;
+
+    if (r.xp) grantBattleXp(r.xp);
+
+    if (r.officerIds?.length) {
+      setParty(prev => {
+        const ids = [...prev.companionIds];
+        for (const oid of r.officerIds) {
+          if (oid !== prev.protagonistId && !ids.includes(oid) && ids.length < 4) ids.push(oid);
+        }
+        return { ...prev, companionIds: ids };
+      });
+      setRpgLog(prev => [`【任务奖励】新武将加入：${r.officerIds.join('、')}`, ...prev].slice(0, 50));
+    }
+
+    if (r.equipment) {
+      setRpgCharacters(prev => {
+        const char = prev[party.protagonistId];
+        if (!char) return prev;
+        if (char.equipment[r.equipment.slot as EquipmentSlot]) return prev;
+        return {
+          ...prev,
+          [party.protagonistId]: {
+            ...char,
+            equipment: { ...char.equipment, [r.equipment.slot]: r.equipment }
+          }
+        };
+      });
+      setRpgLog(prev => [`【任务奖励】装备获得：${r.equipment.name}`, ...prev].slice(0, 50));
+    }
+  }, [ALL_QUESTS, questStates, party, rpgCharacters, grantBattleXp]);
 
   const handleAdvanceXun = () => {
     setGameXun(prevXun => {
@@ -1561,6 +1614,9 @@ export default function App() {
               rpgCharacters={rpgCharacters}
               onRpgCharactersChange={setRpgCharacters}
               onBattleXp={grantBattleXp}
+              quests={ALL_QUESTS}
+              questStates={questStates}
+              onCompleteQuestObjective={completeQuestObjective}
             />
           </div>
 

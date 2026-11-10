@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Officer, Faction, CampaignScenario, RpgCharacter } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { Officer, Faction, CampaignScenario, RpgCharacter, Quest, QuestState } from '../types';
 import { FACTIONS } from '../data';
+import { INITIAL_QUEST_STATES } from '../data/quests';
+import { nextIncompleteObjective } from '../utils/quest';
 import { motion, AnimatePresence } from 'motion/react';
 import { playDrumSound, playClashSound } from '../utils/audio';
 import WarMode from './WarMode';
@@ -275,6 +277,9 @@ interface TacticalMapProps {
   rpgCharacters?: Record<string, RpgCharacter>;
   onRpgCharactersChange?: React.Dispatch<React.SetStateAction<Record<string, RpgCharacter>>>;
   onBattleXp?: (amount: number) => void;
+  quests?: Quest[];
+  questStates?: QuestState[];
+  onCompleteQuestObjective?: (questId: string, objectiveId: string) => void;
 }
 
 export default function TacticalMap({ 
@@ -289,7 +294,10 @@ export default function TacticalMap({
   playerFactions: initialPlayerFactions,
   rpgCharacters,
   onRpgCharactersChange,
-  onBattleXp
+  onBattleXp,
+  quests: initialQuests,
+  questStates: initialQuestStates,
+  onCompleteQuestObjective
 }: TacticalMapProps) {
   const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade'>('svg-map');
   const [tradeFaction, setTradeFaction] = useState('ronin');
@@ -342,6 +350,34 @@ export default function TacticalMap({
   const [playerGold, setPlayerGold] = useState<number>(1500);
   const [playerInventory, setPlayerInventory] = useState<string[]>([]);
   const [interiorLogs, setInteriorLogs] = useState<string[]>(['你已勒马顿足，进入华夏古都，巡察九郡风物。']);
+  const [localQuestStates, setLocalQuestStates] = useState<QuestState[]>(INITIAL_QUEST_STATES);
+  const questStates = onCompleteQuestObjective ? (initialQuestStates ?? INITIAL_QUEST_STATES) : localQuestStates;
+  const completedQuestIdsRef = useRef<Set<string>>(new Set());
+
+  // Apply gold/grain rewards when a quest completes. TacticalMap owns the economy
+  // state (playerGold / cityStats), so it pays those rewards here; XP/officer/
+  // equipment rewards are paid by App.
+  useEffect(() => {
+    const questList = initialQuests ?? [];
+    for (const qs of questStates) {
+      if (qs.status !== 'completed' || completedQuestIdsRef.current.has(qs.questId)) continue;
+      completedQuestIdsRef.current.add(qs.questId);
+      const quest = questList.find(q => q.id === qs.questId);
+      const { gold, grain } = quest?.rewards ?? {};
+      if (gold) {
+        setPlayerGold(prev => prev + gold);
+        setInteriorLogs(prev => [`【任务奖励】${quest?.title} · 获得黄金 ${gold.toLocaleString()} 金`, ...prev]);
+      }
+      if (grain) {
+        const targetId = quest?.cityId || 'chengdu';
+        setCityStats(prev => {
+          const cur = prev[targetId] ?? { prosperity: 65, defense: 70, grain: 1200, population: 82000 };
+          return { ...prev, [targetId]: { ...cur, grain: cur.grain + grain } };
+        });
+        setInteriorLogs(prev => [`【任务奖励】${quest?.title} · 粮草 ${grain.toLocaleString()} 石已入仓（${targetId}）`, ...prev]);
+      }
+    }
+  }, [questStates, initialQuests]);
   const [diceGameResult, setDiceGameResult] = useState<{
     playerRolls: number[];
     opponentRolls: number[];
@@ -579,6 +615,15 @@ export default function TacticalMap({
         ...prev,
         [conqueredCityId]: originControllerId
       }));
+      // Conquering a city advances any quest anchored there.
+      const cityQuests = (initialQuests ?? []).filter(q => q.cityId === conqueredCityId && q.objectives.length);
+      for (const q of cityQuests) {
+        const st = questStates.find(s => s.questId === q.id);
+        if (st && st.status !== 'completed') {
+          const next = nextIncompleteObjective(q, st);
+          if (next) onCompleteQuestObjective?.(q.id, next.id);
+        }
+      }
       setPlayerGold(prev => prev + goldReward);
       if (epicRelic) {
         setPlayerInventory(prev => {
@@ -1716,6 +1761,24 @@ export default function TacticalMap({
                           borderColor: isSelected ? '#fbbf24' : '#1e293b'
                         }} 
                       />
+
+                      {/* Quest anchors: quests whose cityId is this city */}
+                      {(initialQuests ?? [])
+                        .filter(q => q.cityId === city.id)
+                        .filter(q => {
+                          const st = questStates.find(s => s.questId === q.id);
+                          return st && st.status !== 'completed';
+                        })
+                        .map(q => (
+                          <span
+                            key={q.id}
+                            data-testid={`quest-marker-${q.id}`}
+                            className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center justify-center"
+                            title={q.title}
+                          >
+                            <span className="h-2.5 w-2.5 rounded-full bg-amber-400 border-2 border-slate-900 shadow" />
+                          </span>
+                        ))}
 
                       {/* Label Placement */}
                       <span className={`absolute top-3.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-md text-[9.5px] font-serif font-black tracking-wider shadow-md whitespace-nowrap border z-10 transition-colors ${

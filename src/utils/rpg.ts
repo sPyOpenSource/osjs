@@ -23,6 +23,8 @@ export function applyXp(character: RpgCharacter, amount: number): RpgCharacter {
   // No-op keeps the same reference so React can bail out of the re-render.
   if (!Number.isSafeInteger(amount) || amount <= 0) return character;
   let xp = character.xp + amount;
+  // The sum can overflow past safe-integer range even when the input is valid.
+  if (!Number.isSafeInteger(xp)) return character;
   let level = character.level;
   let skillPoints = character.skillPoints;
   while (level < MAX_LEVEL && xp >= xpForLevel(level + 1)) {
@@ -30,5 +32,8 @@ export function applyXp(character: RpgCharacter, amount: number): RpgCharacter {
     level += 1;
     skillPoints += 1;
   }
+  // At max level there is no next threshold, so clamp to a full bar instead of
+  // letting xp grow without bound.
+  if (level >= MAX_LEVEL) xp = Math.min(xp, xpForLevel(MAX_LEVEL));
   return { ...character, xp, level, skillPoints };
 }

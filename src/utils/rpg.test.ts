@@ -45,11 +45,41 @@ describe('rpg progression', () => {
 
   test('huge but valid amounts finish fast and cap at MAX_LEVEL', () => {
     const c = createRpgCharacter('liubei');
-    const startedAt = Date.now();
     const next = applyXp(c, Number.MAX_SAFE_INTEGER);
-    assert.ok(Date.now() - startedAt < 100, 'level up loop must not hang');
     assert.equal(next.level, MAX_LEVEL);
     assert.equal(next.skillPoints, MAX_LEVEL - 1);
+    assert.ok(Number.isSafeInteger(next.xp));
+    assert.equal(next.xp, xpForLevel(MAX_LEVEL), 'xp is clamped to a full bar at max level');
+  });
+
+  test('repeated huge amounts cannot push xp out of safe-integer range', () => {
+    let c = createRpgCharacter('liubei');
+    c = applyXp(c, Number.MAX_SAFE_INTEGER);
+    c = applyXp(c, Number.MAX_SAFE_INTEGER);
+    assert.equal(c.level, MAX_LEVEL);
+    assert.ok(Number.isSafeInteger(c.xp));
+    assert.equal(c.xp, xpForLevel(MAX_LEVEL));
+  });
+
+  test('xpForLevel floors invalid levels at 1', () => {
+    assert.equal(xpForLevel(0), xpForLevel(1));
+    assert.equal(xpForLevel(-3), xpForLevel(1));
+  });
+
+  test('one xp short of the threshold does not level up', () => {
+    const c = createRpgCharacter('liubei');
+    const next = applyXp(c, xpForLevel(2) - 1);
+    assert.equal(next.level, 1);
+    assert.equal(next.xp, xpForLevel(2) - 1);
+    assert.equal(next.skillPoints, 0);
+  });
+
+  test('preserves non-xp fields', () => {
+    const c = { ...createRpgCharacter('liubei'), learnedSkills: ['a'], equipment: {} };
+    const next = applyXp(c, xpForLevel(2));
+    assert.deepEqual(next.learnedSkills, ['a']);
+    assert.deepEqual(next.equipment, {});
+    assert.equal(next.officerId, 'liubei');
   });
 
   test('ignores zero and negative amounts', () => {

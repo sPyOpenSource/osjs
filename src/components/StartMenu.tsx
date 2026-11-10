@@ -93,7 +93,6 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
                 <input
                   type="checkbox"
                   data-testid={`player-faction-${fid}`}
-                  checked={selectedPlayerFactions.includes(fid)}
                   onChange={(e) => {
                     const next = e.target.checked
                       ? [...selectedPlayerFactions, fid]

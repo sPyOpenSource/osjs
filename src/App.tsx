@@ -1126,6 +1126,18 @@ export default function App() {
                   </div>
                 </div>
               </div>
+              
+              {/* RPG Party Panel */}
+              <PartyPanel
+                party={party}
+                characters={rpgCharacters}
+                officers={officers}
+                availableEquipment={partyEquipment[party.protagonistId] ?? []}
+                onRecruit={onRecruit}
+                onDismiss={onDismiss}
+                onSpendSkillPoint={onSpendSkillPoint}
+                onEquip={onEquip}
+              />
 
               {/* Grid database Roster */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1161,18 +1173,6 @@ export default function App() {
                   </div>
                 )}
               </div>
-
-              {/* RPG Party Panel */}
-              <PartyPanel
-                party={party}
-                characters={rpgCharacters}
-                officers={officers}
-                availableEquipment={partyEquipment[party.protagonistId] ?? []}
-                onRecruit={onRecruit}
-                onDismiss={onDismiss}
-                onSpendSkillPoint={onSpendSkillPoint}
-                onEquip={onEquip}
-              />
             </div>
           )}
 

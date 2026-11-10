@@ -69,7 +69,7 @@ export default function PartyPanel({
     <section className="party-panel" aria-label="队伍">
       <div className="party-heading">
         <User size={18} />
-        <h2>队伍 / Party</h2>
+        <h2>队伍</h2>
         <span className="trade-muted">
           {memberIds.length} 名成员 · 同伴 {companionCount}/4
         </span>

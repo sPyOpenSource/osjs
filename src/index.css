@@ -71,6 +71,35 @@ body {
 .trade-history-heading { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--color-trade-border); }
 .trade-history { max-height: 220px; overflow-y: auto; font-size: 12px; line-height: 1.8; color: var(--color-trade-success); }
 .trade-history p { padding: 10px 0; border-bottom: 1px solid var(--color-trade-border); overflow-wrap: anywhere; }
+.trade-accent { color: var(--color-trade-accent); font-weight: 700; }
+
+/* Quest log panel */
+.quest-log { border-bottom: 1px solid var(--color-trade-border); padding: 20px 0; }
+.quest-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.quest-heading h2 { font-size: 18px; font-weight: 700; letter-spacing: 0.4px; }
+.quest-list { display: flex; flex-direction: column; gap: 12px; }
+.quest-card { border: 1px solid var(--color-trade-border); border-radius: 8px; padding: 12px 14px; background: var(--color-trade-surface); }
+.quest-card-done { opacity: 0.7; border-color: var(--color-trade-success); }
+.quest-card-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.quest-card-title { display: flex; align-items: center; gap: 8px; }
+.quest-card-title h3 { font-size: 15px; font-weight: 700; margin: 0; }
+.quest-status { font-size: 11px; font-weight: 700; border-radius: 4px; padding: 2px 8px; text-transform: uppercase; letter-spacing: 0.6px; }
+.quest-status.not_started { color: var(--color-trade-muted); border: 1px solid var(--color-trade-border); }
+.quest-status.active, .quest-status.进行中 { color: var(--color-trade-text); border: 1px solid var(--color-trade-border); }
+.quest-status.可提交, .quest-status.completed { color: var(--color-trade-success); border: 1px solid var(--color-trade-success); }
+.quest-status.失败 { color: var(--color-trade-error); border: 1px solid var(--color-trade-error); }
+.quest-card-desc { font-size: 13px; color: var(--color-trade-text); line-height: 1.6; margin: 0 0 10px 0; }
+.quest-objectives { margin: 0 0 8px 0; }
+.quest-objectives > .trade-muted { display: block; font-size: 12px; margin-bottom: 6px; }
+.quest-objective-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.quest-objective { display: flex; align-items: center; gap: 8px; }
+.quest-objective.done { opacity: 0.7; }
+.quest-objective.done .quest-objective-button { border-color: var(--color-trade-success); color: var(--color-trade-success); }
+.quest-objective-button { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; justify-content: flex-start; padding: 6px 10px; font-size: 13px; }
+.quest-rewards { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12.5px; }
+.quest-rewards .trade-muted { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; }
+.quest-submit-button { margin-top: 8px; }
+@media (max-width: 640px) { .quest-list { gap: 10px; } .quest-card { padding: 10px 12px; } }
 @media (max-width: 640px) { .trade-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; } .trade-market-list { grid-template-columns: minmax(0, 1fr); } }
 
 .country-debt { border-bottom: 1px solid var(--color-trade-border); padding: 20px 0; }

@@ -106,3 +106,52 @@ export interface CityAffairsState {
   agriculture: number;
   commerce: number;
 }
+
+export type QuestStatus = 'not_started' | 'active' | 'completed' | 'failed';
+
+export interface Equipment {
+  id: string;
+  name: string;
+  slot: 'weapon' | 'armor' | 'accessory';
+  statBonuses: Partial<OfficerStats>;
+  skillBonuses: string[];
+}
+
+export interface RpgCharacter {
+  officerId: string;
+  level: number;
+  xp: number;
+  skillPoints: number;
+  learnedSkills: string[];
+  equipment: {
+    weapon?: Equipment;
+    armor?: Equipment;
+    accessory?: Equipment;
+  };
+}
+
+export interface Party {
+  protagonistId: string;
+  companionIds: string[];
+}
+
+export interface QuestObjective {
+  id: string;
+  description: string;
+  completed: boolean;
+}
+
+export interface Quest {
+  id: string;
+  title: string;
+  description: string;
+  objectives: QuestObjective[];
+  rewards: {
+    xp?: number;
+    gold?: number;
+    grain?: number;
+    equipment?: Equipment;
+    officerIds?: string[];
+  };
+  status: QuestStatus;
+}

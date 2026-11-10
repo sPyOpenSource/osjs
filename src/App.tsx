@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Officer, Faction, CampaignScenario, RelationshipRelation, AvatarStyle, RpgCharacter, Party, Quest, QuestState, EquipmentSlot } from './types';
+import { Officer, Faction, CampaignScenario, RelationshipRelation, AvatarStyle, RpgCharacter, Party, Quest, QuestState, EquipmentSlot, Equipment } from './types';
 import { FACTIONS, FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS, SCENARIOS, AVAILABLE_SKILLS, AVAILABLE_TRAITS } from './data';
 import { ALL_QUESTS, INITIAL_QUEST_STATES } from './data/quests';
-import { createRpgCharacter, applyXp } from './utils/rpg';
+import { createRpgCharacter, applyXp, validateEquipAssignment } from './utils/rpg';
 import { getCandidateOfficers } from './utils/party';
 import { completeObjective, isQuestComplete, markQuestCompleted } from './utils/quest';
 import OfficerCard from './components/OfficerCard';
@@ -13,6 +13,7 @@ import GameNavigation from './components/GameNavigation';
 import Button from './components/Button';
 import DuelArena from './components/DuelArena';
 import InternalAffairs from './components/InternalAffairs';
+import PartyPanel from './components/PartyPanel';
 import { playClashSound, playDrumSound, playHarvestSound } from './utils/audio';
 import { 
   Shield, 
@@ -54,6 +55,7 @@ export default function App() {
   const [rpgCharacters, setRpgCharacters] = useState<Record<string, RpgCharacter>>(() => ({ [defaultProtagonistId]: createRpgCharacter(defaultProtagonistId) }));
   const [rpgLog, setRpgLog] = useState<string[]>([]);
   const [questStates, setQuestStates] = useState<QuestState[]>(INITIAL_QUEST_STATES);
+  const [partyEquipment, setPartyEquipment] = useState<Record<string, Equipment[]>>({});
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [officers, setOfficers] = useState<Officer[]>(FAMOUS_OFFICERS);
   const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
@@ -139,21 +141,65 @@ export default function App() {
     }
 
     if (r.equipment) {
-      setRpgCharacters(prev => {
-        const char = prev[party.protagonistId];
-        if (!char) return prev;
-        if (char.equipment[r.equipment.slot as EquipmentSlot]) return prev;
-        return {
-          ...prev,
-          [party.protagonistId]: {
-            ...char,
-            equipment: { ...char.equipment, [r.equipment.slot]: r.equipment }
-          }
-        };
+      setPartyEquipment(prev => {
+        const owned = [...(prev[party.protagonistId] ?? [])];
+        if (owned.some(e => e.id === r.equipment.id)) return prev;
+        return { ...prev, [party.protagonistId]: [...owned, r.equipment] };
       });
-      setRpgLog(prev => [`【任务奖励】装备获得：${r.equipment.name}`, ...prev].slice(0, 50));
+      setRpgLog(prev => [`【任务奖励】装备获得：${r.equipment.name}（已加入背包）`, ...prev].slice(0, 50));
     }
   }, [ALL_QUESTS, questStates, party, rpgCharacters, grantBattleXp]);
+
+  // Recruit a companion: max 4 companions, never the protagonist.
+  const onRecruit = useCallback((officerId: string) => {
+    if (officerId === party.protagonistId) return;
+    if (party.companionIds.length >= 4) return;
+    if (party.companionIds.includes(officerId)) return;
+    const officer = FAMOUS_OFFICERS.find(o => o.id === officerId);
+    if (!officer) return;
+    setParty(prev => ({ ...prev, companionIds: [...prev.companionIds, officerId] }));
+    setRpgCharacters(prev => (prev[officerId] ? prev : { ...prev, [officerId]: createRpgCharacter(officerId) }));
+    setRpgLog(prev => [`【招募】${officer.name} 加入队伍`, ...prev].slice(0, 50));
+  }, [party]);
+
+  // Dismiss a companion.
+  const onDismiss = useCallback((officerId: string) => {
+    setParty(prev => ({ ...prev, companionIds: prev.companionIds.filter(id => id !== officerId) }));
+    setRpgLog(prev => [`【解散】${officerId} 离开队伍`, ...prev].slice(0, 50));
+  }, []);
+
+  // Spend one skill point on a placeholder skill tied to the new level.
+  const onSpendSkillPoint = useCallback((officerId: string, skillId: string) => {
+    setRpgCharacters(prev => {
+      const char = prev[officerId];
+      if (!char || char.skillPoints <= 0 || char.learnedSkills.includes(skillId)) return prev;
+      return {
+        ...prev,
+        [officerId]: { ...char, skillPoints: char.skillPoints - 1, learnedSkills: [...char.learnedSkills, skillId] }
+      };
+    });
+    setRpgLog(prev => [`【技能】${officerId} 学习了 ${skillId}`, ...prev].slice(0, 50));
+  }, []);
+
+  // Equip an item: reject unless the item's slot matches the target slot.
+  const onEquip = useCallback((officerId: string, slot: EquipmentSlot, equipment: Equipment) => {
+    if (!validateEquipAssignment(slot, equipment)) return;
+    setRpgCharacters(prev => {
+      const char = prev[officerId];
+      if (!char || char.equipment[slot]) return prev;
+      return {
+        ...prev,
+        [officerId]: { ...char, equipment: { ...char.equipment, [slot]: equipment } }
+      };
+    });
+    setPartyEquipment(prev => {
+      const owned = [...(prev[officerId] ?? [])];
+      const idx = owned.findIndex(e => e.id === equipment.id);
+      if (idx < 0) return prev;
+      owned.splice(idx, 1);
+      return { ...prev, [officerId]: owned };
+    });
+  }, [partyEquipment]);
 
   const handleAdvanceXun = () => {
     setGameXun(prevXun => {
@@ -1115,6 +1161,18 @@ export default function App() {
                   </div>
                 )}
               </div>
+
+              {/* RPG Party Panel */}
+              <PartyPanel
+                party={party}
+                characters={rpgCharacters}
+                officers={officers}
+                availableEquipment={partyEquipment[party.protagonistId] ?? []}
+                onRecruit={onRecruit}
+                onDismiss={onDismiss}
+                onSpendSkillPoint={onSpendSkillPoint}
+                onEquip={onEquip}
+              />
             </div>
           )}
 

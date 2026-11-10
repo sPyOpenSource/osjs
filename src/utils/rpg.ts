@@ -1,4 +1,4 @@
-import { RpgCharacter } from '../types';
+import { RpgCharacter, Equipment, EquipmentSlot } from '../types';
 
 const XP_BASE = 100;
 const XP_CURVE = 1.6;
@@ -36,4 +36,10 @@ export function applyXp(character: RpgCharacter, amount: number): RpgCharacter {
   // letting xp grow without bound.
   if (level >= MAX_LEVEL) xp = Math.min(xp, xpForLevel(MAX_LEVEL));
   return { ...character, xp, level, skillPoints };
+}
+
+/** Enforce the invariant the type system cannot: the equipped item's slot must
+ *  match the target slot key. */
+export function validateEquipAssignment(slot: EquipmentSlot, equipment: Equipment): boolean {
+  return equipment.slot === slot;
 }

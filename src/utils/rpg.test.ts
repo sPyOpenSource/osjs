@@ -1,6 +1,7 @@
 import { describe, it as test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createRpgCharacter, applyXp, xpForLevel, MAX_LEVEL } from './rpg';
+import { createRpgCharacter, applyXp, xpForLevel, MAX_LEVEL, validateEquipAssignment } from './rpg';
+import type { Equipment } from '../types';
 
 describe('rpg progression', () => {
   test('creates level 1 character with zero xp', () => {
@@ -106,5 +107,22 @@ describe('rpg progression', () => {
     assert.equal(c.level, 1);
     assert.equal(c.xp, 0);
     assert.equal(c.skillPoints, 0);
+  });
+
+  test('validateEquipAssignment accepts matching slot', () => {
+    const weapon: Equipment = { id: 'w1', name: '青龙刀', slot: 'weapon', statBonuses: {}, skillBonuses: [] };
+    const armor: Equipment = { id: 'a1', name: '铠甲', slot: 'armor', statBonuses: {}, skillBonuses: [] };
+    assert.equal(validateEquipAssignment('weapon', weapon), true);
+    assert.equal(validateEquipAssignment('armor', armor), true);
+  });
+
+  test('validateEquipAssignment rejects mismatched slot', () => {
+    const weapon: Equipment = { id: 'w1', name: '青龙刀', slot: 'weapon', statBonuses: {}, skillBonuses: [] };
+    assert.equal(validateEquipAssignment('armor', weapon), false);
+    assert.equal(validateEquipAssignment('accessory', weapon), false);
+    assert.equal(
+      validateEquipAssignment('weapon', { id: 'a1', name: '铠甲', slot: 'armor' as const, statBonuses: {}, skillBonuses: [] }),
+      false
+    );
   });
 });

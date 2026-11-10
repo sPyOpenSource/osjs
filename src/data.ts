@@ -1745,5 +1745,14 @@ export const SCENARIOS: CampaignScenario[] = [
     featuredFactions: ['america', 'russia', 'europe', 'france'],
     victoryCondition: '领导你的国家在新千年称雄世界，成为无可争议的头号强国',
     difficulty: 'Medium'
+  },
+  {
+    id: 'present',
+    title: '公元2026年：多极世界的博弈',
+    year: 2026,
+    description: '世界进入深度多极化时代。特朗普治下的美利坚重振霸权，普京的俄罗斯屹立东方，冯德莱恩引领欧盟奋力求存，马克龙、默克尔的遗产与吕特、耶滕等新生代领袖同台竞技。旧秩序松动，新格局未定，谁能在百年变局中执牛耳？',
+    featuredFactions: ['america', 'russia', 'europe', 'netherlands'],
+    victoryCondition: '在多极博弈中带领你的阵营脱颖而出，主导2026年的世界秩序',
+    difficulty: 'Hard'
   }
 ];

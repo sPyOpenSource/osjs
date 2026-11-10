@@ -271,6 +271,7 @@ interface TacticalMapProps {
   gameMonth?: number;
   gameXun?: number;
   isAutoTime?: boolean;
+  playerFactions?: string[];
 }
 
 export default function TacticalMap({ 
@@ -281,7 +282,8 @@ export default function TacticalMap({
   gameYear,
   gameMonth,
   gameXun,
-  isAutoTime = true
+  isAutoTime = true,
+  playerFactions: initialPlayerFactions
 }: TacticalMapProps) {
   const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade'>('svg-map');
   const [tradeFaction, setTradeFaction] = useState('ronin');
@@ -504,15 +506,16 @@ export default function TacticalMap({
 
   // ===== Computer rivals: other factions attack on their own =====
   const [rivalsOn, setRivalsOn] = useState(false);
-  const [playerFaction, setPlayerFaction] = useState<string>('');
+  const [controlledFactions, setControlledFactions] = useState<string[]>(initialPlayerFactions || []);
   const [rivalLogs, setRivalLogs] = useState<string[]>([]);
 
   const toggleRivals = () => {
     if (rivalsOn) { setRivalsOn(false); return; }
     const pf = cityOwnership[expeditionOriginId] || 'ronin';
-    setPlayerFaction(pf);
+    const next = (initialPlayerFactions && initialPlayerFactions.length) ? initialPlayerFactions : [pf];
+    setControlledFactions(next);
     setRivalsOn(true);
-    const n = FACTIONS.find(f => f.id === pf)?.name || pf;
+    const n = next.map(id => FACTIONS.find(f => f.id === id)?.name || id).join('、');
     setRivalLogs([`⚔️ 电脑对手已启动，你执掌【${n}】，诸侯将各自出兵！`]);
   };
 
@@ -526,7 +529,7 @@ export default function TacticalMap({
         return Math.max(...gs.map(g => g.stats.leadership * 0.4 + g.stats.intelligence * 0.3 + g.stats.force * 0.3));
       };
       const rivals = Array.from(new Set(CITIES.map(c => cityOwnership[c.id]).filter(
-        f => f && f !== 'ronin' && f !== playerFaction && officers.some(o => o.factionId === f)
+        f => f && f !== 'ronin' && !controlledFactions.includes(f) && officers.some(o => o.factionId === f)
       ))) as string[];
       if (!rivals.length) return;
       const att = rivals[Math.floor(Math.random() * rivals.length)];
@@ -534,7 +537,7 @@ export default function TacticalMap({
       const targets = CITIES.filter(c => (cityOwnership[c.id] || 'ronin') !== att);
       let best: { o: City; t: City; s: number } | null = null;
       for (const o of owned) for (const t of targets) {
-        const s = Math.hypot(o.x - t.x, o.y - t.y) * (cityOwnership[t.id] === playerFaction ? 0.8 : 1) + Math.random() * 4;
+        const s = Math.hypot(o.x - t.x, o.y - t.y) * (controlledFactions.includes(cityOwnership[t.id]) ? 0.8 : 1) + Math.random() * 4;
         if (!best || s < best.s) best = { o, t, s };
       }
       if (!best) return;
@@ -543,7 +546,7 @@ export default function TacticalMap({
       const d = (def === 'ronin' ? 35 : power(def)) * (0.7 + Math.random() * 0.6) + (cityStats[best.t.id]?.defense || 0) * 0.1;
       const an = FACTIONS.find(f => f.id === att)?.name || att;
       const dn = def === 'ronin' ? '在野' : FACTIONS.find(f => f.id === def)?.name || def;
-      const mine = def === playerFaction ? '🚨 ' : '';
+      const mine = controlledFactions.includes(def) ? '🚨 ' : '';
       if (a > d) {
         setCityOwnership(prev => ({ ...prev, [best!.t.id]: att }));
         setRivalLogs(prev => [`${mine}【${an}】自 ${best!.o.name} 攻陷 ${best!.t.name}（原属${dn}）`, ...prev].slice(0, 8));
@@ -552,7 +555,7 @@ export default function TacticalMap({
       }
     }, 6000);
     return () => clearTimeout(timer);
-  }, [rivalsOn, playerFaction, cityOwnership, isExpeditionRunning, expeditionStep, officers, cityStats]);
+  }, [rivalsOn, controlledFactions, cityOwnership, isExpeditionRunning, expeditionStep, officers, cityStats]);
 
   // Handle faction revision by user
   const handleModifyController = (cityId: string, factionId: string) => {

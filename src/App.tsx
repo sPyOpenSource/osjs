@@ -42,6 +42,8 @@ import {
 export default function App() {
   // Application state
   const [showStartMenu, setShowStartMenu] = useState(true);
+  const [multiplayerEnabled, setMultiplayerEnabled] = useState(false);
+  const [playerFactions, setPlayerFactions] = useState<string[]>(() => SCENARIOS[0].featuredFactions);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [officers, setOfficers] = useState<Officer[]>(FAMOUS_OFFICERS);
   const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
@@ -59,6 +61,7 @@ export default function App() {
     setGameYear(selectedScenario.year);
     setGameMonth(selectedScenario.id === 'chibi' ? 5 : 1);
     setGameXun(1);
+    setPlayerFactions(selectedScenario.featuredFactions);
   }, [selectedScenario]);
 
   const handleAdvanceXun = () => {
@@ -863,6 +866,10 @@ export default function App() {
         }}
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled(!soundEnabled)}
+        multiplayerEnabled={multiplayerEnabled}
+        onMultiplayerChange={setMultiplayerEnabled}
+        playerFactions={playerFactions}
+        onPlayerFactionsChange={setPlayerFactions}
       />
     );
   }
@@ -872,7 +879,7 @@ export default function App() {
       
       <header className="game-header">
         <div><h1>三国志</h1><span className="trade-muted">{selectedScenario.title}</span></div>
-        <div className="game-header-actions"><span className="trade-muted" role="status">{wsStatus === 'connected' ? '● 已连接' : wsStatus === 'connecting' ? '连接中…' : '离线模式'}</span><Button id="btn-return-start" onClick={() => setShowStartMenu(true)}>返回首页</Button></div>
+        <div className="game-header-actions"><span className="trade-muted" role="status">{wsStatus === 'connected' ? '● 已连接' : wsStatus === 'connecting' ? '连接中…' : '离线模式'}</span>{multiplayerEnabled && <span className="trade-muted" role="status">多人联机</span>}<Button id="btn-return-start" onClick={() => setShowStartMenu(true)}>返回首页</Button></div>
       </header>
 
       {/* Main Workspace Grid Router (Roster / Creator / Relationships Simulator) */}
@@ -1510,6 +1517,7 @@ export default function App() {
               gameMonth={gameMonth}
               gameXun={gameXun}
               isAutoTime={isAutoTime}
+              playerFactions={playerFactions}
             />
           </div>
 

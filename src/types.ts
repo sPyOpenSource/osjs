@@ -109,25 +109,23 @@ export interface CityAffairsState {
 
 export type QuestStatus = 'not_started' | 'active' | 'completed' | 'failed';
 
+export type EquipmentSlot = 'weapon' | 'armor' | 'accessory';
+
 export interface Equipment {
   id: string;
   name: string;
-  slot: 'weapon' | 'armor' | 'accessory';
+  slot: EquipmentSlot;
   statBonuses: Partial<OfficerStats>;
-  skillBonuses: string[];
+  skillBonuses: string[]; // Skills granted while this item is equipped
 }
 
 export interface RpgCharacter {
   officerId: string;
-  level: number;
-  xp: number;
+  level: number; // 1-based RPG level, distinct from Officer.promotionLevel
+  xp: number; // XP accumulated within the current level; resets on level-up
   skillPoints: number;
-  learnedSkills: string[];
-  equipment: {
-    weapon?: Equipment;
-    armor?: Equipment;
-    accessory?: Equipment;
-  };
+  learnedSkills: string[]; // Skills acquired through leveling, additive to Officer.skills
+  equipment: Partial<Record<EquipmentSlot, Equipment>>;
 }
 
 export interface Party {
@@ -138,7 +136,14 @@ export interface Party {
 export interface QuestObjective {
   id: string;
   description: string;
-  completed: boolean;
+}
+
+export interface QuestRewards {
+  xp?: number;
+  gold?: number;
+  grain?: number;
+  equipment?: Equipment;
+  officerIds?: string[]; // Officers unlocked or recruited by the quest
 }
 
 export interface Quest {
@@ -146,12 +151,13 @@ export interface Quest {
   title: string;
   description: string;
   objectives: QuestObjective[];
-  rewards: {
-    xp?: number;
-    gold?: number;
-    grain?: number;
-    equipment?: Equipment;
-    officerIds?: string[];
-  };
-  status: QuestStatus;
+  rewards?: QuestRewards;
+  /** Optional city this quest is anchored to for map markers. */
+  cityId?: string;
+}
+
+export interface QuestState {
+  questId: string;
+  status: QuestStatus; // Per-save runtime state, not part of the static quest definition
+  completedObjectiveIds: string[];
 }

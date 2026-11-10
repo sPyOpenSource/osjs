@@ -143,6 +143,8 @@ body { background: hsl(var(--game-background)); }
 .start-selected { padding: 22px 0; }
 .start-selected h3 { font-size: 17px; font-weight: 600; }
 .start-selected p { color: hsl(var(--game-muted)); font-size: 14px; line-height: 1.8; margin: 8px 0; }
+.start-protagonist select { display: block; width: 100%; max-width: 320px; margin-top: 4px; background: hsl(var(--game-surface)); color: hsl(var(--game-text)); border: 1px solid hsl(var(--game-border)); border-radius: 6px; padding: 9px; font-size: 14px; }
+.start-protagonist select:focus-visible { outline: 2px solid hsl(var(--game-accent)); outline-offset: 2px; }
 .start-play { display: flex; justify-content: center; align-items: center; gap: 10px; width: 100%; min-height: 50px; font-size: 16px; font-weight: 700; }
 .start-play:hover { background: hsl(var(--game-accent)); }
 .start-secondary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 16px 0 24px; }

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CampaignScenario } from '../types';
 import { FAMOUS_OFFICERS, FACTIONS } from '../data';
+import { getCandidateOfficers } from '../utils/party';
 import AvatarRenderer from './AvatarRenderer';
 import Button from './Button';
 import { Play, Volume2, VolumeX, Users, Building2, UserPlus, Heart } from 'lucide-react';
@@ -37,25 +38,28 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
   };
 
   const [localProtagonistId, setLocalProtagonistId] = useState<string>(protagonistId ?? FAMOUS_OFFICERS[0].id);
-  const selectedProtagonistId = onProtagonistChange ? (protagonistId ?? FAMOUS_OFFICERS[0].id) : localProtagonistId;
   const setProtagonist = (id: string) => {
     if (onProtagonistChange) onProtagonistChange(id);
     else setLocalProtagonistId(id);
   };
 
-  const candidateOfficers = useMemo(() => {
-    const inFactions = FAMOUS_OFFICERS.filter(o => selectedPlayerFactions.includes(o.factionId));
-    return inFactions.length ? inFactions : FAMOUS_OFFICERS;
-  }, [selectedPlayerFactions]);
-  const candidateIdsKey = candidateOfficers.map(o => o.id).join(',');
+  const candidateOfficers = getCandidateOfficers(
+    FAMOUS_OFFICERS,
+    selectedPlayerFactions,
+    selectedScenario.featuredFactions
+  );
+  const requestedProtagonistId = onProtagonistChange ? (protagonistId ?? '') : localProtagonistId;
+  const effectiveProtagonistId = candidateOfficers.some(officer => officer.id === requestedProtagonistId)
+    ? requestedProtagonistId
+    : (candidateOfficers[0]?.id ?? '');
 
-  // Keep the protagonist selection valid when the candidate roster changes
+  // Propagate the corrected selection so the parent never holds an id that is
+  // not in the candidate roster. Converges immediately, so no render loop.
   useEffect(() => {
-    if (!candidateOfficers.length) return;
-    if (!candidateOfficers.some(o => o.id === selectedProtagonistId)) {
-      setProtagonist(candidateOfficers[0].id);
+    if (effectiveProtagonistId && effectiveProtagonistId !== requestedProtagonistId) {
+      setProtagonist(effectiveProtagonistId);
     }
-  }, [candidateIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveProtagonistId, requestedProtagonistId]);
 
   // Keep defaults in sync when scenario changes
   useEffect(() => {
@@ -89,6 +93,7 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
                 <input
                   type="checkbox"
                   data-testid={`player-faction-${fid}`}
+                  checked={selectedPlayerFactions.includes(fid)}
                   onChange={(e) => {
                     const next = e.target.checked
                       ? [...selectedPlayerFactions, fid]
@@ -106,7 +111,7 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
           <select
             id="start-protagonist"
             data-testid="protagonist-select"
-            value={selectedProtagonistId}
+            value={effectiveProtagonistId}
             onChange={(e) => setProtagonist(e.target.value)}
           >
             {candidateOfficers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}

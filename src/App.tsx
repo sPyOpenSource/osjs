@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Officer, Faction, CampaignScenario, RelationshipRelation, AvatarStyle } from './types';
+import { Officer, Faction, CampaignScenario, RelationshipRelation, AvatarStyle, RpgCharacter, Party } from './types';
 import { FACTIONS, FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS, SCENARIOS, AVAILABLE_SKILLS, AVAILABLE_TRAITS } from './data';
+import { createRpgCharacter } from './utils/rpg';
+import { getCandidateOfficers } from './utils/party';
 import OfficerCard from './components/OfficerCard';
 import AvatarRenderer from './components/AvatarRenderer';
 import TacticalMap from './components/TacticalMap';
@@ -44,6 +46,10 @@ export default function App() {
   const [showStartMenu, setShowStartMenu] = useState(true);
   const [multiplayerEnabled, setMultiplayerEnabled] = useState(false);
   const [playerFactions, setPlayerFactions] = useState<string[]>(() => SCENARIOS[0].featuredFactions);
+  const defaultProtagonistId = getCandidateOfficers(FAMOUS_OFFICERS, SCENARIOS[0].featuredFactions, SCENARIOS[0].featuredFactions)[0]?.id ?? FAMOUS_OFFICERS[0].id;
+  const [protagonistId, setProtagonistId] = useState<string>(defaultProtagonistId);
+  const [party, setParty] = useState<Party>(() => ({ protagonistId: defaultProtagonistId, companionIds: [] }));
+  const [rpgCharacters, setRpgCharacters] = useState<Record<string, RpgCharacter>>(() => ({ [defaultProtagonistId]: createRpgCharacter(defaultProtagonistId) }));
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [officers, setOfficers] = useState<Officer[]>(FAMOUS_OFFICERS);
   const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
@@ -62,7 +68,19 @@ export default function App() {
     setGameMonth(selectedScenario.id === 'chibi' ? 5 : 1);
     setGameXun(1);
     setPlayerFactions(selectedScenario.featuredFactions);
-  }, [selectedScenario]);
+    const candidates = getCandidateOfficers(FAMOUS_OFFICERS, selectedScenario.featuredFactions, selectedScenario.featuredFactions);
+    const next = candidates.find(candidate => candidate.id === protagonistId)?.id ?? candidates[0]?.id;
+    if (next !== protagonistId) setProtagonistId(next);
+  }, [selectedScenario, protagonistId]);
+
+  // Keep the party and per-character RPG state in sync with the protagonist.
+  // Return the same reference when nothing changed so React can bail out.
+  useEffect(() => {
+    setParty(prev => (prev.protagonistId === protagonistId ? prev : { ...prev, protagonistId }));
+    setRpgCharacters(prev =>
+      prev[protagonistId] ? prev : { ...prev, [protagonistId]: createRpgCharacter(protagonistId) }
+    );
+  }, [protagonistId]);
 
   const handleAdvanceXun = () => {
     setGameXun(prevXun => {
@@ -870,6 +888,8 @@ export default function App() {
         onMultiplayerChange={setMultiplayerEnabled}
         playerFactions={playerFactions}
         onPlayerFactionsChange={setPlayerFactions}
+        protagonistId={protagonistId}
+        onProtagonistChange={setProtagonistId}
       />
     );
   }
@@ -1518,6 +1538,8 @@ export default function App() {
               gameXun={gameXun}
               isAutoTime={isAutoTime}
               playerFactions={playerFactions}
+              rpgCharacters={rpgCharacters}
+              onRpgCharactersChange={setRpgCharacters}
             />
           </div>
 

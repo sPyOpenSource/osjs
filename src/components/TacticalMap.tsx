@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Officer, Faction, CampaignScenario } from '../types';
+import { Officer, Faction, CampaignScenario, RpgCharacter } from '../types';
 import { FACTIONS } from '../data';
 import { motion, AnimatePresence } from 'motion/react';
 import { playDrumSound, playClashSound } from '../utils/audio';
@@ -272,6 +272,8 @@ interface TacticalMapProps {
   gameXun?: number;
   isAutoTime?: boolean;
   playerFactions?: string[];
+  rpgCharacters?: Record<string, RpgCharacter>;
+  onRpgCharactersChange?: React.Dispatch<React.SetStateAction<Record<string, RpgCharacter>>>;
 }
 
 export default function TacticalMap({ 
@@ -283,7 +285,9 @@ export default function TacticalMap({
   gameMonth,
   gameXun,
   isAutoTime = true,
-  playerFactions: initialPlayerFactions
+  playerFactions: initialPlayerFactions,
+  rpgCharacters,
+  onRpgCharactersChange
 }: TacticalMapProps) {
   const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade'>('svg-map');
   const [tradeFaction, setTradeFaction] = useState('ronin');

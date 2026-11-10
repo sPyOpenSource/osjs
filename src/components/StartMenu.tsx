@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CampaignScenario } from '../types';
 import { FAMOUS_OFFICERS, FACTIONS } from '../data';
 import AvatarRenderer from './AvatarRenderer';
@@ -16,9 +16,11 @@ interface StartMenuProps {
   onMultiplayerChange?: (enabled: boolean) => void;
   playerFactions?: string[];
   onPlayerFactionsChange?: (factions: string[]) => void;
+  protagonistId?: string;
+  onProtagonistChange?: (id: string) => void;
 }
 
-export default function StartMenu({ scenarios, selectedScenario, onSelectScenario, onEnterApp, soundEnabled, onToggleSound, multiplayerEnabled = false, onMultiplayerChange, playerFactions, onPlayerFactionsChange }: StartMenuProps) {
+export default function StartMenu({ scenarios, selectedScenario, onSelectScenario, onEnterApp, soundEnabled, onToggleSound, multiplayerEnabled = false, onMultiplayerChange, playerFactions, onPlayerFactionsChange, protagonistId, onProtagonistChange }: StartMenuProps) {
   const [showCredits, setShowCredits] = useState(false);
   const [localMultiplayer, setLocalMultiplayer] = useState(multiplayerEnabled);
   const isMultiplayer = onMultiplayerChange ? multiplayerEnabled : localMultiplayer;
@@ -33,6 +35,27 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
     if (onPlayerFactionsChange) onPlayerFactionsChange(next);
     else setLocalPlayerFactions(next);
   };
+
+  const [localProtagonistId, setLocalProtagonistId] = useState<string>(protagonistId ?? FAMOUS_OFFICERS[0].id);
+  const selectedProtagonistId = onProtagonistChange ? (protagonistId ?? FAMOUS_OFFICERS[0].id) : localProtagonistId;
+  const setProtagonist = (id: string) => {
+    if (onProtagonistChange) onProtagonistChange(id);
+    else setLocalProtagonistId(id);
+  };
+
+  const candidateOfficers = useMemo(() => {
+    const inFactions = FAMOUS_OFFICERS.filter(o => selectedPlayerFactions.includes(o.factionId));
+    return inFactions.length ? inFactions : FAMOUS_OFFICERS;
+  }, [selectedPlayerFactions]);
+  const candidateIdsKey = candidateOfficers.map(o => o.id).join(',');
+
+  // Keep the protagonist selection valid when the candidate roster changes
+  useEffect(() => {
+    if (!candidateOfficers.length) return;
+    if (!candidateOfficers.some(o => o.id === selectedProtagonistId)) {
+      setProtagonist(candidateOfficers[0].id);
+    }
+  }, [candidateIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep defaults in sync when scenario changes
   useEffect(() => {
@@ -78,6 +101,17 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
             );
           })}
         </div>
+        <label className="start-protagonist" style={{ display: 'block', marginTop: '0.75rem' }}>
+          <span className="trade-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>主角武将</span>
+          <select
+            id="start-protagonist"
+            data-testid="protagonist-select"
+            value={selectedProtagonistId}
+            onChange={(e) => setProtagonist(e.target.value)}
+          >
+            {candidateOfficers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        </label>
         <br></br>
         <div className="start-portrait">{FAMOUS_OFFICERS.filter(officer => ['liubei', 'caocao', 'zhugeliang', 'guanyu', 'lubu'].includes(officer.id)).map(officer => <Button key={officer.id} onClick={() => onEnterApp('roster')}><AvatarRenderer style={officer.avatarStyle} size={56} /><span>{officer.name}</span></Button>)}</div>
       </div>

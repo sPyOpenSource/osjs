@@ -1,11 +1,10 @@
-import React from 'react';
 import { Plus, Shield, Sword, Target, User, Users, X, type LucideIcon } from 'lucide-react';
-import { Equipment, EquipmentSlot, Officer, Party, RpgCharacter } from '../types';
-import { xpForLevel } from '../utils/rpg';
+import type { Equipment, EquipmentSlot, Officer, Party, RpgCharacter } from '../types';
+import { MAX_LEVEL, xpForLevel } from '../utils/rpg';
+import { MAX_COMPANIONS } from '../utils/party';
 import AvatarRenderer from './AvatarRenderer';
 import Button from './Button';
 
-const MAX_COMPANIONS = 4;
 const AVATAR_SIZE = 36;
 
 const SLOTS: { key: EquipmentSlot; label: string; icon: LucideIcon }[] = [
@@ -22,9 +21,12 @@ function characterFor(characters: Record<string, RpgCharacter>, officerId: strin
   return characters[officerId] ?? defaultCharacter(officerId);
 }
 
-function xpPercentFor(character: RpgCharacter): number {
-  const next = xpForLevel(character.level + 1);
-  return next > 0 ? Math.min(100, Math.round((character.xp / next) * 100)) : 100;
+function xpToNextLevel(character: RpgCharacter): number {
+  return character.level >= MAX_LEVEL ? 0 : xpForLevel(character.level + 1);
+}
+
+function xpPercentFor(character: RpgCharacter, nextLevelXp: number): number {
+  return nextLevelXp > 0 ? Math.min(100, Math.round((character.xp / nextLevelXp) * 100)) : 100;
 }
 
 function officerFor(officers: Officer[], officerId: string): Officer | undefined {
@@ -68,8 +70,8 @@ export default function PartyRoster({
           const character = characterFor(characters, officerId);
           const isProtagonist = officerId === party.protagonistId;
           const name = officer?.name || officerId;
-          const nextLevelXp = xpForLevel(character.level + 1);
-          const xpPercent = xpPercentFor(character);
+          const nextLevelXp = xpToNextLevel(character);
+          const xpPercent = xpPercentFor(character, nextLevelXp);
 
           return (
             <article
@@ -82,7 +84,7 @@ export default function PartyRoster({
                   {officer ? (
                     <AvatarRenderer style={officer.avatarStyle} size={AVATAR_SIZE} />
                   ) : (
-                    <span className="party-avatar-fallback" aria-hidden="true">
+                    <span className="party-avatar-fallback" style={{ width: AVATAR_SIZE, height: AVATAR_SIZE }} aria-hidden="true">
                       <User size={16} />
                     </span>
                   )}
@@ -114,7 +116,9 @@ export default function PartyRoster({
                       <span className="party-xp-fill" style={{ width: `${xpPercent}%` }} />
                     </span>
                     <span className="party-xp-label">
-                      {`经验 ${character.xp} / ${nextLevelXp}`}
+                      {nextLevelXp > 0
+                        ? `经验 ${character.xp} / ${nextLevelXp}`
+                        : `经验 ${character.xp} / 满级`}
                     </span>
                   </div>
                 </div>
@@ -134,9 +138,7 @@ export default function PartyRoster({
               <div className="party-slot-list">
                 {SLOTS.map(slot => {
                   const equipped = character.equipment[slot.key];
-                  const options = availableEquipment.filter(
-                    item => item.slot === slot.key && !equipped,
-                  );
+                  const options = availableEquipment.filter(item => item.slot === slot.key);
                   const Icon = slot.icon;
 
                   return (
@@ -156,12 +158,12 @@ export default function PartyRoster({
                       ) : options.length ? (
                         <select
                           className="party-slot-select"
-                          defaultValue=""
+                          value=""
                           aria-label={`${name} ${slot.label}`}
                           onChange={event => {
                             const itemId = event.target.value;
                             if (!itemId) return;
-                            const item = availableEquipment.find(entry => entry.id === itemId);
+                            const item = options.find(entry => entry.id === itemId);
                             if (item) onEquip(officerId, slot.key, item);
                           }}
                         >

@@ -4,6 +4,7 @@ import { FACTIONS } from '../data';
 import { Shield, Swords, Brain, Scroll, Sparkles, type LucideIcon } from 'lucide-react';
 import Button from './Button';
 import { getRating } from '../utils/rating';
+import { MAX_COMPANIONS } from '../utils/party';
 
 interface RecruitPoolProps {
   officers: Officer[];
@@ -38,7 +39,7 @@ export default function RecruitPool({ officers, atLimit, onRecruit }: RecruitPoo
     <div>
       {atLimit && (
         <p className="recruit-pool-limit" role="status">
-          同伴已满（4/4），无法继续招募
+          {`同伴已满（${MAX_COMPANIONS}/${MAX_COMPANIONS}），无法继续招募`}
         </p>
       )}
       <ul className="recruit-pool-list">

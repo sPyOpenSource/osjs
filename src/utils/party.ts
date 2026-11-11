@@ -1,5 +1,8 @@
 import { Officer } from '../types';
 
+/** Maximum number of companions a party may hold (protagonist excluded). */
+export const MAX_COMPANIONS = 4;
+
 /**
  * Officers the player may pick as protagonist.
  *

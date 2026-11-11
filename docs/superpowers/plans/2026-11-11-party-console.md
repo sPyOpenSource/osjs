@@ -219,7 +219,7 @@ git commit -m "feat: add RecruitPool component for party console"
 **Files:**
 - Create: `src/components/PartyRoster.tsx`
 - Create: `src/components/__tests__/PartyRoster.test.tsx`
-- Delete: `src/components/PartyPanel.tsx`
+- Delete: `src/components/PartyPanel.tsx` — **deferred to Task 4**: `App.tsx` still imports `PartyPanel` and passes `onRecruit` to it, so deleting it before Task 4 leaves the repo uncompilable. Keep the file untouched in Task 2 and delete it in the same commit that rewires `App.tsx`.
 
 **Interfaces:**
 - Consumes: `Party`, `Record<string, RpgCharacter>`, `Officer[]`, `Equipment[]`, callbacks `onDismiss`, `onSpendSkillPoint`, `onEquip`.
@@ -521,13 +521,14 @@ export default function PartyRoster({
 Run: `npx tsx --test src/components/__tests__/PartyRoster.test.tsx`
 Expected: PASS — 5 tests pass, 0 fail.
 
-- [ ] **Step 5: Delete PartyPanel.tsx and commit**
+- [ ] **Step 5: Commit (PartyPanel stays for now)**
 
 ```bash
-git rm src/components/PartyPanel.tsx
-git add src/components/PartyRoster.tsx src/components/__tests__/PartyRoster.test.tsx
-git commit -m "feat: add PartyRoster component, remove PartyPanel"
+git add src/components/PartyRoster.tsx src/components/__tests__/PartyRoster.test.tsx src/index.css
+git commit -m "feat: add PartyRoster component for party console left pane"
 ```
+
+`PartyPanel.tsx` is removed in Task 4 together with the `App.tsx` rewiring, so every commit builds.
 
 ## Task 3: PartyConsole component
 

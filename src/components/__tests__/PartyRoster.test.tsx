@@ -4,6 +4,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import PartyRoster from '../PartyRoster';
 import { Equipment, Officer, Party, RpgCharacter } from '../../types';
+import { MAX_LEVEL } from '../../utils/rpg';
 
 function makeOfficer(id: string, name: string, overrides: Partial<Officer> = {}): Officer {
   return {
@@ -148,6 +149,7 @@ describe('PartyRoster', () => {
     const html = render();
     assert.ok(html.includes('data-testid="party-dismiss-sunquan"'));
     assert.ok(!html.includes('data-testid="party-dismiss-caocao"'));
+    assert.match(buttonTag(html, 'party-dismiss-sunquan'), /aria-label="解散 孙权"/);
   });
 
   test('renders three empty equipment slots per member when no equipment is available', () => {
@@ -165,6 +167,7 @@ describe('PartyRoster', () => {
     const html = render({ availableEquipment: [sword] });
     const weaponRow = slotRowFor(html, 'caocao', 'weapon');
     assert.ok(weaponRow.includes('<select'));
+    assert.ok(weaponRow.includes('aria-label="曹操 武器"'));
     assert.ok(weaponRow.includes('装备 …'));
     assert.ok(weaponRow.includes('青龙偃月刀'));
     // Slots without compatible items keep the empty placeholder.
@@ -202,6 +205,8 @@ describe('PartyRoster', () => {
 
   test('dismiss button invokes onDismiss with the officer id', () => {
     // renderToStaticMarkup drops event handlers, so drive the component tree directly.
+    // NOTE: direct invocation only works while PartyRoster stays hook-free; if hooks are
+    // added, switch these wiring tests to a DOM renderer.
     const calls: string[] = [];
     const tree = PartyRoster({
       party,
@@ -247,11 +252,26 @@ describe('PartyRoster', () => {
       onSpendSkillPoint: noop,
       onEquip: (officerId, slot, equipment) => calls.push([officerId, slot, equipment]),
     });
-    const select = findByClassName(tree, 'party-slot-select');
+    // Target the companion's own weapon slot to prove the handler is bound per member.
+    const companionRow = findElement(tree, 'party-slot-sunquan-weapon');
+    const select = findByClassName(companionRow, 'party-slot-select');
     assert.ok(select, 'equip select element should exist');
     select.props.onChange({ target: { value: '' } });
     assert.deepEqual(calls, []);
     select.props.onChange({ target: { value: 'sword1' } });
-    assert.deepEqual(calls, [['caocao', 'weapon', sword]]);
+    assert.deepEqual(calls, [['sunquan', 'weapon', sword]]);
+  });
+
+  test('caps the xp bar and label at MAX_LEVEL', () => {
+    const html = render({
+      characters: {
+        caocao: { ...makeChar('caocao', MAX_LEVEL, 2, 1000) },
+        sunquan: makeChar('sunquan', 2, 0),
+      },
+    });
+    const card = cardFor(html, 'caocao');
+    assert.ok(card.includes(`Lv.${MAX_LEVEL}`));
+    assert.ok(card.includes('满级'), 'max-level members should not show a next-level threshold');
+    assert.ok(card.includes('width:100%'), 'max-level xp bar should render full');
   });
 });

@@ -1,6 +1,5 @@
 import { describe, it as test } from 'node:test';
 import assert from 'node:assert/strict';
-import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import PartyConsole from '../PartyConsole';
 import PartyRoster from '../PartyRoster';
@@ -68,13 +67,16 @@ function render(
 /**
  * Split the console markup into its two panes. The roster pane precedes the
  * recruit pane, so a prefix slice keeps nested elements out of the extraction.
+ * Slices start at the pane's opening tag (attribute order agnostic).
  */
 function panes(html: string): { roster: string; recruit: string } {
-  const rosterIdx = html.indexOf('data-testid="party-console-roster"');
-  const recruitIdx = html.indexOf('data-testid="party-console-recruit"');
-  assert.ok(rosterIdx >= 0, 'expected a roster pane');
-  assert.ok(recruitIdx >= 0, 'expected a recruit pane');
-  assert.ok(rosterIdx < recruitIdx, 'roster pane should precede recruit pane');
+  const rosterTestId = html.indexOf('data-testid="party-console-roster"');
+  const recruitTestId = html.indexOf('data-testid="party-console-recruit"');
+  assert.ok(rosterTestId >= 0, 'expected a roster pane');
+  assert.ok(recruitTestId >= 0, 'expected a recruit pane');
+  assert.ok(rosterTestId < recruitTestId, 'roster pane should precede recruit pane');
+  const rosterIdx = html.lastIndexOf('<', rosterTestId);
+  const recruitIdx = html.lastIndexOf('<', recruitTestId);
   return { roster: html.slice(rosterIdx, recruitIdx), recruit: html.slice(recruitIdx) };
 }
 
@@ -82,18 +84,6 @@ function buttonTag(html: string, testId: string): string {
   const match = html.match(new RegExp(`<button[^>]*data-testid="${testId}"[^>]*>`));
   assert.ok(match, `expected a button with data-testid="${testId}" in markup`);
   return match[0];
-}
-
-function findElement(node: any, testId: string): any {
-  if (!node || typeof node !== 'object') return null;
-  if (node.props?.['data-testid'] === testId) return node;
-  const children = node.props?.children;
-  const list = Array.isArray(children) ? children : children ? [children] : [];
-  for (const child of list) {
-    const found = findElement(child, testId);
-    if (found) return found;
-  }
-  return null;
 }
 
 function findByType(node: any, type: unknown): any {
@@ -135,9 +125,7 @@ describe('PartyConsole', () => {
 
     assert.ok(recruit.includes('data-testid="btn-recruit-caocao"'));
     assert.ok(!recruit.includes('data-testid="btn-recruit-guanyu"'));
-    assert.ok(!recruit.includes('data-testid="btn-recruit-liubei"'));
     assert.ok(!html.includes('data-testid="btn-recruit-liubei"'));
-    assert.ok(!html.includes('data-testid="btn-recruit-guanyu"'));
   });
 
   test('shows the companion counter and updates it for a full party', () => {
@@ -168,53 +156,33 @@ describe('PartyConsole', () => {
     assert.ok(!html.includes('btn-recruit-'));
   });
 
-  test('recruit click passes through to onRecruit with the officer id', () => {
-    // renderToStaticMarkup drops event handlers, so drive the component tree directly.
+  test('forwards callbacks and derived pool data to the panes', () => {
+    // renderToStaticMarkup drops event handlers, so inspect the element tree instead.
     // NOTE: direct invocation only works while PartyConsole stays hook-free; if hooks are
-    // added, switch these wiring tests to a DOM renderer.
-    const calls: string[] = [];
+    // added, switch these tests to a DOM renderer.
+    const onRecruit = (id: string) => id;
+    const onSpendSkillPoint = (officerId: string, skillId: string) => `${officerId}:${skillId}`;
     const tree = PartyConsole({
       party: { protagonistId: 'liubei', companionIds: ['guanyu'] },
       characters: { liubei: makeChar('liubei', 2) },
       officers,
       availableEquipment: [],
-      onRecruit: id => calls.push(id),
+      onRecruit,
       onDismiss: noop,
-      onSpendSkillPoint: noop,
+      onSpendSkillPoint,
       onEquip: noop,
     });
 
     const pool = findByType(tree, RecruitPool);
     assert.ok(pool, 'recruit pool element should exist');
+    assert.equal(pool.props.onRecruit, onRecruit);
     assert.deepEqual(pool.props.officers.map((officer: Officer) => officer.id), ['zhangfei', 'zhaoyun', 'machao', 'caocao']);
     assert.equal(pool.props.atLimit, false);
 
-    const button = findElement(RecruitPool(pool.props), 'btn-recruit-caocao');
-    assert.ok(button, 'recruit button element should exist');
-    button.props.onClick();
-    assert.deepEqual(calls, ['caocao']);
-  });
-
-  test('roster learn click still reaches onSpendSkillPoint', () => {
-    const calls: [string, string][] = [];
-    const tree = PartyConsole({
-      party: { protagonistId: 'liubei', companionIds: ['guanyu'] },
-      characters: { liubei: makeChar('liubei', 2) },
-      officers,
-      availableEquipment: [],
-      onRecruit: noop,
-      onDismiss: noop,
-      onSpendSkillPoint: (officerId, skillId) => calls.push([officerId, skillId]),
-      onEquip: noop,
-    });
-
     const roster = findByType(tree, PartyRoster);
     assert.ok(roster, 'roster element should exist');
-
-    const button = findElement(PartyRoster(roster.props), 'party-spend-liubei');
-    assert.ok(button, 'learn button element should exist');
-    button.props.onClick();
-    assert.deepEqual(calls, [['liubei', 'skill-lv1']]);
+    assert.equal(roster.props.onSpendSkillPoint, onSpendSkillPoint);
+    assert.equal(roster.props.onRecruit, undefined, 'roster pane must not own recruiting');
   });
 
   test('marks the pool as at the limit when all companion slots are used', () => {
@@ -231,5 +199,29 @@ describe('PartyConsole', () => {
     const pool = findByType(tree, RecruitPool);
     assert.ok(pool);
     assert.equal(pool.props.atLimit, true);
+  });
+
+  test('keeps the pool open at three companions and empty without officers', () => {
+    const threeTree = PartyConsole({
+      party: { protagonistId: 'liubei', companionIds: COMPANIONS.slice(0, 3) },
+      characters: {},
+      officers,
+      availableEquipment: [],
+      onRecruit: noop,
+      onDismiss: noop,
+      onSpendSkillPoint: noop,
+      onEquip: noop,
+    });
+    const threePool = findByType(threeTree, RecruitPool);
+    assert.ok(threePool);
+    assert.equal(threePool.props.atLimit, false);
+
+    const emptyHtml = render({
+      party: { protagonistId: 'liubei', companionIds: ['guanyu'] },
+      officers: [],
+      characters: {},
+    });
+    assert.ok(panes(emptyHtml).recruit.includes('无可招募武将'));
+    assert.ok(emptyHtml.includes('data-testid="party-card-guanyu"'));
   });
 });

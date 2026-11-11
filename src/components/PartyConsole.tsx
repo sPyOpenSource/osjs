@@ -25,9 +25,7 @@ export default function PartyConsole({
   onEquip,
 }: PartyConsoleProps) {
   const memberIds = [party.protagonistId, ...party.companionIds];
-  const recruitable = officers.filter(
-    officer => officer.id !== party.protagonistId && !memberIds.includes(officer.id),
-  );
+  const recruitable = officers.filter(officer => !memberIds.includes(officer.id));
   const atLimit = party.companionIds.length >= MAX_COMPANIONS;
 
   return (
@@ -45,15 +43,19 @@ export default function PartyConsole({
           />
         </div>
 
-        <div className="party-console-pane" data-testid="party-console-recruit">
+        <section
+          className="party-console-pane"
+          data-testid="party-console-recruit"
+          aria-labelledby="party-console-recruit-heading"
+        >
           <header className="party-console-heading">
-            <h2>招募同伴</h2>
+            <h2 id="party-console-recruit-heading">招募同伴</h2>
             <span className="party-console-count trade-muted">
               {`同伴 ${party.companionIds.length}/${MAX_COMPANIONS}`}
             </span>
           </header>
           <RecruitPool officers={recruitable} atLimit={atLimit} onRecruit={onRecruit} />
-        </div>
+        </section>
       </div>
     </section>
   );

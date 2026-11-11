@@ -730,13 +730,51 @@ Minimal edit: the PartyPanel usage block at App.tsx lines 1134-1178 becomes:
   party={party}
   characters={rpgCharacters}
   officers={officers}
-  availableEquipment={partyEquipment[party.protagonistId] ?? []}
+  availableEquipment={partyEquipmentPool}
   onRecruit={onRecruit}
   onDismiss={onDismiss}
   onSpendSkillPoint={onSpendSkillPoint}
   onEquip={onEquip}
 />
 ```
+
+**Step 1b: fix the shared equipment pool (required — otherwise one sword equips to every member).**
+
+Today App passes `partyEquipment[party.protagonistId]` to a panel that offers those items to *every* member, while `onEquip` removes the item only from `partyEquipment[officerId]`. Equipping a protagonist-owned sword on a companion therefore never consumes it, so the same item shows as available for all four companions. Add a memoised pool of every item owned by any party member, and make `onEquip` consume the item wherever it lives:
+
+```tsx
+// near the other party derived values
+const partyEquipmentPool = useMemo(() => {
+  const seen = new Set<string>();
+  const pool: Equipment[] = [];
+  for (const memberId of [party.protagonistId, ...party.companionIds]) {
+    for (const item of partyEquipment[memberId] ?? []) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      pool.push(item);
+    }
+  }
+  return pool;
+}, [party, partyEquipment]);
+```
+
+```tsx
+// inside onEquip, replace the partyEquipment updater
+setPartyEquipment(prev => {
+  const next = { ...prev };
+  let removed = false;
+  for (const ownerId of Object.keys(next)) {
+    const owned = next[ownerId] ?? [];
+    if (!removed && owned.some(item => item.id === equipment.id)) {
+      next[ownerId] = owned.filter(item => item.id !== equipment.id);
+      removed = true;
+    }
+  }
+  return removed ? next : prev;
+});
+```
+
+(Return `prev` unchanged when nothing was removed so React skips the re-render.)
 
 - [ ] **Step 2: Run type check**
 

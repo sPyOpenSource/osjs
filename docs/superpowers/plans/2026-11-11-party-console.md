@@ -1,6 +1,6 @@
 # Unified Party Console Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Restructure the roster tab into a two-pane party console: left pane manages the party (equip, spend skill points, dismiss), right pane recruits companions from a pool, responsive single-column collapse on narrow screens.
 
@@ -56,7 +56,7 @@ interface RecruitPoolProps {
 }
 ```
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // src/components/__tests__/RecruitPool.test.tsx
@@ -113,12 +113,12 @@ describe('RecruitPool', () => {
 Run: `npx tsx --test src/components/__tests__/RecruitPool.test.tsx`
 Expected: FAIL — `Cannot find module '../RecruitPool'`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test src/components/__tests__/RecruitPool.test.tsx`
 Expected: FAIL with module not found.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```tsx
 // src/components/RecruitPool.tsx
@@ -195,12 +195,12 @@ export default function RecruitPool({ officers, atLimit, onRecruit }: RecruitPoo
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test src/components/__tests__/RecruitPool.test.tsx`
 Expected: PASS — 3 tests pass, 0 fail.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/components/RecruitPool.tsx src/components/__tests__/RecruitPool.test.tsx
@@ -247,7 +247,7 @@ const SLOTS: { key: 'weapon' | 'armor' | 'accessory'; label: string; icon: React
 ];
 ```
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // src/components/__tests__/PartyRoster.test.tsx
@@ -325,12 +325,12 @@ describe('PartyRoster', () => {
 Run: `npx tsx --test src/components/__tests__/PartyRoster.test.tsx`
 Expected: FAIL — `Cannot find module '../PartyRoster'`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test src/components/__tests__/PartyRoster.test.tsx`
 Expected: FAIL with module not found.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```tsx
 // src/components/PartyRoster.tsx
@@ -516,12 +516,12 @@ export default function PartyRoster({
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test src/components/__tests__/PartyRoster.test.tsx`
 Expected: PASS — 5 tests pass, 0 fail.
 
-- [ ] **Step 5: Commit (PartyPanel stays for now)**
+- [x] **Step 5: Commit (PartyPanel stays for now)**
 
 ```bash
 git add src/components/PartyRoster.tsx src/components/__tests__/PartyRoster.test.tsx src/index.css
@@ -554,7 +554,7 @@ interface PartyConsoleProps {
 }
 ```
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // src/components/__tests__/PartyConsole.test.tsx
@@ -626,12 +626,12 @@ describe('PartyConsole', () => {
 Run: `npx tsx --test src/components/__tests__/PartyConsole.test.tsx`
 Expected: FAIL — `Cannot find module '../PartyConsole'`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test src/components/__tests__/PartyConsole.test.tsx`
 Expected: FAIL with module not found.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```tsx
 // src/components/PartyConsole.tsx
@@ -696,12 +696,12 @@ export default function PartyConsole({
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test src/components/__tests__/PartyConsole.test.tsx`
 Expected: PASS — 2 tests pass, 0 fail.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/components/PartyConsole.tsx src/components/__tests__/PartyConsole.test.tsx
@@ -717,7 +717,7 @@ git commit -m "feat: add PartyConsole split-pane component"
 - Consumes: existing `party`, `rpgCharacters`, `officers`, `partyEquipment`, `onRecruit`, `onDismiss`, `onSpendSkillPoint`, `onEquip` already defined in App.
 - Produces: App roster tab renders `<PartyConsole ...>` instead of `<PartyPanel ...>` + stacked OfficerCard grid; removes `PartyPanel` import.
 
-- [ ] **Step 1: Update App.tsx imports and roster tab**
+- [x] **Step 1: Update App.tsx imports and roster tab**
 
 In `src/App.tsx`:
 - Replace `import PartyPanel from './components/PartyPanel';` with `import PartyConsole from './components/PartyConsole';`
@@ -776,17 +776,17 @@ setPartyEquipment(prev => {
 
 (Return `prev` unchanged when nothing was removed so React skips the re-render.)
 
-- [ ] **Step 2: Run type check**
+- [x] **Step 2: Run type check**
 
 Run: `npm run lint`
 Expected: PASS — `tsc --noEmit` exits 0 with no errors.
 
-- [ ] **Step 3: Run all tests**
+- [x] **Step 3: Run all tests**
 
 Run: `npx tsx --test src/components/__tests__/RecruitPool.test.tsx src/components/__tests__/PartyRoster.test.tsx src/components/__tests__/PartyConsole.test.tsx src/utils/party.test.ts`
 Expected: PASS — all component and util tests pass, 0 fail.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/App.tsx
@@ -798,12 +798,12 @@ git commit -m "feat: wire PartyConsole into roster tab, replace PartyPanel + gri
 **Files:**
 - None new; verify existing `src/App.tsx`, `src/components/PartyConsole.tsx`, `src/components/PartyRoster.tsx`, `src/components/RecruitPool.tsx`.
 
-- [ ] **Step 1: Run production build**
+- [x] **Step 1: Run production build**
 
 Run: `npm run build`
 Expected: PASS — `vite build && esbuild server.ts ...` completes without errors.
 
-- [ ] **Step 2: Final commit**
+- [x] **Step 2: Final commit**
 
 ```bash
 git add -A

@@ -139,6 +139,33 @@ body {
 .party-dismiss-button:hover { background: rgba(253,164,175,0.15); }
 .party-legend { margin-top: 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-trade-muted); }
 @media (max-width: 640px) { .party-members { grid-template-columns: 1fr; } .party-slot-select { width: 120px; } }
+
+/* Party roster (party console left pane) */
+.party-roster { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.party-roster-heading { display: flex; align-items: center; gap: 8px; }
+.party-roster-heading h2 { font-size: 16px; font-weight: 700; letter-spacing: 0.4px; }
+.party-roster-count { margin-left: auto; font-family: var(--font-mono); font-size: 10px; white-space: nowrap; }
+.party-roster-list { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.party-roster .party-card { padding: 10px 12px; gap: 8px; border-radius: 8px; }
+.party-roster .party-card-header { gap: 10px; align-items: center; }
+.party-card-title { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.party-card-name { font-family: var(--font-serif); font-size: 14px; font-weight: 700; margin: 0; line-height: 1.3; }
+.party-card-level { font-family: var(--font-mono); font-size: 10px; color: var(--color-trade-accent); font-variant-numeric: tabular-nums; }
+.party-card-badge { font-size: 9px; font-weight: 700; letter-spacing: 0.6px; line-height: 1.6; color: var(--color-trade-accent); border: 1px solid var(--color-trade-accent); border-radius: 4px; padding: 0 4px; }
+.party-card-skills { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.party-card-skill-points { font-size: 11px; color: var(--color-trade-muted); font-variant-numeric: tabular-nums; }
+.party-spend-button { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; font-size: 10px; line-height: 1.5; }
+.party-xp { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+.party-xp-track { flex: 1; min-width: 40px; height: 5px; border-radius: 999px; background: var(--color-trade-panel); border: 1px solid var(--color-trade-border); overflow: hidden; }
+.party-xp-fill { display: block; height: 100%; background: var(--color-trade-accent); transition: width 0.4s ease; }
+.party-xp-label { font-family: var(--font-mono); font-size: 9px; color: var(--color-trade-muted); white-space: nowrap; }
+.party-avatar-fallback { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--color-trade-border); background: var(--color-trade-panel); color: var(--color-trade-muted); }
+.party-roster .party-slot-list { gap: 4px; }
+.party-roster .party-slot { gap: 6px; font-size: 12px; }
+.party-roster .party-slot-label { width: 56px; font-size: 11px; }
+.party-roster .party-slot-select { width: auto; padding: 3px 6px; font-size: 11px; }
+.party-roster .party-equipped, .party-roster .party-empty { font-size: 11px; }
+@media (max-width: 640px) { .party-roster-count { display: none; } }
 @media (max-width: 640px) { .trade-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; } .trade-market-list { grid-template-columns: minmax(0, 1fr); } }
 
 .country-debt { border-bottom: 1px solid var(--color-trade-border); padding: 20px 0; }

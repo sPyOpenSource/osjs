@@ -1,8 +1,9 @@
 import React from 'react';
 import { Officer } from '../types';
 import { FACTIONS } from '../data';
-import { Shield, Swords, Brain, Scroll, Sparkles } from 'lucide-react';
+import { Shield, Swords, Brain, Scroll, Sparkles, type LucideIcon } from 'lucide-react';
 import Button from './Button';
+import { getRating } from '../utils/rating';
 
 interface RecruitPoolProps {
   officers: Officer[];
@@ -10,62 +11,68 @@ interface RecruitPoolProps {
   onRecruit: (officerId: string) => void;
 }
 
-const STAT_ICONS: Record<keyof Officer['stats'], React.ElementType> = {
-  leadership: Shield,
-  force: Swords,
-  intelligence: Brain,
-  politics: Scroll,
-  charisma: Sparkles,
+const STAT_DISPLAY: Record<keyof Officer['stats'], { icon: LucideIcon; label: string }> = {
+  leadership: { icon: Shield, label: '统率' },
+  force: { icon: Swords, label: '武力' },
+  intelligence: { icon: Brain, label: '智力' },
+  politics: { icon: Scroll, label: '政治' },
+  charisma: { icon: Sparkles, label: '魅力' },
 };
 
+const STAT_KEYS = Object.keys(STAT_DISPLAY) as (keyof Officer['stats'])[];
+const FACTIONS_BY_ID = new Map(FACTIONS.map((faction) => [faction.id, faction]));
+
+function topStat(officer: Officer): [keyof Officer['stats'], number] {
+  return STAT_KEYS.reduce<[keyof Officer['stats'], number]>(
+    (best, key) => (officer.stats[key] > best[1] ? [key, officer.stats[key]] : best),
+    ['leadership', officer.stats.leadership],
+  );
+}
+
 export default function RecruitPool({ officers, atLimit, onRecruit }: RecruitPoolProps) {
-  const matchedFaction = (factionId: string) => FACTIONS.find((f) => f.id === factionId);
-
-  const topStat = (officer: Officer) => {
-    const stats = Object.entries(officer.stats) as [keyof Officer['stats'], number][];
-    stats.sort((a, b) => b[1] - a[1]);
-    return stats[0];
-  };
-
   if (officers.length === 0) {
-    return (
-      <div className="party-recruit-empty">
-        <p className="trade-muted text-sm">无可招募武将</p>
-      </div>
-    );
+    return <p className="trade-muted text-sm">无可招募武将</p>;
   }
 
   return (
-    <div className="party-recruit-list">
-      {officers.map((officer) => {
-        const [statKey, statVal] = topStat(officer);
-        const Icon = STAT_ICONS[statKey];
-        const faction = matchedFaction(officer.factionId);
-        return (
-          <Button
-            key={officer.id}
-            id={`btn-recruit-${officer.id}`}
-            data-testid={`btn-recruit-${officer.id}`}
-            disabled={atLimit}
-            onClick={() => onRecruit(officer.id)}
-            className="party-recruit-button"
-          >
-            <div className="flex items-center gap-2">
-              <span className="font-serif font-bold">{officer.name}</span>
-              <span
-                className="text-[10px] font-mono text-slate-400 bg-slate-950/60 px-1.5 py-0.5 rounded border border-slate-800/60"
+    <div>
+      {atLimit && (
+        <p className="party-recruit-limit" role="status">
+          同伴已满（4/4），无法继续招募
+        </p>
+      )}
+      <ul className="party-recruit-list">
+        {officers.map((officer) => {
+          const [statKey, statVal] = topStat(officer);
+          const { icon: Icon, label } = STAT_DISPLAY[statKey];
+          const factionName = FACTIONS_BY_ID.get(officer.factionId)?.name || officer.factionId;
+          const rating = getRating(statVal);
+          return (
+            <li key={officer.id} data-testid={`recruit-card-${officer.id}`}>
+              <Button
+                data-testid={`btn-recruit-${officer.id}`}
+                disabled={atLimit}
+                onClick={() => onRecruit(officer.id)}
+                className="party-recruit-button"
               >
-                {faction?.name || officer.factionId}
-              </span>
-              <span className="ml-auto text-[10px] font-mono">
-                <Icon size={10} className="text-slate-400 inline" />
-                {statVal}
-              </span>
-            </div>
-            <span className="block text-[10px] text-amber-400 font-mono mt-0.5">招募</span>
-          </Button>
-        );
-      })}
+                <span className="party-recruit-row">
+                  <span className="party-recruit-name">{officer.name}</span>
+                  <span className="party-recruit-faction">{factionName}</span>
+                  <span className="party-recruit-stat">
+                    <Icon size={10} aria-hidden="true" />
+                    <span className="sr-only">{label}</span>
+                    {statVal}
+                    <span className={`party-recruit-grade ${rating.color}`} aria-hidden="true">
+                      {rating.letter}
+                    </span>
+                  </span>
+                </span>
+                <span className="party-recruit-cta">招募</span>
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

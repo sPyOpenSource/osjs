@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Officer, Faction } from '../types';
 import AvatarRenderer from './AvatarRenderer';
 import { FACTIONS } from '../data';
+import { getRating } from '../utils/rating';
 import { Shield, Swords, Brain, Scroll, Sparkles, User, Sword, Compass, BookOpen, Trash2, Award, Crown } from 'lucide-react';
 
 // Helper to calculate official rank/promotion details based on peak metrics
@@ -170,14 +171,7 @@ export default function OfficerCard({
 
   const matchedFaction = FACTIONS.find(f => f.id === officer.factionId) || FACTIONS[FACTIONS.length - 1];
 
-  // Helper to retrieve rating letters like ROTK of old
-  const getRating = (val: number): { letter: string; color: string } => {
-    if (val >= 95) return { letter: 'S', color: 'text-amber-400 font-bold border-amber-400 bg-amber-950/40' };
-    if (val >= 85) return { letter: 'A', color: 'text-red-400 font-bold border-red-500/50 bg-red-950/20' };
-    if (val >= 75) return { letter: 'B', color: 'text-blue-400 font-medium border-blue-500/30' };
-    if (val >= 60) return { letter: 'C', color: 'text-emerald-400 border-emerald-500/20' };
-    return { letter: 'D', color: 'text-slate-400 border-slate-500/10' };
-  };
+
 
   const handleGenerateBioAI = async () => {
     if (!onGenerateBio) {

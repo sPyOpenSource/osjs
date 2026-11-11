@@ -7,6 +7,8 @@ interface PartyConsoleProps {
   party: Party;
   characters: Record<string, RpgCharacter>;
   officers: Officer[];
+  /** Optional subset of officers to offer in the recruit pool (e.g. filtered by search/faction). Defaults to every officer. */
+  recruitCandidates?: Officer[];
   availableEquipment: Equipment[];
   onRecruit: (officerId: string) => void;
   onDismiss: (officerId: string) => void;
@@ -18,6 +20,7 @@ export default function PartyConsole({
   party,
   characters,
   officers,
+  recruitCandidates,
   availableEquipment,
   onRecruit,
   onDismiss,
@@ -25,7 +28,7 @@ export default function PartyConsole({
   onEquip,
 }: PartyConsoleProps) {
   const memberIds = [party.protagonistId, ...party.companionIds];
-  const recruitable = officers.filter(officer => !memberIds.includes(officer.id));
+  const recruitable = (recruitCandidates ?? officers).filter(officer => !memberIds.includes(officer.id));
   const atLimit = party.companionIds.length >= MAX_COMPANIONS;
 
   return (

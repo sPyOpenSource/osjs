@@ -47,6 +47,7 @@ function render(
     party?: Party;
     characters?: Record<string, RpgCharacter>;
     officers?: Officer[];
+    recruitCandidates?: Officer[];
     availableEquipment?: Equipment[];
   } = {},
 ): string {
@@ -55,6 +56,7 @@ function render(
       party={overrides.party ?? { protagonistId: 'liubei', companionIds: ['guanyu'] }}
       characters={overrides.characters ?? { liubei: makeChar('liubei', 2) }}
       officers={overrides.officers ?? officers}
+      recruitCandidates={overrides.recruitCandidates}
       availableEquipment={overrides.availableEquipment ?? []}
       onRecruit={noop}
       onDismiss={noop}
@@ -201,8 +203,7 @@ describe('PartyConsole', () => {
     assert.equal(pool.props.atLimit, true);
   });
 
-  test('keeps the pool open at three companions and empty without officers', () => {
-    const threeTree = PartyConsole({
+  test('keeps the pool open at three companions and empty without officers', () => {    const threeTree = PartyConsole({
       party: { protagonistId: 'liubei', companionIds: COMPANIONS.slice(0, 3) },
       characters: {},
       officers,
@@ -223,5 +224,21 @@ describe('PartyConsole', () => {
     });
     assert.ok(panes(emptyHtml).recruit.includes('无可招募武将'));
     assert.ok(emptyHtml.includes('data-testid="party-card-guanyu"'));
+  });
+
+  test('narrows the recruit pool to recruitCandidates while members keep their data', () => {
+    const caocao = officers[officers.length - 1];
+    const html = render({
+      party: { protagonistId: 'liubei', companionIds: ['guanyu'] },
+      recruitCandidates: [caocao],
+    });
+    const { roster, recruit } = panes(html);
+
+    assert.ok(recruit.includes('data-testid="btn-recruit-caocao"'));
+    assert.ok(!recruit.includes('data-testid="btn-recruit-zhangfei"'));
+    // Member cards still resolve names from the full roster, not the filtered pool.
+    assert.ok(roster.includes('刘备'));
+    assert.ok(roster.includes('guanyu'));
+    assert.ok(!roster.includes('data-testid="party-card-caocao"'));
   });
 });

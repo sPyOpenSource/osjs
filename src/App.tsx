@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Officer, Faction, CampaignScenario, RelationshipRelation, AvatarStyle, RpgCharacter, Party, Quest, QuestState, EquipmentSlot, Equipment } from './types';
 import { FACTIONS, FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS, SCENARIOS, AVAILABLE_SKILLS, AVAILABLE_TRAITS } from './data';
 import { ALL_QUESTS, INITIAL_QUEST_STATES } from './data/quests';
@@ -13,7 +13,7 @@ import GameNavigation from './components/GameNavigation';
 import Button from './components/Button';
 import DuelArena from './components/DuelArena';
 import InternalAffairs from './components/InternalAffairs';
-import PartyPanel from './components/PartyPanel';
+import PartyConsole from './components/PartyConsole';
 import { playClashSound, playDrumSound, playHarvestSound } from './utils/audio';
 import { 
   Shield, 
@@ -158,12 +158,12 @@ export default function App() {
     if (officerId === party.protagonistId) return;
     if (party.companionIds.length >= 4) return;
     if (party.companionIds.includes(officerId)) return;
-    const officer = FAMOUS_OFFICERS.find(o => o.id === officerId);
+    const officer = officers.find(o => o.id === officerId);
     if (!officer) return;
     setParty(prev => ({ ...prev, companionIds: [...prev.companionIds, officerId] }));
     setRpgCharacters(prev => (prev[officerId] ? prev : { ...prev, [officerId]: createRpgCharacter(officerId) }));
     setRpgLog(prev => [`【招募】${officer.name} 加入队伍`, ...prev].slice(0, 50));
-  }, [party]);
+  }, [party, officers]);
 
   // Dismiss a companion.
   const onDismiss = useCallback((officerId: string) => {
@@ -196,13 +196,31 @@ export default function App() {
       };
     });
     setPartyEquipment(prev => {
-      const owned = [...(prev[officerId] ?? [])];
-      const idx = owned.findIndex(e => e.id === equipment.id);
-      if (idx < 0) return prev;
-      owned.splice(idx, 1);
-      return { ...prev, [officerId]: owned };
+      const next = { ...prev };
+      for (const ownerId of Object.keys(next)) {
+        const owned = next[ownerId] ?? [];
+        if (owned.some(item => item.id === equipment.id)) {
+          next[ownerId] = owned.filter(item => item.id !== equipment.id);
+          return next;
+        }
+      }
+      return prev;
     });
-  }, [partyEquipment]);
+  }, []);
+
+  // Every item owned by any party member: the roster may equip from this shared pool.
+  const partyEquipmentPool = useMemo(() => {
+    const seen = new Set<string>();
+    const pool: Equipment[] = [];
+    for (const memberId of [party.protagonistId, ...party.companionIds]) {
+      for (const item of partyEquipment[memberId] ?? []) {
+        if (seen.has(item.id)) continue;
+        seen.add(item.id);
+        pool.push(item);
+      }
+    }
+    return pool;
+  }, [party, partyEquipment]);
 
   const handleAdvanceXun = () => {
     setGameXun(prevXun => {
@@ -1130,52 +1148,59 @@ export default function App() {
                 </div>
               </div>
               
-              {/* RPG Party Panel */}
-              <PartyPanel
+              {/* Unified party console: manage the party (left) and recruit from the pool (right) */}
+              <PartyConsole
                 party={party}
                 characters={rpgCharacters}
                 officers={officers}
-                availableEquipment={partyEquipment[party.protagonistId] ?? []}
+                recruitCandidates={filteredOfficers}
+                availableEquipment={partyEquipmentPool}
                 onRecruit={onRecruit}
                 onDismiss={onDismiss}
                 onSpendSkillPoint={onSpendSkillPoint}
                 onEquip={onEquip}
               />
 
-              {/* Grid database Roster */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filteredOfficers.length > 0 ? (
-                  filteredOfficers.map(off => (
-                    <OfficerCard
-                      key={off.id}
-                      officer={off}
-                      onEdit={(updated) => {
-                        setOfficers(prev => prev.map(o => o.id === updated.id ? updated : o));
-                        setSelectedOfficer(updated);
-                        if (ws && ws.readyState === WebSocket.OPEN) {
-                           ws.send(JSON.stringify({
-                            type: 'add_officer',
-                            data: updated
-                          }));
-                        }
-                      }}
-                      onDelete={handleDeleteOfficer}
-                      onSelectForStrategy={(selected) => setSelectedOfficer(selected)}
-                      isSelectableForStrategy={true}
-                      onGenerateBio={(tgt) => {
-                        const matchedFaction = FACTIONS.find(f => f.id === tgt.factionId) || FACTIONS[FACTIONS.length - 1];
-                        return requestBioAI(tgt, matchedFaction);
-                      }}
-                    />
-                  ))
-                ) : (
-                  <div className="col-span-1 md:col-span-2 text-center py-12 bg-slate-900/10 border border-slate-900 border-dashed rounded-2xl">
-                    <User size={24} className="text-slate-600 mx-auto mb-2" />
-                    <p className="text-sm text-slate-400 font-medium">在这片乱世天盘的坐标格段，未能寻到任何出仕武将。</p>
-                    <p className="text-xs text-slate-500 mt-1">请尝试清除搜索字或变更所属势力分类。</p>
-                  </div>
-                )}
-              </div>
+              {/* Officer database: edit, delete, promote, or request an AI biography */}
+              <details className="game-disclosure">
+                <summary>
+                  <User size={16} />
+                  <span>名将档案 · {filteredOfficers.length} 位</span>
+                </summary>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                  {filteredOfficers.length > 0 ? (
+                    filteredOfficers.map(off => (
+                      <OfficerCard
+                        key={off.id}
+                        officer={off}
+                        onEdit={(updated) => {
+                          setOfficers(prev => prev.map(o => o.id === updated.id ? updated : o));
+                          setSelectedOfficer(updated);
+                          if (ws && ws.readyState === WebSocket.OPEN) {
+                             ws.send(JSON.stringify({
+                              type: 'add_officer',
+                              data: updated
+                            }));
+                          }
+                        }}
+                        onDelete={handleDeleteOfficer}
+                        onSelectForStrategy={(selected) => setSelectedOfficer(selected)}
+                        isSelectableForStrategy={true}
+                        onGenerateBio={(tgt) => {
+                          const matchedFaction = FACTIONS.find(f => f.id === tgt.factionId) || FACTIONS[FACTIONS.length - 1];
+                          return requestBioAI(tgt, matchedFaction);
+                        }}
+                      />
+                    ))
+                  ) : (
+                    <div className="col-span-1 md:col-span-2 text-center py-12 bg-slate-900/10 border border-slate-900 border-dashed rounded-2xl">
+                      <User size={24} className="text-slate-600 mx-auto mb-2" />
+                      <p className="text-sm text-slate-400 font-medium">在这片乱世天盘的坐标格段，未能寻到任何出仕武将。</p>
+                      <p className="text-xs text-slate-500 mt-1">请尝试清除搜索字或变更所属势力分类。</p>
+                    </div>
+                  )}
+                </div>
+              </details>
             </div>
           )}
 

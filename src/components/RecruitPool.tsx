@@ -37,11 +37,11 @@ export default function RecruitPool({ officers, atLimit, onRecruit }: RecruitPoo
   return (
     <div>
       {atLimit && (
-        <p className="party-recruit-limit" role="status">
+        <p className="recruit-pool-limit" role="status">
           同伴已满（4/4），无法继续招募
         </p>
       )}
-      <ul className="party-recruit-list">
+      <ul className="recruit-pool-list">
         {officers.map((officer) => {
           const [statKey, statVal] = topStat(officer);
           const { icon: Icon, label } = STAT_DISPLAY[statKey];
@@ -53,21 +53,21 @@ export default function RecruitPool({ officers, atLimit, onRecruit }: RecruitPoo
                 data-testid={`btn-recruit-${officer.id}`}
                 disabled={atLimit}
                 onClick={() => onRecruit(officer.id)}
-                className="party-recruit-button"
+                className="recruit-pool-button"
               >
-                <span className="party-recruit-row">
-                  <span className="party-recruit-name">{officer.name}</span>
-                  <span className="party-recruit-faction">{factionName}</span>
-                  <span className="party-recruit-stat">
+                <span className="recruit-pool-row">
+                  <span className="recruit-pool-name">{officer.name}</span>
+                  <span className="recruit-pool-faction">{factionName}</span>
+                  <span className="recruit-pool-stat">
                     <Icon size={10} aria-hidden="true" />
                     <span className="sr-only">{label}</span>
                     {statVal}
-                    <span className={`party-recruit-grade ${rating.color}`} aria-hidden="true">
+                    <span className={`recruit-pool-grade ${rating.color}`} aria-hidden="true">
                       {rating.letter}
                     </span>
                   </span>
                 </span>
-                <span className="party-recruit-cta">招募</span>
+                <span className="recruit-pool-cta">招募</span>
               </Button>
             </li>
           );

@@ -67,6 +67,7 @@ describe('RecruitPool', () => {
     const html = renderToStaticMarkup(<RecruitPool officers={officers} atLimit={false} onRecruit={() => {}} />);
     const caocao = cardFor(html, 'caocao');
     assert.ok(caocao.includes('曹魏'));
+    assert.ok(caocao.includes('武力'));
     assert.ok(caocao.includes('>90<'));
     assert.ok(caocao.includes('>A<'));
 

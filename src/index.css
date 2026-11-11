@@ -168,6 +168,19 @@ body {
 @media (max-width: 640px) { .party-roster-count { display: none; } }
 @media (max-width: 640px) { .trade-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; } .trade-market-list { grid-template-columns: minmax(0, 1fr); } }
 
+/* Party console (roster + recruit split panes) */
+.party-console { border-bottom: 1px solid var(--color-trade-border); padding: 20px 0; }
+.party-console-panes { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.party-console-pane { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.party-console-pane + .party-console-pane { border-left: 1px solid var(--color-trade-border); padding-left: 24px; }
+.party-console-heading { display: flex; align-items: center; gap: 8px; }
+.party-console-heading h2 { font-size: 16px; font-weight: 700; letter-spacing: 0.4px; margin: 0; }
+.party-console-count { margin-left: auto; font-family: var(--font-mono); font-size: 10px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 900px) {
+  .party-console-panes { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .party-console-pane + .party-console-pane { border-left: 0; border-top: 1px solid var(--color-trade-border); padding-left: 0; padding-top: 18px; }
+}
+
 .country-debt { border-bottom: 1px solid var(--color-trade-border); padding: 20px 0; }
 .debt-heading, .debt-heading h3 { display: flex; align-items: center; gap: 8px; }
 .debt-heading { justify-content: space-between; flex-wrap: wrap; }

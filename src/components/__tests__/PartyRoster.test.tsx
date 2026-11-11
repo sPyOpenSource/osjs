@@ -115,7 +115,7 @@ describe('PartyRoster', () => {
     assert.ok(html.includes('data-testid="party-card-caocao"'));
     assert.ok(html.includes('data-testid="party-card-sunquan"'));
     assert.ok(html.includes('队伍'));
-    assert.ok(html.includes('成员 2 · 同伴 1/4'));
+    assert.ok(html.includes('成员 2 · 同伴 1/8'));
   });
 
   test('shows each member level and marks the protagonist exactly once', () => {

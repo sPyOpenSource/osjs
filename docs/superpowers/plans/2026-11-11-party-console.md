@@ -14,7 +14,7 @@
 - Type check command: `npm run lint` (`tsc --noEmit`).
 - Component convention: default-exported React component, props typed via interface, file named `ComponentName.tsx`.
 - Existing data model files not to be changed: `src/types.ts`, `src/data.ts` (officer data already has `homeCity`; party console does not need new data fields).
-- Companion limit: max 4 companions (`party.companionIds.length >= 4`).
+- Companion limit: max 8 companions (`party.companionIds.length >= MAX_COMPANIONS`).
 - All callbacks optional-guarded (`onRecruit?.()`).
 - `data-testid` attributes on every interactive element: `party-card-<id>`, `recruit-card-<id>`, `btn-recruit-<id>`, `btn-dismiss-<id>`, `party-slot-<slot>`, `party-spend-<id>`.
 - No Redux/context/state-library additions.
@@ -31,7 +31,7 @@
 | `src/components/PartyRoster.tsx` | Create | Left pane: refined PartyPanel. Member cards — avatar/name/level header row, thin XP bar, inline skill points + 学习 button, 3 equipment slot pills, dismiss button. |
 | `src/components/PartyPanel.tsx` | Modify | Replaced by `PartyRoster.tsx` (file deleted after content moved) OR kept as thin re-export for backward compatibility. Decision: delete `PartyPanel.tsx`, import `PartyRoster` in App. |
 | `src/App.tsx` | Modify | Roster tab: import `PartyConsole` instead of `PartyPanel`; remove stacked `OfficerCard` grid beneath it (roster tab is now the console); pass existing props + callbacks. |
-| `src/components/__tests__/PartyConsole.test.tsx` | Create | Tests: renders member count banner; renders recruit pool; disables recruit at 4/4 limit; empty state when pool empty. |
+| `src/components/__tests__/PartyConsole.test.tsx` | Create | Tests: renders member count banner; renders recruit pool; disables recruit at 8/8 limit; empty state when pool empty. |
 | `src/components/__tests__/PartyRoster.test.tsx` | Create | Tests: skill-point button disabled when 0 points; equip pill shows equipped name / 空位; dismiss removes member; protagonist badge shown. |
 | `src/components/__tests__/RecruitPool.test.tsx` | Create | Tests: renders recruit cards; recruit button calls onRecruit; disabled when at limit; empty state message. |
 
@@ -210,7 +210,7 @@ git commit -m "feat: add RecruitPool component for party console"
 **As-built notes (updated after quality review):**
 - Each officer is wrapped in `<li data-testid={`recruit-card-${officer.id}`}>` inside a `<ul className="party-recruit-list">`; the button itself only carries `btn-recruit-<id>`.
 - Stat grade letters come from the shared `src/utils/rating.ts` (`getRating`), also used by `OfficerCard.tsx`.
-- When `atLimit` is true the pool renders `同伴已满（4/4），无法继续招募` above the list (with `role="status"`), so disabled buttons are explained rather than silent.
+- When `atLimit` is true the pool renders `同伴已满（8/8），无法继续招募` above the list (with `role="status"`), so disabled buttons are explained rather than silent.
 - Component-level CSS lives in `src/index.css` (`.party-recruit-*`) and uses `--color-trade-*` tokens; no raw palette classes in this component.
 - Tests: 7 cases in `src/components/__tests__/RecruitPool.test.tsx`, including per-button `disabled=""` assertions (plus a negative case) and a direct component-tree call to verify `onRecruit` wiring (SSR drops handlers).
 
@@ -370,7 +370,7 @@ export default function PartyRoster({
   const isInParty = useCallback((id: string) => memberIds.includes(id), [memberIds]);
   const recruitable = useMemo(() => officers.filter((o) => o.id !== party.protagonistId && !isInParty(o.id)), [officers, party.protagonistId, isInParty]);
   const companionCount = party.companionIds.length;
-  const atLimit = companionCount >= 4;
+  const atLimit = companionCount >= MAX_COMPANIONS;
 
   const characterFor = (officerId: string) =>
     characters[officerId] ?? { officerId, level: 1, xp: 0, skillPoints: 0, learnedSkills: [], equipment: {} };
@@ -394,7 +394,7 @@ export default function PartyRoster({
         <User size={18} />
         <h2>队伍</h2>
         <span className="trade-muted">
-          {memberIds.length} 名成员 · 同伴 {companionCount}/4
+          {memberIds.length} 名成员 · 同伴 {companionCount}/8
         </span>
       </div>
 
@@ -604,7 +604,7 @@ describe('PartyConsole', () => {
     assert.ok(html.includes('队伍'));
   });
 
-  test('disables recruit when at 4/4 companion limit', () => {
+  test('disables recruit when at 8/8 companion limit', () => {
     const fullParty: Party = { protagonistId: 'liubei', companionIds: ['a', 'b', 'c', 'd'] };
     const html = renderToStaticMarkup(
       <PartyConsole
@@ -665,7 +665,7 @@ export default function PartyConsole({
   const isInParty = (id: string) => memberIds.includes(id);
   const recruitable = officers.filter((o) => o.id !== party.protagonistId && !isInParty(o.id));
   const companionCount = party.companionIds.length;
-  const atLimit = companionCount >= 4;
+  const atLimit = companionCount >= MAX_COMPANIONS;
 
   return (
     <section className="party-console" aria-label="队伍控制台">
@@ -685,7 +685,7 @@ export default function PartyConsole({
           <div className="party-pane-header flex items-center gap-2 mb-3">
             <span className="trade-muted">招募同伴</span>
             <span className={`text-xs font-mono ${atLimit ? 'text-rose-400' : 'text-slate-400'}`}>
-              同伴 {companionCount}/4
+              同伴 {companionCount}/8
             </span>
           </div>
           <RecruitPool officers={recruitable} atLimit={atLimit} onRecruit={onRecruit} />

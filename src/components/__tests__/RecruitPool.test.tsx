@@ -89,7 +89,7 @@ describe('RecruitPool', () => {
     for (const id of ['caocao', 'sunquan']) {
       assert.match(buttonTag(html, id), / disabled=""/);
     }
-    assert.ok(html.includes('同伴已满（4/4）'));
+    assert.ok(html.includes('同伴已满（8/8）'));
   });
 
   test('leaves recruit buttons enabled when under the limit', () => {
@@ -97,7 +97,7 @@ describe('RecruitPool', () => {
     for (const id of ['caocao', 'sunquan']) {
       assert.doesNotMatch(buttonTag(html, id), / disabled=""/);
     }
-    assert.ok(!html.includes('同伴已满（4/4）'));
+    assert.ok(!html.includes('同伴已满（8/8）'));
   });
 
   test('recruit button invokes onRecruit with the officer id', () => {

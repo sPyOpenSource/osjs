@@ -32,7 +32,7 @@ function makeChar(officerId: string, skillPoints = 0): RpgCharacter {
   return { officerId, level: 1, xp: 0, skillPoints, learnedSkills: [], equipment: {} };
 }
 
-const COMPANIONS = ['guanyu', 'zhangfei', 'zhaoyun', 'machao'];
+const COMPANIONS = ['guanyu', 'zhangfei', 'zhaoyun', 'machao', 'huangzhong', 'zhugeliang', 'pangtong', 'jiangwei'];
 
 const officers: Officer[] = [
   makeOfficer('liubei', '刘备'),
@@ -131,10 +131,10 @@ describe('PartyConsole', () => {
   });
 
   test('shows the companion counter and updates it for a full party', () => {
-    assert.ok(panes(render()).recruit.includes('同伴 1/4'));
+    assert.ok(panes(render()).recruit.includes('同伴 1/8'));
 
     const full = render({ party: { protagonistId: 'liubei', companionIds: [...COMPANIONS] } });
-    assert.ok(panes(full).recruit.includes('同伴 4/4'));
+    assert.ok(panes(full).recruit.includes('同伴 8/8'));
   });
 
   test('disables every recruit button at the limit and keeps members out of the pool', () => {
@@ -178,7 +178,10 @@ describe('PartyConsole', () => {
     const pool = findByType(tree, RecruitPool);
     assert.ok(pool, 'recruit pool element should exist');
     assert.equal(pool.props.onRecruit, onRecruit);
-    assert.deepEqual(pool.props.officers.map((officer: Officer) => officer.id), ['zhangfei', 'zhaoyun', 'machao', 'caocao']);
+    assert.deepEqual(
+      pool.props.officers.map((officer: Officer) => officer.id),
+      ['zhangfei', 'zhaoyun', 'machao', 'huangzhong', 'zhugeliang', 'pangtong', 'jiangwei', 'caocao'],
+    );
     assert.equal(pool.props.atLimit, false);
 
     const roster = findByType(tree, PartyRoster);

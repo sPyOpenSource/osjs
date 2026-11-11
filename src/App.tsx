@@ -3,7 +3,7 @@ import { Officer, Faction, CampaignScenario, RelationshipRelation, AvatarStyle, 
 import { FACTIONS, FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS, SCENARIOS, AVAILABLE_SKILLS, AVAILABLE_TRAITS } from './data';
 import { ALL_QUESTS, INITIAL_QUEST_STATES } from './data/quests';
 import { createRpgCharacter, applyXp, validateEquipAssignment } from './utils/rpg';
-import { getCandidateOfficers } from './utils/party';
+import { getCandidateOfficers, MAX_COMPANIONS } from './utils/party';
 import { completeObjective, isQuestComplete, markQuestCompleted } from './utils/quest';
 import OfficerCard from './components/OfficerCard';
 import AvatarRenderer from './components/AvatarRenderer';
@@ -153,10 +153,10 @@ export default function App() {
     }
   }, [ALL_QUESTS, questStates, party, rpgCharacters, grantBattleXp]);
 
-  // Recruit a companion: max 4 companions, never the protagonist.
+  // Recruit a companion: max MAX_COMPANIONS companions, never the protagonist.
   const onRecruit = useCallback((officerId: string) => {
     if (officerId === party.protagonistId) return;
-    if (party.companionIds.length >= 4) return;
+    if (party.companionIds.length >= MAX_COMPANIONS) return;
     if (party.companionIds.includes(officerId)) return;
     const officer = officers.find(o => o.id === officerId);
     if (!officer) return;

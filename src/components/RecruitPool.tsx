@@ -68,7 +68,6 @@ export default function RecruitPool({ officers, atLimit, onRecruit }: RecruitPoo
                     </span>
                   </span>
                 </span>
-                <span className="recruit-pool-cta">招募</span>
               </Button>
             </li>
           );

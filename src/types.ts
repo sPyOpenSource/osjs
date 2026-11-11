@@ -5,6 +5,7 @@ export interface Officer {
   styleName?: string; // e.g. "Xuande" for Liu Bei
   englishName?: string; // e.g. "Julius Caesar", "Alexander the Great"
   origin?: string; // e.g. "罗马帝国 (大秦)", "马其顿帝国", "邪马台国"
+  homeCity?: string; // City where the officer lives / holds seat (matches a PRESET_CITIES cityName)
   isGlobalLeader?: boolean; // True if world global leader
   factionId: string; // Faction aligning with
   avatarStyle: AvatarStyle;

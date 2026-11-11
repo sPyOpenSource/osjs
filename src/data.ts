@@ -302,6 +302,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     origin: '华夏三国 · 蜀汉',
     isGlobalLeader: false,
     factionId: 'shu',
+    homeCity: '成都',
     avatarStyle: {
       portrait: liubeiPortrait,
       hairColor: '#1e293b',
@@ -331,6 +332,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     origin: '华夏三国 · 曹魏',
     isGlobalLeader: false,
     factionId: 'wei',
+    homeCity: '许昌',
     avatarStyle: {
       portrait: caocaoPortrait,      hairColor: '#0f172a',
       hairStyle: 'Noble Court Crown',
@@ -359,6 +361,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     origin: '华夏三国 · 孙吴',
     isGlobalLeader: false,
     factionId: 'wu',
+    homeCity: '建业',
     avatarStyle: {
       portrait: sunquanPortrait,      hairColor: '#c2410c',
       hairStyle: 'Red-Bearded Sovereign',
@@ -387,6 +390,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     origin: '华夏三国 · 蜀汉',
     isGlobalLeader: false,
     factionId: 'shu',
+    homeCity: '成都',
     avatarStyle: {
       portrait: guanyuPortrait,      hairColor: '#0f172a',
       hairStyle: 'Long Bound Mane',
@@ -415,6 +419,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     origin: '华夏三国 · 蜀汉',
     isGlobalLeader: false,
     factionId: 'shu',
+    homeCity: '成都',
     avatarStyle: {
       portrait: zhugeliangPortrait,      hairColor: '#1e293b',
       hairStyle: 'Scholar Jade Headdress',
@@ -472,6 +477,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     origin: '华夏三国 · 孙吴',
     isGlobalLeader: false,
     factionId: 'wu',
+    homeCity: '建业',
     avatarStyle: {
       portrait: zhouyuPortrait,      hairColor: '#1e293b',
       hairStyle: 'Sleek Admiral Knot',
@@ -1207,6 +1213,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     origin: '华夏三国 · 江东庐江皖县',
     isGlobalLeader: false,
     factionId: 'wu',
+    homeCity: '建业',
     avatarStyle: {
       portrait: daqiaoPortrait,      hairColor: '#0f172a',
       hairStyle: 'Long Ribbon Hair',
@@ -1243,6 +1250,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     origin: '华夏三国 · 江东庐江皖县',
     isGlobalLeader: false,
     factionId: 'wu',
+    homeCity: '建业',
     avatarStyle: {
       portrait: xiaoqiaoPortrait,      hairColor: '#1e293b',
       hairStyle: 'Long Ribbon Hair',
@@ -1279,6 +1287,7 @@ export const FAMOUS_OFFICERS: Officer[] = [
     origin: '春秋越国 · 苎萝村浣纱溪',
     isGlobalLeader: false,
     factionId: 'wu',
+    homeCity: '建业',
     avatarStyle: {
       portrait: xishiPortrait,      hairColor: '#0f172a',
       hairStyle: 'Long Flowing Hair',
@@ -1784,6 +1793,24 @@ export const SCENARIOS: CampaignScenario[] = [
     featuredFactions: ['shu', 'wei', 'ronin'],
     victoryCondition: '夺取长安及洛阳，光复汉室克复中原',
     difficulty: 'Medium'
+  },
+  {
+    id: 'great_war',
+    title: '公元1914年：第一次世界大战',
+    year: 1914,
+    description: '萨拉热窝枪声点燃欧洲火药桶，七月危机使协约国与同盟国全面开战。德意志、奥匈、俄国、法兰西与大英帝国动员百万大军，壕沟战与机枪火力让近代战争跨入残酷新纪元。美利坚虽未立即入场，却已屹立西半球之巅。谁能在这场毁灭性的全球冲突中掌控命运？',
+    featuredFactions: ['germany', 'russia', 'france', 'europe', 'america'],
+    victoryCondition: '击溃敌对联盟主力，夺取关键要塞与制海权，主导战后世界秩序',
+    difficulty: 'Hard'
+  },
+  {
+    id: 'world_war_ii',
+    title: '公元1939年：第二次世界大战',
+    year: 1939,
+    description: '波兰战役拉开序幕，德意志闪电战横扫欧洲，英法与轴心国全面交战。大西洋不列颠空战、巴巴罗萨进攻与太平洋战争接连爆发，机械化部队与战略轰炸重塑战争面貌。美利坚在珍珠港后加入协约国，苏联以铁血反击扭转东线。谁能在这场席卷全球的战火中主导世界？',
+    featuredFactions: ['germany', 'russia', 'france', 'europe', 'america'],
+    victoryCondition: '摧毁敌对联盟核心，夺取关键工业区与制空权，主导战后世界秩序',
+    difficulty: 'Hard'
   },
   {
     id: 'millennium',

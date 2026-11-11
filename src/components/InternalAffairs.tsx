@@ -45,6 +45,8 @@ interface InternalAffairsProps {
   onSetTimeSpeed: (speed: 'slow' | 'normal' | 'fast') => void;
   onAdvanceXun: () => void;
   onAdvanceMonth: () => void;
+  /** Name of the city to open by default (defaults to where the protagonist lives). */
+  defaultCityName?: string;
   isActiveTab?: boolean;
 }
 
@@ -136,11 +138,25 @@ export default function InternalAffairs({
   onSetTimeSpeed,
   onAdvanceXun,
   onAdvanceMonth,
+  defaultCityName,
   isActiveTab = false
 }: InternalAffairsProps) {
   // City Affairs Status
-  const [selectedCityIndex, setSelectedCityIndex] = useState(0);
-  const [cityState, setCityState] = useState<CityAffairsState>(PRESET_CITIES[0]);
+  const defaultCityIndex = PRESET_CITIES.findIndex((c) => c.cityName === defaultCityName);
+  const initialCityIndex = defaultCityIndex >= 0 ? defaultCityIndex : 0;
+  const [selectedCityIndex, setSelectedCityIndex] = useState(initialCityIndex);
+  const [cityState, setCityState] = useState<CityAffairsState>(PRESET_CITIES[initialCityIndex]);
+
+  // Reset to the default city whenever the protagonist (and thus default city) changes.
+  useEffect(() => {
+    if (defaultCityName) {
+      const idx = PRESET_CITIES.findIndex((c) => c.cityName === defaultCityName);
+      if (idx >= 0 && idx !== selectedCityIndex) {
+        setSelectedCityIndex(idx);
+        setCityState(PRESET_CITIES[idx]);
+      }
+    }
+  }, [defaultCityName, selectedCityIndex]);
 
   // Calendar Timeline Aliases
   const currentYear = gameYear;

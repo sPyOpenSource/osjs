@@ -69,6 +69,9 @@ export default function App() {
   const [isAutoTime, setIsAutoTime] = useState<boolean>(true); // auto increase the time in the background
   const [timeSpeed, setTimeSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
 
+  // Default internal-affairs city follows where the main character (protagonist) lives.
+  const defaultCityName = officers.find((o) => o.id === protagonistId)?.homeCity ?? '成都';
+
   useEffect(() => {
     setGameYear(selectedScenario.year);
     setGameMonth(selectedScenario.id === 'chibi' ? 5 : 1);
@@ -1709,6 +1712,7 @@ export default function App() {
               onSetTimeSpeed={(s) => setTimeSpeed(s)}
               onAdvanceXun={handleAdvanceXun}
               onAdvanceMonth={handleAdvanceMonth}
+              defaultCityName={defaultCityName}
               isActiveTab={activeTab === 'affairs'}
             />
           </div>

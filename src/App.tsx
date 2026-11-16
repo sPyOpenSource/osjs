@@ -262,7 +262,12 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [factionFilter, setFactionFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'global' | 'threekingdoms' | 'custom'>('all');
-  const [selectedOfficer, setSelectedOfficer] = useState<Officer>(FAMOUS_OFFICERS[0]);
+  const [selectedOfficerId, setSelectedOfficerId] = useState<string>(defaultProtagonistId);
+  const [currentCityId, setCurrentCityId] = useState<string>(
+    officers.find((o) => o.id === protagonistId)?.homeCity ?? '成都'
+  );
+
+  const selectedOfficer = officers.find((o) => o.id === selectedOfficerId) ?? officers[0] ?? FAMOUS_OFFICERS[0];
 
   // Strategy Advisor panel states
   const [isConsultingAdvisor, setIsConsultingAdvisor] = useState(false);
@@ -375,7 +380,7 @@ export default function App() {
         if (isDisposed) return;
         if (offRes && Array.isArray(offRes) && offRes.length > 0) {
           setOfficers(offRes);
-          setSelectedOfficer(curr => curr && offRes.some((o: any) => o.id === curr.id) ? curr : offRes[0]);
+          setSelectedOfficerId(curr => offRes.some(o => o.id === curr) ? curr : offRes[0]?.id ?? '');
         }
         if (relRes && Array.isArray(relRes)) {
           setRelationships(relRes);
@@ -415,9 +420,9 @@ export default function App() {
                 setOfficers(initialOfficers);
                 setRelationships(initialRelationships);
                 if (initialOfficers.length > 0) {
-                  setSelectedOfficer(current => {
-                    if (!current || !initialOfficers.some((o: any) => o.id === current.id)) {
-                      return initialOfficers[0];
+                  setSelectedOfficerId(current => {
+                    if (!initialOfficers.some(o => o.id === current)) {
+                      return initialOfficers[0]?.id ?? '';
                     }
                     return current;
                   });
@@ -436,7 +441,7 @@ export default function App() {
                   }
                   return [newOfficer, ...prev];
                 });
-                setSelectedOfficer(current => current && current.id === newOfficer.id ? newOfficer : current);
+                setSelectedOfficerId(current => current === newOfficer.id ? newOfficer.id : current);
                 break;
               }
 
@@ -444,9 +449,10 @@ export default function App() {
                 const { officerId, relationships: updatedRels } = msg.data;
                 setOfficers(prev => prev.filter(o => o.id !== officerId));
                 setRelationships(updatedRels);
-                setSelectedOfficer(current => {
-                  if (current && current.id === officerId) {
-                    return FAMOUS_OFFICERS[0];
+                setSelectedOfficerId(current => {
+                  if (current === officerId) {
+                    const remaining = officers.filter(o => o.id !== officerId);
+                    return remaining[0]?.id ?? '';
                   }
                   return current;
                 });
@@ -680,7 +686,7 @@ export default function App() {
   // Sync selected advisor details when officer selection changes
   useEffect(() => {
     setAdvisorBrief('');
-  }, [selectedOfficer, selectedScenario]);
+  }, [selectedOfficerId, selectedScenario]);
 
   // Handle generating AI strategic feedback
   const handleConsultWarCouncil = async () => {
@@ -803,7 +809,7 @@ export default function App() {
     }).catch(() => {});
     
     setCreatedCount(prev => prev + 1);
-    setSelectedOfficer(newOfficer);
+    setSelectedOfficerId(newOfficer.id);
     
     // Reset Form Input
     setCustomName('');
@@ -820,8 +826,8 @@ export default function App() {
     } else {
       setOfficers(prev => prev.filter(o => o.id !== id));
       setRelationships(prev => prev.filter(r => r.fromOfficerId !== id && r.toOfficerId !== id));
-      if (selectedOfficer && selectedOfficer.id === id) {
-        setSelectedOfficer(FAMOUS_OFFICERS[0]);
+      if (selectedOfficerId === id) {
+        setSelectedOfficerId(FAMOUS_OFFICERS[0]?.id ?? '');
       }
     }
     fetch(`/api/officers/${id}`, { method: 'DELETE' }).catch(() => {});
@@ -1175,7 +1181,7 @@ export default function App() {
                         officer={off}
                         onEdit={(updated) => {
                           setOfficers(prev => prev.map(o => o.id === updated.id ? updated : o));
-                          setSelectedOfficer(updated);
+                          setSelectedOfficerId(updated.id);
                           if (ws && ws.readyState === WebSocket.OPEN) {
                              ws.send(JSON.stringify({
                               type: 'add_officer',
@@ -1184,7 +1190,7 @@ export default function App() {
                           }
                         }}
                         onDelete={handleDeleteOfficer}
-                        onSelectForStrategy={(selected) => setSelectedOfficer(selected)}
+                        onSelectForStrategy={(selected) => setSelectedOfficerId(selected.id)}
                         isSelectableForStrategy={true}
                         onGenerateBio={(tgt) => {
                           const matchedFaction = FACTIONS.find(f => f.id === tgt.factionId) || FACTIONS[FACTIONS.length - 1];
@@ -1689,7 +1695,7 @@ export default function App() {
               selectedScenario={selectedScenario} 
               officers={officers} 
               onSelectOfficer={(off) => {
-                setSelectedOfficer(off);
+                setSelectedOfficerId(off.id);
               }} 
               soundEnabled={soundEnabled}
               gameYear={gameYear}
@@ -1726,7 +1732,7 @@ export default function App() {
               playClashSound={playClashSound}
               playHarvestSound={playHarvestSound}
               onSelectOfficer={(off) => {
-                setSelectedOfficer(off);
+                setSelectedOfficerId(off.id);
               }}
               gameYear={gameYear}
               gameMonth={gameMonth}

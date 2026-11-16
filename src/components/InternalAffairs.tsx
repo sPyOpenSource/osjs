@@ -47,6 +47,12 @@ interface InternalAffairsProps {
   onAdvanceMonth: () => void;
   /** Name of the city to open by default (defaults to where the protagonist lives). */
   defaultCityName?: string;
+  /** Canonical selected officer id, owned by App. */
+  selectedOfficerId?: string;
+  /** Canonical current city id (a PRESET_CITIES cityName), owned by App. */
+  currentCityId?: string;
+  onSetSelectedOfficerId?: (id: string) => void;
+  onSetCurrentCity?: (cityName: string) => void;
   isActiveTab?: boolean;
 }
 
@@ -139,24 +145,26 @@ export default function InternalAffairs({
   onAdvanceXun,
   onAdvanceMonth,
   defaultCityName,
+  selectedOfficerId,
+  currentCityId,
+  onSetSelectedOfficerId,
+  onSetCurrentCity,
   isActiveTab = false
 }: InternalAffairsProps) {
   // City Affairs Status
-  const defaultCityIndex = PRESET_CITIES.findIndex((c) => c.cityName === defaultCityName);
-  const initialCityIndex = defaultCityIndex >= 0 ? defaultCityIndex : 0;
-  const [selectedCityIndex, setSelectedCityIndex] = useState(initialCityIndex);
+  const resolvedCityIndex = currentCityId
+    ? PRESET_CITIES.findIndex((c) => c.cityName === currentCityId)
+    : defaultCityName
+      ? PRESET_CITIES.findIndex((c) => c.cityName === defaultCityName)
+      : -1;
+  const initialCityIndex = resolvedCityIndex >= 0 ? resolvedCityIndex : 0;
   const [cityState, setCityState] = useState<CityAffairsState>(PRESET_CITIES[initialCityIndex]);
 
-  // Reset to the default city whenever the protagonist (and thus default city) changes.
-  useEffect(() => {
-    if (defaultCityName) {
-      const idx = PRESET_CITIES.findIndex((c) => c.cityName === defaultCityName);
-      if (idx >= 0 && idx !== selectedCityIndex) {
-        setSelectedCityIndex(idx);
-        setCityState(PRESET_CITIES[idx]);
-      }
-    }
-  }, [defaultCityName, selectedCityIndex]);
+  // Active city pill index, driven by the canonical currentCityId prop (fall back to initial).
+  const activeCityIndex = currentCityId
+    ? PRESET_CITIES.findIndex((c) => c.cityName === currentCityId)
+    : initialCityIndex;
+  const displayCityIndex = activeCityIndex >= 0 ? activeCityIndex : initialCityIndex;
 
   // Calendar Timeline Aliases
   const currentYear = gameYear;
@@ -165,9 +173,12 @@ export default function InternalAffairs({
 
   // Task Selection & Officer Assignment
   const [activeTaskType, setActiveTaskType] = useState<InternalTaskType>('agriculture');
-  const [selectedOfficerId, setSelectedOfficerId] = useState<string>(
+
+  // Canonical selected officer id, driven by prop when provided.
+  const [localSelectedOfficerId, setLocalSelectedOfficerId] = useState<string>(
     officers.find(o => o.id === 'zhugeliang')?.id || officers[0]?.id || ''
   );
+  const effectiveSelectedOfficerId = selectedOfficerId ?? localSelectedOfficerId;
 
   // Active Ongoing Task Slots (max 4 concurrent officers)
   const [assignments, setAssignments] = useState<TaskAssignment[]>([
@@ -232,8 +243,8 @@ export default function InternalAffairs({
 
   // Selected officer object
   const currentOfficer = useMemo(() => {
-    return officers.find(o => o.id === selectedOfficerId) || officers[0];
-  }, [officers, selectedOfficerId]);
+    return officers.find(o => o.id === effectiveSelectedOfficerId) || officers[0];
+  }, [officers, effectiveSelectedOfficerId]);
 
   // Current task config
   const currentTaskConfig = useMemo(() => {
@@ -628,8 +639,8 @@ export default function InternalAffairs({
 
   // Reset city defaults
   const handleSwitchCity = (idx: number) => {
-    setSelectedCityIndex(idx);
     setCityState(PRESET_CITIES[idx]);
+    onSetCurrentCity?.(PRESET_CITIES[idx].cityName);
   };
 
   return (
@@ -661,7 +672,7 @@ export default function InternalAffairs({
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">
-                  {PRESET_CITIES[selectedCityIndex].title}
+                  {PRESET_CITIES[displayCityIndex].title}
                 </p>
               </div>
             </div>
@@ -674,7 +685,7 @@ export default function InternalAffairs({
                   key={c.cityName}
                   onClick={() => handleSwitchCity(idx)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-serif transition-all cursor-pointer ${
-                    selectedCityIndex === idx
+                    displayCityIndex === idx
                       ? 'bg-amber-500 text-slate-950 font-bold shadow'
                       : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
                   }`}
@@ -999,13 +1010,14 @@ export default function InternalAffairs({
             {/* Officer Selection Quick Grid (Showing Top Recommendations First) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-h-[220px] overflow-y-auto pr-1">
               {topRecommendedOfficers.map(({ officer, score }, idx) => {
-                const isSelected = selectedOfficerId === officer.id;
+                const isSelected = effectiveSelectedOfficerId === officer.id;
                 return (
                   <button
                     key={officer.id}
                     id={`btn-select-officer-${officer.id}`}
                     onClick={() => {
-                      setSelectedOfficerId(officer.id);
+                      setLocalSelectedOfficerId(officer.id);
+                      onSetSelectedOfficerId?.(officer.id);
                       if (onSelectOfficer) onSelectOfficer(officer);
                     }}
                     className={`p-2.5 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${

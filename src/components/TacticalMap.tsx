@@ -357,6 +357,8 @@ interface TacticalMapProps {
   quests?: Quest[];
   questStates?: QuestState[];
   onCompleteQuestObjective?: (questId: string, objectiveId: string) => void;
+  currentCityId?: string;
+  onSetCurrentCity?: (cityName: string) => void;
 }
 
 export default function TacticalMap({ 
@@ -374,7 +376,9 @@ export default function TacticalMap({
   onBattleXp,
   quests: initialQuests,
   questStates: initialQuestStates,
-  onCompleteQuestObjective
+  onCompleteQuestObjective,
+  currentCityId,
+  onSetCurrentCity
 }: TacticalMapProps) {
   const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade'>('svg-map');
   const [tradeFaction, setTradeFaction] = useState('ronin');
@@ -405,8 +409,6 @@ export default function TacticalMap({
   const [cityOwnership, setCityOwnership] = useState<Record<string, string>>(() => 
     getScenarioDefaultOwnership(selectedScenario.id)
   );
-
-  const [selectedCityId, setSelectedCityId] = useState<string>('luoyang');
 
   // City View / Interior Facility states
   const [selectedFacility, setSelectedFacility] = useState<'palace' | 'market' | 'tavern' | 'barracks' | 'gate'>('palace');
@@ -501,7 +503,9 @@ export default function TacticalMap({
     setExpeditionStep(-1);
   }, [selectedScenario]);
 
-  const selectedCity = CITIES.find(c => c.id === selectedCityId) || CITIES[3];
+  const selectedCity = currentCityId
+    ? CITIES.find(c => c.name === currentCityId) || CITIES.find(c => c.id === 'luoyang') || CITIES[0]
+    : CITIES.find(c => c.id === 'luoyang') || CITIES[0];
   const selectedCityControllerId = cityOwnership[selectedCity.id] || 'ronin';
   const selectedCityController = FACTIONS.find(f => f.id === selectedCityControllerId) || FACTIONS[5];
 
@@ -1968,7 +1972,7 @@ export default function TacticalMap({
               {CITIES.map(city => {
                 const controllerId = cityOwnership[city.id] || 'ronin';
                 const faction = FACTIONS.find(f => f.id === controllerId) || FACTIONS[5];
-                const isSelected = selectedCityId === city.id;
+                const isSelected = selectedCity.id === city.id;
                 
                 const isOrig = expeditionOriginId === city.id;
                 const isTarg = expeditionTargetId === city.id;
@@ -1985,7 +1989,7 @@ export default function TacticalMap({
                       isFocusedTheater ? 'opacity-100 scale-100' : 'opacity-40 hover:opacity-95 scale-90'
                     }`}
                     onClick={() => {
-                      setSelectedCityId(city.id);
+                      onSetCurrentCity?.(city.name);
                       setMapTab('city-view');
                     }}
                   >
@@ -3145,7 +3149,7 @@ export default function TacticalMap({
             const stationed = officers.filter(o => o.factionId === controllerId);
             const isOrig = expeditionOriginId === city.id;
             const isTarg = expeditionTargetId === city.id;
-            const isSelected = selectedCityId === city.id;
+            const isSelected = selectedCity.id === city.id;
             
             // Strategic metadata tags & info
             let tag = '';
@@ -3399,7 +3403,7 @@ export default function TacticalMap({
                       type="button"
                       onClick={() => {
                         setExpeditionOriginId(city.id);
-                        setSelectedCityId(city.id);
+                        onSetCurrentCity?.(city.name);
                       }}
                       className={`text-[10px] font-mono py-1 rounded-lg border transition-all cursor-pointer text-center ${
                         isOrig 
@@ -3414,7 +3418,7 @@ export default function TacticalMap({
                       type="button"
                       onClick={() => {
                         setExpeditionTargetId(city.id);
-                        setSelectedCityId(city.id);
+                        onSetCurrentCity?.(city.name);
                       }}
                       className={`text-[10px] font-mono py-1 rounded-lg border transition-all cursor-pointer text-center ${
                         isTarg 
@@ -3428,7 +3432,7 @@ export default function TacticalMap({
                       id={`btn-all-cities-focus-${city.id}`}
                       type="button"
                       onClick={() => {
-                        setSelectedCityId(city.id);
+                        onSetCurrentCity?.(city.name);
                         setMapTab('svg-map');
                       }}
                       className="text-[10px] font-mono py-1 rounded-lg bg-slate-900/80 text-amber-500 border border-slate-850 hover:bg-slate-800 hover:text-amber-400 text-center cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1"
@@ -3441,7 +3445,7 @@ export default function TacticalMap({
                     id={`btn-all-cities-interior-${city.id}`}
                     type="button"
                     onClick={() => {
-                      setSelectedCityId(city.id);
+                      onSetCurrentCity?.(city.name);
                       setMapTab('city-view');
                     }}
                     className="w-full text-xs font-serif font-bold py-1.5 bg-emerald-950 hover:bg-emerald-900 text-emerald-400 border border-emerald-800/50 hover:border-emerald-700/80 rounded-lg text-center cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5"

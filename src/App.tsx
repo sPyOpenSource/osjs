@@ -1850,9 +1850,7 @@ export default function App() {
         </section></details>
 
       </main>
-
-      <footer className="game-footer">三国志 · 战术模拟</footer>
-
+      
     </div>
   );
 }

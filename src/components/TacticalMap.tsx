@@ -3468,7 +3468,7 @@ export default function TacticalMap({
           <div className="flex items-center gap-1.5 border-b border-slate-900 pb-2">
             <Swords size={16} className="text-amber-500 animate-pulse" />
             <h3 className="text-base font-serif font-black text-amber-500 uppercase tracking-wider">
-              大军师中军帐：发兵调度模拟器
+              大军师中军帐：发兵调度
             </h3>
           </div>
 

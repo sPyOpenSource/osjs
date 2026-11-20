@@ -1644,8 +1644,8 @@
             title: o,
             icon: i.resource(r.icon),
             dimension: {
-                width: 400,
-                height: 400
+                width: 800,
+                height: 600
             }
         }).on("destroy", (function() {
             return i.destroy()

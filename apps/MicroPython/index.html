@@ -48,7 +48,7 @@
 
   <div style="display:inline-block; vertical-align:top;">
     <form>
-      <input type="text" name="webrepl_url" id="url" value="ws://espressif.local:8266/" />
+      <input type="text" name="webrepl_url" id="url" value="" />
       <input type="button" id="button" value="Connect" onclick="button_click()" />
     </form>
     <div id="term">
@@ -98,8 +98,11 @@
   (function() {
     window.onload = function() {
       var url = window.location.hash.substring(1);
+      var protocol = window.location.protocol == 'https:' ? 'wss://' : 'ws://';
       if (url) {
-        document.getElementById('url').value = 'ws://' + url;
+        document.getElementById('url').value = protocol + url;
+      } else {
+        document.getElementById('url').value = protocol + 'espressif.local:8266/';
       }
       var size = calculate_size(self);
       term = new Terminal({
@@ -110,27 +113,12 @@
         cursorBlink: false
       });
       term.open(document.getElementById("term"));
-      show_https_warning();
     };
     window.addEventListener('resize', function() {
       var size = calculate_size(self);
       term.resize(size[0], size[1]);
     });
   }).call(this);
-
-  function show_https_warning() {
-    if (window.location.protocol == 'https:') {
-      var warningDiv = document.createElement('div');
-      warningDiv.style.cssText = 'background:#f99;padding:5px;margin-bottom:10px;line-height:1.5em;text-align:center';
-      warningDiv.innerHTML = [
-        'At this time, the WebREPL client cannot be accessed over HTTPS connections.',
-        'Use a HTTP connection, eg. <a href="http://micropython.org/webrepl/">http://micropython.org/webrepl/</a>.',
-        'Alternatively, download the files from <a href="https://github.com/micropython/webrepl">GitHub</a> and run them locally.'
-      ].join('<br>');
-      document.body.insertBefore(warningDiv, document.body.childNodes[0]);
-      term.resize(term.cols, term.rows - 7);
-    }
-  }
 
   function button_click() {
     if (connected) {

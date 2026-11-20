@@ -375,8 +375,8 @@ document.addEventListener('keydown', e => {
     case 'ArrowLeft':  move(-1); e.preventDefault(); break;
     case 'ArrowRight': move(1);  e.preventDefault(); break;
     case 'ArrowDown':  softDrop(); lastDrop = performance.now(); e.preventDefault(); break;
-    case 'ArrowUp':    rotatePiece(); e.preventDefault(); break;
-    case ' ':          hardDrop(); e.preventDefault(); break;
+    case ' ':    rotatePiece(); e.preventDefault(); break;
+    case 'ArrowDown':          hardDrop(); e.preventDefault(); break;
     case 'c': case 'C': holdPiece(); break;
   }
   draw();

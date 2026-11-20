@@ -635,9 +635,9 @@ document.addEventListener('keydown', e => {
   switch (e.key) {
     case 'ArrowLeft':  movePiece(-1); e.preventDefault(); break;
     case 'ArrowRight': movePiece(1);  e.preventDefault(); break;
-    case 'ArrowDown':  softDrop(); lastDrop = performance.now(); e.preventDefault(); break;
-    case 'ArrowUp':    rotatePiece(); e.preventDefault(); break;
-    case ' ':          hardDrop(); e.preventDefault(); break;
+    case 'ArrowUp':  softDrop(); lastDrop = performance.now(); e.preventDefault(); break;
+    case ' ':    rotatePiece(); e.preventDefault(); break;
+    //case ' ':          hardDrop(); e.preventDefault(); break;
     case 'c': case 'C': holdPiece(); break;
   }
   if (!gameOver) updatePreview();

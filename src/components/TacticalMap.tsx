@@ -1542,27 +1542,27 @@ export default function TacticalMap({
   return (
     <div className="space-y-6">
       
-      <div className="map-command-bar">
-        <details className="game-disclosure"><summary>电脑玩家与重置</summary><div className="game-settings-body">
+      <div className="map-tabs-bar">
+        <nav className="map-tabs" aria-label="地图视图">
+          <Button id="tab-map-svg" aria-pressed={mapTab === 'svg-map'} onClick={() => setMapTab('svg-map')}><Compass size={15} />战略地图</Button>
+          <Button id="tab-map-city-view" aria-pressed={mapTab === 'city-view'} onClick={() => setMapTab('city-view')}><Home size={15} />{selectedCity.name}</Button>
+          <Button id="tab-global-trade" aria-pressed={mapTab === 'global-trade'} onClick={() => { setTradeFaction(originControllerId); setMapTab('global-trade'); }}><Coins size={15} />贸易与债务</Button>
+          {selectedScenario.year === 2026 && (
+            <Button id="tab-map-world-2026" aria-pressed={mapTab === 'world-2026'} onClick={() => setMapTab('world-2026')}>
+              <Globe size={15} />全球局势{pending2026Events.length > 0 ? ` (${pending2026Events.length})` : ''}
+            </Button>
+          )}
+          <Button id="tab-map-disasters" aria-pressed={mapTab === 'disasters'} onClick={() => setMapTab('disasters')}><AlertTriangle size={15} />天灾史变{unresolvedActiveDisasters.length > 0 ? ` (${unresolvedActiveDisasters.length})` : ''}</Button>
+          <Button id="tab-map-war-mode" aria-pressed={mapTab === 'war-mode'} onClick={() => setMapTab('war-mode')}><Sword size={15} />会战</Button>
+        </nav>
+
+        <details className="game-disclosure game-disclosure-popover"><summary>电脑玩家与重置</summary><div className="game-settings-body">
           <Button id="btn-ai-autoplay" onClick={toggleAutoPlay} aria-pressed={autoPlay}>{autoPlay ? '停止 AI 托管' : 'AI 托管'}</Button>
           <Button id="btn-rivals" onClick={toggleRivals} aria-pressed={rivalsOn}>{rivalsOn ? '停止电脑对手' : '电脑对手'}</Button>
           <Button id="btn-reset-map" onClick={handleResetMap}><RefreshCw size={14} />重置地图</Button>
         </div></details>
       </div>
       {(autoPlay || rivalsOn) && <div className="map-activity" aria-live="polite">{autoPlay && <p>{autoStatus}</p>}{rivalsOn && <p>{rivalLogs[0]}</p>}</div>}
-      <nav className="map-tabs" aria-label="地图视图">
-        <Button id="tab-map-svg" aria-pressed={mapTab === 'svg-map'} onClick={() => setMapTab('svg-map')}><Compass size={15} />战略地图</Button>
-        <Button id="tab-map-city-view" aria-pressed={mapTab === 'city-view'} onClick={() => setMapTab('city-view')}><Home size={15} />{selectedCity.name}</Button>
-        <Button id="tab-map-cities" aria-pressed={mapTab === 'cities-all'} onClick={() => setMapTab('cities-all')}><Layers size={15} />城池</Button>
-        <Button id="tab-global-trade" aria-pressed={mapTab === 'global-trade'} onClick={() => { setTradeFaction(originControllerId); setMapTab('global-trade'); }}><Coins size={15} />贸易与债务</Button>
-        {selectedScenario.year === 2026 && (
-          <Button id="tab-map-world-2026" aria-pressed={mapTab === 'world-2026'} onClick={() => setMapTab('world-2026')}>
-            <Globe size={15} />全球局势{pending2026Events.length > 0 ? ` (${pending2026Events.length})` : ''}
-          </Button>
-        )}
-        <Button id="tab-map-disasters" aria-pressed={mapTab === 'disasters'} onClick={() => setMapTab('disasters')}><AlertTriangle size={15} />天灾史变{unresolvedActiveDisasters.length > 0 ? ` (${unresolvedActiveDisasters.length})` : ''}</Button>
-        <Button id="tab-map-war-mode" aria-pressed={mapTab === 'war-mode'} onClick={() => setMapTab('war-mode')}><Sword size={15} />会战</Button>
-      </nav>
 
       {selectedScenario.year === 2026 && pending2026Events.length > 0 && mapTab !== 'world-2026' && (
         <div className="world2026-alert-banner" role="status">
@@ -1616,7 +1616,7 @@ export default function TacticalMap({
           <div className="space-y-2">
             <div className="map-filter-bar">
               <label>战区<select aria-label="战区" value={selectedTheater} onChange={event => setSelectedTheater(event.target.value as AsiaTheater)}>{ASIA_THEATERS.map(th => <option key={th.id} value={th.id}>{th.name} · {th.id === 'all' ? CITIES.length : CITIES.filter(city => city.theater === th.id).length}</option>)}</select></label>
-              <details className="game-disclosure"><summary>地图设置</summary><div className="game-settings-body">
+              <details className="game-disclosure game-disclosure-popover"><summary>地图设置</summary><div className="game-settings-body">
                 <label>天气<select aria-label="天气" value={weatherId} onChange={event => setWeatherId(event.target.value as typeof weatherId)}>{WEATHERS.map(w => <option key={w.id} value={w.id}>{w.icon} {w.nameCn}</option>)}</select></label>
                 <label className="game-check"><input id="toggle-190-border" type="checkbox" checked={show190Border} onChange={event => setShow190Border(event.target.checked)} />汉境国界</label>
                 <label className="game-check"><input id="toggle-trade-routes" type="checkbox" checked={showTradeRoutes} onChange={event => setShowTradeRoutes(event.target.checked)} />丝路航线</label>

@@ -97,6 +97,7 @@ export default function App() {
   const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
   const [selectedScenario, setSelectedScenario] = useState<CampaignScenario>(SCENARIOS[0]);
   const [activeTab, setActiveTab] = useState<'roster' | 'creator' | 'bonds' | 'map' | 'duel' | 'affairs' | 'diplomacy'>('roster');
+  const [advisorOpen, setAdvisorOpen] = useState(true);
   const [playerGold, setPlayerGold] = useState<number>(1500);
   const [diplomacyState, setDiplomacyState] = useState<DiplomacyState>(() => createInitialDiplomacyState(FACTIONS));
 
@@ -1211,174 +1212,121 @@ export default function App() {
     <div className="min-h-screen flex flex-col font-sans selection:bg-amber-500/30 selection:text-amber-200">
       
       <header className="game-header">
-        <div><h1>三国志</h1><span className="trade-muted">{selectedScenario.title}</span></div>
-        <div className="game-header-actions">
-          <span className="trade-muted" role="status">{wsStatus === 'connected' ? '● 已连接' : wsStatus === 'connecting' ? '连接中…' : '离线模式'}</span>
-          {multiplayerEnabled && <span className="trade-muted" role="status">多人联机</span>}
-          <Button
-            id="btn-header-bgm"
-            aria-label={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
-            aria-pressed={bgmEnabled}
-            title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
-            onClick={handleToggleBgm}
-            className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-          >
-            <Music size={15} />
-            <span>{bgmEnabled ? '配乐开' : '配乐关'}</span>
-          </Button>
-          <Button
-            id="btn-header-sfx"
-            aria-label={soundEnabled ? '关闭音效' : '开启音效'}
-            aria-pressed={soundEnabled}
-            title={soundEnabled ? '关闭音效' : '开启音效'}
-            onClick={handleToggleSound}
-            className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-          >
-            {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
-            <span>{soundEnabled ? '音效开' : '音效关'}</span>
-          </Button>
-          <details className="game-disclosure">
-            <summary className="whitespace-nowrap shrink-0">音量</summary>
-            <div className="game-settings-body bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 absolute right-6 top-16 z-50 shadow-xl">
-              <label className="text-xs font-mono text-slate-300">
-                <span>配乐</span>
-                <input
-                  id="slider-bgm-volume"
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={Math.round(bgmVolume * 100)}
-                  onChange={(e) => {
-                    if (unlockAudio()) setAudioUnlocked(true);
-                    setBgmVolume(Number(e.target.value) / 100);
-                  }}
-                  className="w-24 accent-amber-500 cursor-pointer"
-                />
-              </label>
-              <label className="text-xs font-mono text-slate-300">
-                <span>音效</span>
-                <input
-                  id="slider-sfx-volume"
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={Math.round(sfxVolume * 100)}
-                  onChange={(e) => {
-                    if (unlockAudio()) setAudioUnlocked(true);
-                    setSfxVolume(Number(e.target.value) / 100);
-                  }}
-                  className="w-24 accent-amber-500 cursor-pointer"
-                />
-              </label>
-            </div>
-          </details>
-          <Button id="btn-return-start" className="whitespace-nowrap shrink-0" onClick={() => setShowStartMenu(true)}>返回首页</Button>
+        <div className="game-header-inner">
+          <div className="game-header-brand">
+            <span className="game-header-meta">
+              <span>{selectedScenario.title}</span>
+              <span aria-hidden="true">·</span>
+              <span>主公 {officers.find(o => o.id === protagonistId)?.name ?? selectedOfficer.name}</span>
+              <span aria-hidden="true">·</span>
+              <span>库银 {playerGold.toLocaleString()}</span>
+              {multiplayerEnabled && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span role="status">{wsStatus === 'connected' ? '联机已连接' : wsStatus === 'connecting' ? '联机连接中' : '离线模式'}</span>
+                </>
+              )}
+            </span>
+          </div>
+          <div className="game-header-actions">
+            <Button
+              id="btn-toggle-advisor-rail"
+              aria-pressed={advisorOpen}
+              title={advisorOpen ? '收起军师参谋栏' : '展开军师参谋栏'}
+              onClick={() => {
+                if (soundEnabled) playClickSound();
+                setAdvisorOpen(prev => !prev);
+              }}
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                advisorOpen ? 'border-amber-500/50 text-amber-300' : ''
+              }`}
+            >
+              <Compass size={15} />
+              <span className="header-btn-label">军师幕府</span>
+            </Button>
+            <Button
+              id="btn-header-bgm"
+              aria-label={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
+              aria-pressed={bgmEnabled}
+              title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
+              onClick={handleToggleBgm}
+              className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+            >
+              <Music size={15} />
+              <span className="header-btn-label">{bgmEnabled ? '配乐开' : '配乐关'}</span>
+            </Button>
+            <Button
+              id="btn-header-sfx"
+              aria-label={soundEnabled ? '关闭音效' : '开启音效'}
+              aria-pressed={soundEnabled}
+              title={soundEnabled ? '关闭音效' : '开启音效'}
+              onClick={handleToggleSound}
+              className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+            >
+              {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+              <span className="header-btn-label">{soundEnabled ? '音效开' : '音效关'}</span>
+            </Button>
+            <details className="game-disclosure game-disclosure-popover">
+              <summary className="whitespace-nowrap shrink-0">音量</summary>
+              <div className="game-settings-body">
+                <label className="text-xs font-mono text-slate-300">
+                  <span>配乐</span>
+                  <input
+                    id="slider-bgm-volume"
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={Math.round(bgmVolume * 100)}
+                    onChange={(e) => {
+                      if (unlockAudio()) setAudioUnlocked(true);
+                      setBgmVolume(Number(e.target.value) / 100);
+                    }}
+                    className="w-24 accent-amber-500 cursor-pointer"
+                  />
+                </label>
+                <label className="text-xs font-mono text-slate-300">
+                  <span>音效</span>
+                  <input
+                    id="slider-sfx-volume"
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={Math.round(sfxVolume * 100)}
+                    onChange={(e) => {
+                      if (unlockAudio()) setAudioUnlocked(true);
+                      setSfxVolume(Number(e.target.value) / 100);
+                    }}
+                    className="w-24 accent-amber-500 cursor-pointer"
+                  />
+                </label>
+              </div>
+            </details>
+            <Button id="btn-return-start" className="whitespace-nowrap shrink-0" onClick={() => setShowStartMenu(true)}>返回首页</Button>
+          </div>
         </div>
       </header>
 
-      {/* Main Workspace Grid Router (Roster / Creator / Relationships Simulator) */}
+      {/* Main Workspace Router */}
       <main className="game-workspace">
+        <GameNavigation
+          activeTab={activeTab}
+          onSelect={(tab) => { if (soundEnabled) playClickSound(); setActiveTab(tab); }}
+          year={gameYear}
+          month={gameMonth}
+          xun={gameXun}
+          seasonId={currentSeason.id}
+          weatherId={weatherId}
+          playing={isAutoTime}
+          onToggleTime={() => setIsAutoTime(!isAutoTime)}
+          speed={timeSpeed}
+          onSpeed={setTimeSpeed}
+          onStep={handleAdvanceXun}
+          onMonth={handleAdvanceMonth}
+        />
 
-        {/* Left Section (Column span 8): Primary action and selection board */}
+        <div className={`game-workspace-body ${advisorOpen ? 'has-advisor' : ''}`}>
+        {/* Primary Canvas */}
         <section className="game-primary">
-
-          <GameNavigation activeTab={activeTab} onSelect={(tab) => { if (soundEnabled) playClickSound(); setActiveTab(tab); }} year={gameYear} month={gameMonth} xun={gameXun} seasonId={currentSeason.id} weatherId={weatherId} playing={isAutoTime} onToggleTime={() => setIsAutoTime(!isAutoTime)} speed={timeSpeed} onSpeed={setTimeSpeed} onStep={handleAdvanceXun} onMonth={handleAdvanceMonth} />
-
-        {/* Right Section (Column span 4): Selected Officer Core and Strategy Advisor Council */}
-        <details className="game-disclosure game-advisor"><summary><AvatarRenderer style={selectedOfficer.avatarStyle} size={40} /><span>{selectedOfficer.name} · 军师建议</span></summary><section className="flex flex-col gap-6 pt-4">
-          
-          {/* Selected Officer Spotlight focus */}
-          <div className="bg-slate-950 p-5 rounded-2xl border border-slate-900">
-            <span className="text-xs font-mono font-bold uppercase tracking-widest text-slate-400 block mb-4">当前聚焦群雄真容</span>
-            
-            <div className="flex items-center gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-900">
-              <AvatarRenderer style={selectedOfficer.avatarStyle} size={84} />
-              
-              <div>
-                <h3 className="font-serif text-lg font-bold text-slate-100 leading-snug">
-                  {selectedOfficer.name}
-                </h3>
-                {selectedOfficer.styleName && (
-                  <span className="text-xs text-slate-400 font-mono">&#12298;{selectedOfficer.styleName}&#12299;</span>
-                )}
-                
-                <p className="text-[11px] text-slate-400 mt-1">
-                  活跃于 <strong className="text-amber-500 font-mono font-semibold">{selectedScenario.year} 年【{selectedScenario.title}】</strong>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick FAQ info block */}
-          <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-900 text-xs text-slate-400 space-y-1.5 leading-relaxed font-mono">
-            <div className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1">
-              <HelpCircle size={12} className="text-amber-500" />
-              <span>三国志 辅助器军机要策 FAQ</span>
-            </div>
-            <p className="text-[11px]">✦ 五维属性加权：【统帅】极大地主导兵力规模上限与阵前基础城防抵抗；【智力】能看破大雾陷阱并识破诸葛亮之流的离间诡计；【武力】则对个人白刃伤害与阵前斩首胜率有极其重要的抵抗。</p>
-            <p className="text-[11px]">✦ 人脉羁绊：武将间若处于“金兰结义”或“金玉良缘”等至交情谊，两军在沙盘天盘中产生战技合力共鸣的连击概率会飙涨。</p>
-          </div>
-          
-          {/* Core Grand Advisory Chamber */}
-          <div className="bg-slate-950 rounded-2xl border border-slate-900 overflow-hidden flex flex-col">
-            
-            {/* Advisor Cover Image header with beautiful deep gradient styling */}
-            <div className="p-5 bg-gradient-to-r from-emerald-950 to-indigo-950 border-b border-slate-900 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-full border border-teal-500/30 flex items-center justify-center bg-teal-950 overflow-hidden">
-                  <span className="text-base">🪶</span>
-                </div>
-                <div>
-                  <h3 className="text-sm font-serif font-black uppercase text-teal-300 tracking-wider">中军帐军机处</h3>
-                  <p className="text-[10px] text-slate-400 font-mono">卧龙孔明大军师专属 AI</p>
-                </div>
-              </div>
-
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" title="War Council Ready"></span>
-            </div>
-
-            <div className="p-5 flex-1 flex flex-col justify-between gap-5 min-h-[350px]">
-              
-              {/* Dynamic briefing output */}
-              <div className="flex-1 bg-slate-950/80 rounded-xl p-4 border border-slate-900 max-h-[450px] overflow-y-auto">
-                {isConsultingAdvisor ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-                    <RefreshCw size={24} className="text-amber-400 animate-spin" />
-                    <div>
-                      <p className="text-xs text-slate-300 font-mono font-medium">诸葛孔明正夜观星象、调兵遣将中...</p>
-                      <p className="text-[10px] text-slate-500 mt-1 italic font-sans">&quot;为将者，当知天文，识地理，晓阴阳，明八卦，知兵势。&quot;</p>
-                    </div>
-                  </div>
-                ) : advisorBrief ? (
-                  <div className="prose prose-invert prose-xs">
-                    {renderAdviceMarkdown(advisorBrief)}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-slate-500">
-                    <MessageCircle size={32} className="text-slate-705 mb-2.5 text-slate-700" />
-                    <p className="text-xs font-medium text-slate-400">中军帐军机处目前一片肃静。</p>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                      请点击下方【请大军师为当前名将亲授锦囊】。军师将针对 {selectedOfficer.name} 及其在 【{selectedScenario.title}】 时期的宿命局势，为您研判推演宏图战略。
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Strategy Invoke Button */}
-              <button
-                id="btn-evaluate-strategy-brief"
-                onClick={handleConsultWarCouncil}
-                disabled={isConsultingAdvisor}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-widest transition duration-300 shadow-md flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-              >
-                <Compass size={14} className={isConsultingAdvisor ? 'animate-spin' : ''} />
-                {isConsultingAdvisor ? '锦囊研判修纂中...' : `请大军师为 ${selectedOfficer.name} 亲授妙计`}
-              </button>
-
-            </div>
-
-          </div>
-        </section></details>
 
           {/* Tab 1: Officer Roster */}
           {activeTab === 'roster' && (
@@ -1405,7 +1353,7 @@ export default function App() {
                             if (!isGlobalFaction) setFactionFilter('all');
                           }
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all inline-flex items-center gap-1.5 border cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all inline-flex items-center gap-1.5 border cursor-pointer whitespace-nowrap shrink-0 ${
                           categoryFilter === cat.id
                             ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/60 shadow-sm'
                             : 'bg-slate-950/60 text-slate-400 border-slate-800/80 hover:text-slate-200 hover:border-slate-700'
@@ -1413,34 +1361,47 @@ export default function App() {
                       >
                         <span>{cat.icon}</span>
                         <span>{cat.label}</span>
-                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${categoryFilter === cat.id ? 'bg-amber-500/30 text-amber-200' : 'bg-slate-800 text-slate-400'}`}>
-                          {cat.count}
+                        <span className="text-[11px] font-mono opacity-80 tabular-nums">
+                          · {cat.count}
                         </span>
                       </button>
                     ))}
                   </div>
 
-                  <div className="text-xs text-slate-400 font-mono">
-                    已入册豪杰: <strong className="text-amber-400">{filteredOfficers.length}</strong> / {officers.length} 位
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs text-slate-400 font-mono tabular-nums">
+                      已入册豪杰: <strong className="text-amber-400">{filteredOfficers.length}</strong> / {officers.length} 位
+                    </div>
+                    <Button
+                      id="btn-open-creator-from-roster"
+                      onClick={() => {
+                        if (soundEnabled) playClickSound();
+                        setActiveTab('creator');
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs whitespace-nowrap shrink-0"
+                    >
+                      <UserPlus size={14} />
+                      <span>自创武将</span>
+                    </Button>
                   </div>
                 </div>
 
                 {/* Search and Faction Filter row */}
-                <div className="flex flex-col md:flex-row gap-3 justify-between items-center">
-                  <div className="relative w-full md:w-80">
-                    <Search size={14} className="absolute left-3 top-3.5 text-slate-500" />
+                <div className="flex flex-col lg:flex-row gap-3 justify-between items-stretch lg:items-center">
+                  <div className="relative w-full lg:w-72 shrink-0">
+                    <Search size={14} className="absolute left-3 top-3 text-slate-500" />
                     <input
                       id="search-officers"
                       type="text"
-                      placeholder="搜姓名、号/字、西文名、国家领地、特质或列传..."
+                      placeholder="搜姓名、号/字、国家领地、特质..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl pl-9 pr-8 py-2.5 text-xs focus:outline-none focus:border-slate-700 transition-colors"
+                      className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl pl-9 pr-8 py-2 text-xs focus:outline-none focus:border-slate-700 transition-colors"
                     />
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery('')}
-                        className="absolute right-2.5 top-3 text-slate-500 hover:text-slate-300 text-xs font-mono"
+                        className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300 text-xs font-mono cursor-pointer"
                         title="清空搜索"
                       >
                         ✕
@@ -1448,11 +1409,11 @@ export default function App() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-                    <span className="text-slate-400 text-xs font-mono shrink-0 flex items-center gap-1">
+                  <div className="flex items-start lg:items-center gap-2 flex-wrap">
+                    <span className="text-slate-400 text-xs font-mono shrink-0 flex items-center gap-1 py-1">
                       <Filter size={12} /> 所属阵营:
                     </span>
-                    <div className="flex gap-1">
+                    <div className="flex flex-wrap gap-1">
                       {[
                         { id: 'all', name: '不限阵营' },
                         ...FACTIONS
@@ -1461,7 +1422,7 @@ export default function App() {
                           id={`btn-faction-filter-${f.id}`}
                           key={f.id}
                           onClick={() => setFactionFilter(f.id)}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all border shrink-0 flex items-center gap-1 cursor-pointer ${
+                          className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all border shrink-0 flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                             factionFilter === f.id 
                               ? 'bg-slate-800 text-slate-100 border-amber-500/50 shadow-sm' 
                               : 'bg-slate-950/40 text-slate-400 border-transparent hover:border-slate-800 hover:text-slate-300'
@@ -1539,18 +1500,18 @@ export default function App() {
           {activeTab === 'creator' && (
             <form onSubmit={handleCreateOfficer} className="bg-slate-950 rounded-2xl border border-slate-900 p-6 flex flex-col gap-6">
               
-              <div className="flex justify-between items-center border-b border-slate-900 pb-4">
+              <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-900 pb-4">
                 <div>
                   <h2 className="text-lg font-serif font-bold text-slate-200 uppercase tracking-wider">自立群雄名将幕府</h2>
                   <p className="text-xs text-slate-400 font-mono mt-0.5">对属性进行完全自定义、一键套用经典模板，并实时预览武将画像。</p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     id="btn-template-warrior"
                     type="button"
                     onClick={() => applyTemplate('warrior')}
-                    className="px-2.5 py-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono text-slate-300 rounded transition-colors"
+                    className="px-2.5 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-mono text-slate-300 rounded cursor-pointer whitespace-nowrap"
                   >
                     ⚔️ 悍勇猛将
                   </button>
@@ -1558,7 +1519,7 @@ export default function App() {
                     id="btn-template-tactician"
                     type="button"
                     onClick={() => applyTemplate('tactician')}
-                    className="px-2.5 py-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono text-slate-300 rounded transition-colors"
+                    className="px-2.5 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-mono text-slate-300 rounded cursor-pointer whitespace-nowrap"
                   >
                     🎓 治世谋臣
                   </button>
@@ -1566,10 +1527,17 @@ export default function App() {
                     id="btn-template-monarch"
                     type="button"
                     onClick={() => applyTemplate('monarch')}
-                    className="px-2.5 py-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono text-slate-300 rounded transition-colors"
+                    className="px-2.5 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-mono text-slate-300 rounded cursor-pointer whitespace-nowrap"
                   >
                     👑 仁德英豪
                   </button>
+                  <Button
+                    id="btn-back-to-roster"
+                    onClick={() => setActiveTab('roster')}
+                    className="text-xs whitespace-nowrap shrink-0"
+                  >
+                    返回武将
+                  </Button>
                 </div>
               </div>
 
@@ -2072,6 +2040,108 @@ export default function App() {
             })()}
           </div>
         </section>
+
+        {/* Right Strategic Advisor Rail (Sticky on desktop, collapsible via header toggle) */}
+        {advisorOpen && (
+          <aside className="game-advisor-rail" aria-label="军师参谋栏">
+            {/* Section 1: Selected Officer Spotlight */}
+            <div className="p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-mono font-semibold text-slate-400">当前聚焦武将</span>
+                <button
+                  type="button"
+                  onClick={() => setAdvisorOpen(false)}
+                  className="text-xs font-mono text-slate-400 hover:text-slate-200 cursor-pointer"
+                  aria-label="收起军师栏"
+                >
+                  收起
+                </button>
+              </div>
+              <div className="flex items-center gap-3.5">
+                <AvatarRenderer style={selectedOfficer.avatarStyle} size={64} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-1.5 flex-wrap">
+                    <h3 className="font-serif text-base font-bold text-slate-100 leading-snug">
+                      {selectedOfficer.name}
+                    </h3>
+                    {selectedOfficer.styleName && (
+                      <span className="text-xs text-slate-400 font-mono">字{selectedOfficer.styleName}</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5 truncate">
+                    {FACTIONS.find(f => f.id === selectedOfficer.factionId)?.name ?? selectedOfficer.factionId} · {selectedScenario.year} 年
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-5 gap-1.5 pt-2 border-t border-slate-800/70 text-center font-mono text-[11px] tabular-nums">
+                <div><span className="text-slate-500 block">统</span><strong className="text-teal-400">{selectedOfficer.stats.leadership}</strong></div>
+                <div><span className="text-slate-500 block">武</span><strong className="text-amber-400">{selectedOfficer.stats.force}</strong></div>
+                <div><span className="text-slate-500 block">智</span><strong className="text-sky-400">{selectedOfficer.stats.intelligence}</strong></div>
+                <div><span className="text-slate-500 block">政</span><strong className="text-emerald-400">{selectedOfficer.stats.politics}</strong></div>
+                <div><span className="text-slate-500 block">魅</span><strong className="text-rose-300">{selectedOfficer.stats.charisma}</strong></div>
+              </div>
+            </div>
+
+            {/* Section 2: Grand Advisory Chamber */}
+            <div className="p-4 border-t border-slate-800/80 flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-full border border-teal-500/30 flex items-center justify-center bg-teal-950/60 text-sm shrink-0">🪶</span>
+                  <div>
+                    <h3 className="text-sm font-serif font-bold text-teal-300 leading-tight">中军帐军机处</h3>
+                    <p className="text-[11px] text-slate-400 font-mono">卧龙孔明参谋简报</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/80 rounded-xl p-3.5 border border-slate-800/80 min-h-[170px] max-h-[340px] overflow-y-auto">
+                {isConsultingAdvisor ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center gap-2.5">
+                    <RefreshCw size={20} className="text-amber-400 animate-spin" />
+                    <p className="text-xs text-slate-300 font-mono">诸葛孔明正夜观星象、研判军机...</p>
+                  </div>
+                ) : advisorBrief ? (
+                  <div className="prose prose-invert prose-xs">
+                    {renderAdviceMarkdown(advisorBrief)}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center text-slate-500 gap-2">
+                    <MessageCircle size={24} className="text-slate-700" />
+                    <p className="text-xs font-medium text-slate-400">中军帐军机处待命中</p>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      点击下方按钮，军师将针对 {selectedOfficer.name} 与【{selectedScenario.title}】局势推演战略锦囊。
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <button
+                id="btn-evaluate-strategy-brief"
+                onClick={handleConsultWarCouncil}
+                disabled={isConsultingAdvisor}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs tracking-wider transition duration-200 shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                <Compass size={14} className={isConsultingAdvisor ? 'animate-spin' : ''} />
+                {isConsultingAdvisor ? '锦囊研判修纂中...' : `请大军师为 ${selectedOfficer.name} 授计`}
+              </button>
+            </div>
+
+            {/* Section 3: Collapsible Strategy Notes */}
+            <details className="game-disclosure game-advisor">
+              <summary>
+                <span className="inline-flex items-center gap-1.5 text-slate-300 font-mono">
+                  <HelpCircle size={13} className="text-amber-500" />
+                  <span>五维属性与羁绊说明</span>
+                </span>
+              </summary>
+              <div className="px-4 pb-4 text-[11px] text-slate-400 space-y-1.5 leading-relaxed font-mono">
+                <p>✦ 统帅主导兵力规模上限与城防抵抗；智力决定火计/奇谋命中与反制；武力主导白刃杀伤与单挑胜率。</p>
+                <p>✦ 武将若处于结义或良缘等至交羁绊，同阵作战时战技合力连击率将明显提升。</p>
+              </div>
+            </details>
+          </aside>
+        )}
+        </div>
 
       </main>
       

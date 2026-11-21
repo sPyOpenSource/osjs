@@ -198,34 +198,51 @@ body {
 }
 body { background: hsl(var(--game-background)); }
 .game-header, .game-workspace, .start-content, .game-footer { color: hsl(var(--game-text)); }
-.game-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; border-bottom: 1px solid hsl(var(--game-border)); }
-.game-header h1 { font-size: 24px; font-family: var(--font-serif); font-weight: 700; }
-.game-header-actions { display: flex; gap: 16px; align-items: center; }
-.game-workspace { width: 100%; max-width: 1440px; margin: auto; padding: 24px; flex: 1; }
-.game-primary { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
-.game-navigation { border-bottom: 1px solid hsl(var(--game-border)); padding-bottom: 14px; }
-.game-tabs, .map-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.game-tabs .trade-button, .map-tabs .trade-button, .game-settings-body .trade-button, .start-secondary .trade-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; }
-.game-tabs .trade-button { flex: 1; }
-.game-tabs .trade-button[aria-pressed="true"], .start-play { background: hsl(var(--game-accent)); color: hsl(var(--game-background)); border-color: hsl(var(--game-accent)); }
-.game-time { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 12px; font-size: 13px; color: hsl(var(--game-muted)); }
-.game-time > .trade-button { padding: 8px; }
-.game-disclosure { min-width: 0; font-size: 13px; color: hsl(var(--game-muted)); }
-.game-disclosure > summary { cursor: pointer; padding: 10px 0; width: fit-content; min-height: 40px; }
-.game-disclosure > summary:focus-visible { outline: 2px solid hsl(var(--game-accent)); outline-offset: 3px; }
-.game-settings-body { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 0; }
+.game-header { border-bottom: 1px solid hsl(var(--game-border)); background: rgba(15, 23, 42, 0.72); backdrop-filter: blur(8px); }
+.game-header-inner { width: 100%; max-width: 1440px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; }
+.game-header-brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex-wrap: wrap; }
+.game-header h1 { font-size: 22px; font-family: var(--font-serif); font-weight: 700; white-space: nowrap; }
+.game-header-meta { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: hsl(var(--game-muted)); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.game-header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.game-workspace { width: 100%; max-width: 1440px; margin: 0 auto; padding: 16px 24px 28px; flex: 1; display: flex; flex-direction: column; gap: 18px; }
+.game-workspace-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (min-width: 1200px) {
+  .game-workspace-body.has-advisor { grid-template-columns: minmax(0, 1fr) 336px; }
+}
+.game-primary { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.game-navigation { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid hsl(var(--game-border)); padding-bottom: 12px; }
+.game-tabs { display: flex; flex-wrap: wrap; gap: 4px; background: hsl(var(--game-surface)); padding: 4px; border-radius: 10px; border: 1px solid hsl(var(--game-border)); }
+.map-tabs-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid hsl(var(--game-border)); padding-bottom: 12px; }
+.map-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.game-tabs .trade-button, .map-tabs .trade-button, .game-settings-body .trade-button, .start-secondary .trade-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; white-space: nowrap; }
+.game-tabs .trade-button { border-color: transparent; background: transparent; padding: 7px 13px; font-size: 13px; border-radius: 7px; }
+.game-tabs .trade-button:hover { background: rgba(255, 255, 255, 0.05); }
+.game-tabs .trade-button[aria-pressed="true"], .start-play { background: hsl(var(--game-accent)); color: hsl(var(--game-background)); border-color: hsl(var(--game-accent)); font-weight: 700; }
+.game-time { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12.5px; color: hsl(var(--game-muted)); font-variant-numeric: tabular-nums; }
+.game-time-date { font-family: var(--font-mono); color: hsl(var(--game-text)); font-weight: 600; white-space: nowrap; }
+.game-time-controls { display: inline-flex; align-items: center; gap: 6px; }
+.game-time-controls > .trade-button { padding: 6px 10px; min-height: 36px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.game-disclosure { min-width: 0; font-size: 13px; color: hsl(var(--game-muted)); position: relative; }
+.game-disclosure > summary { cursor: pointer; padding: 8px 10px; width: fit-content; min-height: 36px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; white-space: nowrap; user-select: none; }
+.game-disclosure > summary:hover { color: hsl(var(--game-text)); }
+.game-disclosure > summary:focus-visible { outline: 2px solid hsl(var(--game-accent)); outline-offset: 2px; }
+.game-disclosure-popover > .game-settings-body { position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; background: #0f172a; border: 1px solid hsl(var(--game-border)); border-radius: 10px; padding: 12px 14px; box-shadow: 0 14px 32px rgba(0, 0, 0, 0.55); width: max-content; max-width: min(90vw, 440px); }
+.game-settings-body { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 10px 0; }
 .game-settings-body label, .map-filter-bar label { display: flex; align-items: center; gap: 8px; }
-.game-settings-body select, .map-filter-bar select { background: hsl(var(--game-surface)); color: hsl(var(--game-text)); border: 1px solid hsl(var(--game-border)); padding: 9px; border-radius: 6px; max-width: 100%; }
+.game-settings-body select, .map-filter-bar select { background: hsl(var(--game-surface)); color: hsl(var(--game-text)); border: 1px solid hsl(var(--game-border)); padding: 8px 10px; border-radius: 6px; max-width: 100%; }
 .game-check input { accent-color: hsl(var(--game-accent)); width: 16px; height: 16px; }
 .map-command-bar { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .map-command-bar h2 { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; padding-top: 10px; }
 .map-activity { color: hsl(var(--game-success)); font-size: 12px; }
-.map-tabs { border-bottom: 1px solid hsl(var(--game-border)); padding-bottom: 12px; }
-.map-filter-bar { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 13px; }
+.map-filter-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 13px; }
 .map-filter-bar > .game-disclosure { max-width: 100%; }
-.game-advisor { border-top: 1px solid hsl(var(--game-border)); margin-top: 24px; }
-.game-advisor > summary { display: flex; align-items: center; gap: 10px; }
-.game-advisor > summary::after { content: '+'; margin-left: 12px; }
+.game-advisor-rail { background: #0b111e; border: 1px solid hsl(var(--game-border)); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+@media (min-width: 1200px) {
+  .game-advisor-rail { position: sticky; top: 16px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+}
+.game-advisor { border-top: 1px solid hsl(var(--game-border)); }
+.game-advisor > summary { display: flex; align-items: center; gap: 8px; width: 100%; justify-content: space-between; padding: 12px 16px; font-size: 12px; }
+.game-advisor > summary::after { content: '+'; font-family: var(--font-mono); }
 .game-advisor[open] > summary::after { content: '−'; }
 .game-footer { text-align: center; padding: 20px; font-size: 12px; color: hsl(var(--game-muted)); }
 .game-start { min-height: 100dvh; display: flex; flex-direction: column; }
@@ -246,14 +263,15 @@ body { background: hsl(var(--game-background)); }
 .start-portraits { display: flex; justify-content: center; flex-wrap: wrap; gap: 16px; padding-top: 20px; border-top: 1px solid hsl(var(--game-border)); }
 .start-portraits .trade-button { display: flex; flex-direction: column; gap: 8px; align-items: center; background: none; border: 0; padding: 0; }
 @media (max-width: 760px) {
-  .game-header { padding: 14px 16px; }
-  .game-header-actions { gap: 8px; }
-  .game-header-actions > span { display: none; }
-  .game-workspace { padding: 16px 12px; }
-  .game-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .map-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .map-tabs .trade-button { padding: 9px 6px; }
-  .map-command-bar h2 { font-size: 14px; }
+  .game-header-inner { padding: 10px 14px; gap: 8px; }
+  .game-header-meta { display: none; }
+  .game-header-actions { gap: 6px; }
+  .game-header-actions .header-btn-label { display: none; }
+  .game-workspace { padding: 14px 12px 24px; gap: 14px; }
+  .game-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .map-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .map-tabs .trade-button { padding: 8px 6px; font-size: 12px; }
+  .game-disclosure-popover > .game-settings-body { right: auto; left: 0; }
   .start-content { padding: 24px 16px; }
   .start-scenarios { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .start-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }

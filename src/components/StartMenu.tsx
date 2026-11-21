@@ -72,7 +72,6 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
 
   return <div className="game-start">
     <header className="game-header">
-      <h1>三国志</h1>
       <div className="game-header-actions">
         {onToggleBgm && (
           <Button

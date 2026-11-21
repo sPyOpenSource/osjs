@@ -1281,7 +1281,17 @@ export default function App() {
         
         {/* Left Section (Column span 8): Primary action and selection board */}
         <section className="game-primary">
-          
+          {/* Strategy Invoke Button */}
+              <button
+                id="btn-evaluate-strategy-brief"
+                onClick={handleConsultWarCouncil}
+                disabled={isConsultingAdvisor}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-widest transition duration-300 shadow-md flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                <Compass size={14} className={isConsultingAdvisor ? 'animate-spin' : ''} />
+                {isConsultingAdvisor ? '锦囊研判修纂中...' : `请大军师为 ${selectedOfficer.name} 亲授妙计`}
+              </button>
+              
           <GameNavigation activeTab={activeTab} onSelect={(tab) => { if (soundEnabled) playClickSound(); setActiveTab(tab); }} year={gameYear} month={gameMonth} xun={gameXun} seasonId={currentSeason.id} weatherId={weatherId} playing={isAutoTime} onToggleTime={() => setIsAutoTime(!isAutoTime)} speed={timeSpeed} onSpeed={setTimeSpeed} onStep={handleAdvanceXun} onMonth={handleAdvanceMonth} />
 
           {/* Tab 1: Officer Roster */}
@@ -2047,17 +2057,6 @@ export default function App() {
                   </div>
                 )}
               </div>
-
-              {/* Strategy Invoke Button */}
-              <button
-                id="btn-evaluate-strategy-brief"
-                onClick={handleConsultWarCouncil}
-                disabled={isConsultingAdvisor}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-widest transition duration-300 shadow-md flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-              >
-                <Compass size={14} className={isConsultingAdvisor ? 'animate-spin' : ''} />
-                {isConsultingAdvisor ? '锦囊研判修纂中...' : `请大军师为 ${selectedOfficer.name} 亲授妙计`}
-              </button>
 
             </div>
 

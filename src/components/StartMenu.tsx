@@ -4,7 +4,7 @@ import { FAMOUS_OFFICERS, FACTIONS } from '../data';
 import { getCandidateOfficers } from '../utils/party';
 import AvatarRenderer from './AvatarRenderer';
 import Button from './Button';
-import { Play, Volume2, VolumeX, Users, Building2, UserPlus, Heart } from 'lucide-react';
+import { Play, Volume2, VolumeX, Music, Users, Building2, UserPlus, Heart } from 'lucide-react';
 
 interface StartMenuProps {
   scenarios: CampaignScenario[];
@@ -13,6 +13,8 @@ interface StartMenuProps {
   onEnterApp: (tab: 'roster' | 'creator' | 'bonds' | 'map' | 'affairs') => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  bgmEnabled?: boolean;
+  onToggleBgm?: () => void;
   multiplayerEnabled?: boolean;
   onMultiplayerChange?: (enabled: boolean) => void;
   playerFactions?: string[];
@@ -21,7 +23,7 @@ interface StartMenuProps {
   onProtagonistChange?: (id: string) => void;
 }
 
-export default function StartMenu({ scenarios, selectedScenario, onSelectScenario, onEnterApp, soundEnabled, onToggleSound, multiplayerEnabled = false, onMultiplayerChange, playerFactions, onPlayerFactionsChange, protagonistId, onProtagonistChange }: StartMenuProps) {
+export default function StartMenu({ scenarios, selectedScenario, onSelectScenario, onEnterApp, soundEnabled, onToggleSound, bgmEnabled = true, onToggleBgm, multiplayerEnabled = false, onMultiplayerChange, playerFactions, onPlayerFactionsChange, protagonistId, onProtagonistChange }: StartMenuProps) {
   const [showCredits, setShowCredits] = useState(false);
   const [localMultiplayer, setLocalMultiplayer] = useState(multiplayerEnabled);
   const isMultiplayer = onMultiplayerChange ? multiplayerEnabled : localMultiplayer;
@@ -69,7 +71,35 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
   }, [selectedScenario]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <div className="game-start">
-    <header className="game-header"><h1>三国志</h1><Button id="btn-sound-toggle" aria-label={soundEnabled ? '关闭音效' : '开启音效'} title={soundEnabled ? '关闭音效' : '开启音效'} onClick={onToggleSound}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</Button></header>
+    <header className="game-header">
+      <h1>三国志</h1>
+      <div className="game-header-actions">
+        {onToggleBgm && (
+          <Button
+            id="btn-bgm-toggle"
+            aria-label={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
+            aria-pressed={bgmEnabled}
+            title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
+            onClick={onToggleBgm}
+            className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+          >
+            <Music size={16} />
+            <span>{bgmEnabled ? '配乐开' : '配乐关'}</span>
+          </Button>
+        )}
+        <Button
+          id="btn-sound-toggle"
+          aria-label={soundEnabled ? '关闭音效' : '开启音效'}
+          aria-pressed={soundEnabled}
+          title={soundEnabled ? '关闭音效' : '开启音效'}
+          onClick={onToggleSound}
+          className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+        >
+          {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          <span>{soundEnabled ? '音效开' : '音效关'}</span>
+        </Button>
+      </div>
+    </header>
     <main className="start-content">
       <div className="start-title"><span className="trade-muted">战役</span><h2>选择剧本</h2></div>
       <div className="start-scenarios">{scenarios.map(scenario => <Button id={`start-sc-${scenario.id}`} key={scenario.id} className="start-scenario" aria-pressed={scenario.id === selectedScenario.id} onClick={() => onSelectScenario(scenario)}><span className="start-year">{scenario.year}</span><strong>{scenario.title.split('：').pop()}</strong><span className="trade-muted">{scenario.difficulty === 'Easy' ? '简单' : scenario.difficulty === 'Medium' ? '普通' : '困难'}</span></Button>)}</div>

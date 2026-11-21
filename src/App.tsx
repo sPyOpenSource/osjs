@@ -29,7 +29,20 @@ import {
   applySeasonalOfficerModifiers,
   SeasonalWeatherId,
 } from './utils/seasons';
-import { playClashSound, playDrumSound, playHarvestSound } from './utils/audio';
+import {
+  playClashSound,
+  playDrumSound,
+  playHarvestSound,
+  playClickSound,
+  unlockAudio,
+  syncBgm,
+  stopBgm,
+  setSfxEnabled as syncSfxEnabled,
+  setBgmEnabled as syncBgmEnabled,
+  setSfxVolume as syncSfxVolume,
+  setBgmVolume as syncBgmVolume,
+  getBgmTrackForContext,
+} from './utils/audio';
 import { 
   Shield, 
   Swords, 
@@ -56,7 +69,10 @@ import {
   Clock,
   Play,
   Pause,
-  Calendar
+  Calendar,
+  Volume2,
+  VolumeX,
+  Music
 } from 'lucide-react';
 
 export default function App() {
@@ -71,13 +87,81 @@ export default function App() {
   const [rpgLog, setRpgLog] = useState<string[]>([]);
   const [questStates, setQuestStates] = useState<QuestState[]>(INITIAL_QUEST_STATES);
   const [partyEquipment, setPartyEquipment] = useState<Record<string, Equipment[]>>({});
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [bgmEnabled, setBgmEnabled] = useState(true);
+  const [sfxVolume, setSfxVolume] = useState(0.75);
+  const [bgmVolume, setBgmVolume] = useState(0.42);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [inSiegeBattle, setInSiegeBattle] = useState(false);
   const [officers, setOfficers] = useState<Officer[]>(FAMOUS_OFFICERS);
   const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
   const [selectedScenario, setSelectedScenario] = useState<CampaignScenario>(SCENARIOS[0]);
   const [activeTab, setActiveTab] = useState<'roster' | 'creator' | 'bonds' | 'map' | 'duel' | 'affairs' | 'diplomacy'>('roster');
   const [playerGold, setPlayerGold] = useState<number>(1500);
   const [diplomacyState, setDiplomacyState] = useState<DiplomacyState>(() => createInitialDiplomacyState(FACTIONS));
+
+  // Unlock browser Web Audio on first user interaction
+  useEffect(() => {
+    if (audioUnlocked) return;
+    const handleFirstGesture = () => {
+      if (unlockAudio()) {
+        setAudioUnlocked(true);
+      }
+    };
+    window.addEventListener('pointerdown', handleFirstGesture, { passive: true });
+    window.addEventListener('keydown', handleFirstGesture, { passive: true });
+    return () => {
+      window.removeEventListener('pointerdown', handleFirstGesture);
+      window.removeEventListener('keydown', handleFirstGesture);
+    };
+  }, [audioUnlocked]);
+
+  // Synchronize SFX & BGM gain buses and active BGM theme
+  useEffect(() => {
+    syncSfxEnabled(soundEnabled);
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    syncSfxVolume(sfxVolume);
+  }, [sfxVolume]);
+
+  useEffect(() => {
+    syncBgmEnabled(bgmEnabled);
+  }, [bgmEnabled]);
+
+  useEffect(() => {
+    syncBgmVolume(bgmVolume);
+  }, [bgmVolume]);
+
+  useEffect(() => {
+    const track = getBgmTrackForContext({
+      showStartMenu,
+      activeTab,
+      inSiegeBattle: activeTab === 'map' && inSiegeBattle,
+    });
+    syncBgm(bgmEnabled && audioUnlocked, track);
+  }, [bgmEnabled, audioUnlocked, showStartMenu, activeTab, inSiegeBattle]);
+
+  useEffect(() => {
+    return () => {
+      stopBgm();
+    };
+  }, []);
+
+  const handleToggleSound = useCallback(() => {
+    if (unlockAudio()) setAudioUnlocked(true);
+    setSoundEnabled(prev => {
+      const next = !prev;
+      syncSfxEnabled(next);
+      if (next) playClickSound();
+      return next;
+    });
+  }, []);
+
+  const handleToggleBgm = useCallback(() => {
+    if (unlockAudio()) setAudioUnlocked(true);
+    setBgmEnabled(prev => !prev);
+  }, []);
 
   // Global Background Time State
   const [gameYear, setGameYear] = useState<number>(() => SCENARIOS[0].year);
@@ -1104,11 +1188,15 @@ export default function App() {
         selectedScenario={selectedScenario}
         onSelectScenario={(sc) => setSelectedScenario(sc)}
         onEnterApp={(tab) => {
+          if (unlockAudio()) setAudioUnlocked(true);
+          if (soundEnabled) playClickSound();
           setActiveTab(tab);
           setShowStartMenu(false);
         }}
         soundEnabled={soundEnabled}
-        onToggleSound={() => setSoundEnabled(!soundEnabled)}
+        onToggleSound={handleToggleSound}
+        bgmEnabled={bgmEnabled}
+        onToggleBgm={handleToggleBgm}
         multiplayerEnabled={multiplayerEnabled}
         onMultiplayerChange={setMultiplayerEnabled}
         playerFactions={playerFactions}
@@ -1124,7 +1212,68 @@ export default function App() {
       
       <header className="game-header">
         <div><h1>三国志</h1><span className="trade-muted">{selectedScenario.title}</span></div>
-        <div className="game-header-actions"><span className="trade-muted" role="status">{wsStatus === 'connected' ? '● 已连接' : wsStatus === 'connecting' ? '连接中…' : '离线模式'}</span>{multiplayerEnabled && <span className="trade-muted" role="status">多人联机</span>}<Button id="btn-return-start" onClick={() => setShowStartMenu(true)}>返回首页</Button></div>
+        <div className="game-header-actions">
+          <span className="trade-muted" role="status">{wsStatus === 'connected' ? '● 已连接' : wsStatus === 'connecting' ? '连接中…' : '离线模式'}</span>
+          {multiplayerEnabled && <span className="trade-muted" role="status">多人联机</span>}
+          <Button
+            id="btn-header-bgm"
+            aria-label={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
+            aria-pressed={bgmEnabled}
+            title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
+            onClick={handleToggleBgm}
+            className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+          >
+            <Music size={15} />
+            <span>{bgmEnabled ? '配乐开' : '配乐关'}</span>
+          </Button>
+          <Button
+            id="btn-header-sfx"
+            aria-label={soundEnabled ? '关闭音效' : '开启音效'}
+            aria-pressed={soundEnabled}
+            title={soundEnabled ? '关闭音效' : '开启音效'}
+            onClick={handleToggleSound}
+            className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+          >
+            {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+            <span>{soundEnabled ? '音效开' : '音效关'}</span>
+          </Button>
+          <details className="game-disclosure">
+            <summary className="whitespace-nowrap shrink-0">音量</summary>
+            <div className="game-settings-body bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 absolute right-6 top-16 z-50 shadow-xl">
+              <label className="text-xs font-mono text-slate-300">
+                <span>配乐</span>
+                <input
+                  id="slider-bgm-volume"
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={Math.round(bgmVolume * 100)}
+                  onChange={(e) => {
+                    if (unlockAudio()) setAudioUnlocked(true);
+                    setBgmVolume(Number(e.target.value) / 100);
+                  }}
+                  className="w-24 accent-amber-500 cursor-pointer"
+                />
+              </label>
+              <label className="text-xs font-mono text-slate-300">
+                <span>音效</span>
+                <input
+                  id="slider-sfx-volume"
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={Math.round(sfxVolume * 100)}
+                  onChange={(e) => {
+                    if (unlockAudio()) setAudioUnlocked(true);
+                    setSfxVolume(Number(e.target.value) / 100);
+                  }}
+                  className="w-24 accent-amber-500 cursor-pointer"
+                />
+              </label>
+            </div>
+          </details>
+          <Button id="btn-return-start" className="whitespace-nowrap shrink-0" onClick={() => setShowStartMenu(true)}>返回首页</Button>
+        </div>
       </header>
 
       {/* Main Workspace Grid Router (Roster / Creator / Relationships Simulator) */}
@@ -1133,7 +1282,7 @@ export default function App() {
         {/* Left Section (Column span 8): Primary action and selection board */}
         <section className="game-primary">
           
-          <GameNavigation activeTab={activeTab} onSelect={setActiveTab} year={gameYear} month={gameMonth} xun={gameXun} seasonId={currentSeason.id} weatherId={weatherId} playing={isAutoTime} onToggleTime={() => setIsAutoTime(!isAutoTime)} speed={timeSpeed} onSpeed={setTimeSpeed} onStep={handleAdvanceXun} onMonth={handleAdvanceMonth} />
+          <GameNavigation activeTab={activeTab} onSelect={(tab) => { if (soundEnabled) playClickSound(); setActiveTab(tab); }} year={gameYear} month={gameMonth} xun={gameXun} seasonId={currentSeason.id} weatherId={weatherId} playing={isAutoTime} onToggleTime={() => setIsAutoTime(!isAutoTime)} speed={timeSpeed} onSpeed={setTimeSpeed} onStep={handleAdvanceXun} onMonth={handleAdvanceMonth} />
 
           {/* Tab 1: Officer Roster */}
           {activeTab === 'roster' && (
@@ -1751,6 +1900,7 @@ export default function App() {
               seasonId={currentSeason.id}
               weatherId={weatherId}
               onWeatherChange={setWeatherId}
+              onBattleActiveChange={setInSiegeBattle}
             />
           </div>
 

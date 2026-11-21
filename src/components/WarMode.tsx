@@ -6,6 +6,16 @@ import {
 } from 'lucide-react';
 import { Officer, Faction } from '../types';
 import { applySeasonalOfficerModifiers, SEASONS, SeasonId } from '../utils/seasons';
+import {
+  playMoveSound as playUnifiedMoveSound,
+  playClashSound as playUnifiedClashSound,
+  playArrowSound,
+  playFireSound,
+  playHeavyImpactSound,
+  playHealSound,
+  playVictorySound as playUnifiedVictorySound,
+  playDefeatSound as playUnifiedDefeatSound,
+} from '../utils/audio';
 
 interface City {
   id: string;
@@ -80,6 +90,19 @@ interface FloatingEffect {
   color: string;
 }
 
+interface ImpactBurst {
+  id: string;
+  x: number;
+  y: number;
+  kind: 'arrow' | 'slash' | 'fire' | 'stone' | 'ram';
+}
+
+interface UnitMotion {
+  dx: number;
+  dy: number;
+  mode: 'lunge' | 'hit';
+}
+
 export default function WarMode({
   originCity,
   targetCity,
@@ -124,9 +147,11 @@ export default function WarMode({
   // 2D Animation feedback states
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
   const [floatingEffects, setFloatingEffects] = useState<FloatingEffect[]>([]);
-  const [screenShake, setScreenShake] = useState(false);
+  const [impactBursts, setImpactBursts] = useState<ImpactBurst[]>([]);
+  const [unitMotions, setUnitMotions] = useState<Record<string, UnitMotion>>({});
+  const [screenShake, setScreenShake] = useState<'none' | 'light' | 'heavy'>('none');
 
-  // Helper to trigger 2D sliding projectile animations & floating damage text numbers
+  // Helper to trigger 2D sliding projectile animations, unit lunge/hit recoil, impact shockwaves, & floating damage numbers
   const triggerCombatFeedback = (
     fromRow: number,
     fromCol: number,
@@ -134,75 +159,121 @@ export default function WarMode({
     toCol: number,
     projType: 'arrow' | 'slash' | 'fire' | 'stone' | 'ram',
     dmgText: string,
-    dmgColor: string = 'text-rose-500 font-extrabold text-base'
+    dmgColor: string = 'text-rose-500 font-extrabold text-base',
+    options?: { attackerId?: string; targetId?: string; delayMs?: number }
   ) => {
-    const projId = 'proj_' + Math.random().toString(36).substr(2, 9);
-    const effectId = 'effect_' + Math.random().toString(36).substr(2, 9);
+    const startDelay = options?.delayMs ?? 0;
+    const travelMs = projType === 'slash' ? 320 : projType === 'ram' ? 380 : 480;
 
-    // Add projectile
-    setProjectiles(prev => [...prev, {
-      id: projId,
-      fromRow,
-      fromCol,
-      toRow,
-      toCol,
-      type: projType
-    }]);
-
-    // After 600ms projectile has landed, remove projectile, spawn rising damage text, and trigger screen shake if high impact
     setTimeout(() => {
-      setProjectiles(prev => prev.filter(p => p.id !== projId));
-      
-      // Map percentage center points of cells for floating feedback (Grid cell coordinates logic)
-      const targetPercentX = (toCol * (100 / GRID_COLS)) + (100 / GRID_COLS / 2);
-      const targetPercentY = (toRow * (100 / GRID_ROWS)) + (100 / GRID_ROWS / 2);
+      const projId = 'proj_' + Math.random().toString(36).substr(2, 9);
+      const effectId = 'effect_' + Math.random().toString(36).substr(2, 9);
+      const burstId = 'burst_' + Math.random().toString(36).substr(2, 9);
 
-      setFloatingEffects(prev => [...prev, {
-        id: effectId,
-        x: targetPercentX,
-        y: targetPercentY,
-        content: dmgText,
-        color: dmgColor
-      }]);
+      const dCol = toCol - fromCol;
+      const dRow = toRow - fromRow;
+      const len = Math.hypot(dCol, dRow) || 1;
+      // Screen-space projected unit nudge (isometric X flows diagonally across screen)
+      const lungeDist = projType === 'slash' || projType === 'ram' ? 14 : 6;
+      const recoilDist = projType === 'ram' || projType === 'stone' ? 12 : 8;
+      const nx = dCol / len;
+      const ny = dRow / len;
 
-      if (projType === 'ram' || projType === 'stone') {
-        setScreenShake(true);
-        setTimeout(() => setScreenShake(false), 450);
+      if (options?.attackerId) {
+        const atkId = options.attackerId;
+        setUnitMotions(prev => ({
+          ...prev,
+          [atkId]: { dx: Math.round(nx * lungeDist), dy: Math.round(ny * lungeDist * 0.6), mode: 'lunge' }
+        }));
+        setTimeout(() => {
+          setUnitMotions(prev => {
+            if (!prev[atkId] || prev[atkId].mode !== 'lunge') return prev;
+            const next = { ...prev };
+            delete next[atkId];
+            return next;
+          });
+        }, 260);
       }
 
-      // Remove damage float indicator after 1.2s
+      // Add projectile
+      setProjectiles(prev => [...prev, {
+        id: projId,
+        fromRow,
+        fromCol,
+        toRow,
+        toCol,
+        type: projType
+      }]);
+
+      // After projectile lands, remove projectile, trigger target recoil/flash, shockwave ring, floating dmg & screen shake
       setTimeout(() => {
-        setFloatingEffects(prev => prev.filter(f => f.id !== effectId));
-      }, 1200);
-    }, 600);
+        setProjectiles(prev => prev.filter(p => p.id !== projId));
+
+        const targetPercentX = (toCol * (100 / GRID_COLS)) + (100 / GRID_COLS / 2);
+        const targetPercentY = (toRow * (100 / GRID_ROWS)) + (100 / GRID_ROWS / 2);
+
+        setImpactBursts(prev => [...prev, {
+          id: burstId,
+          x: targetPercentX,
+          y: targetPercentY,
+          kind: projType
+        }]);
+        setTimeout(() => {
+          setImpactBursts(prev => prev.filter(b => b.id !== burstId));
+        }, 520);
+
+        if (options?.targetId) {
+          const tgtId = options.targetId;
+          setUnitMotions(prev => ({
+            ...prev,
+            [tgtId]: { dx: Math.round(nx * recoilDist), dy: Math.round(ny * recoilDist * 0.6), mode: 'hit' }
+          }));
+          setTimeout(() => {
+            setUnitMotions(prev => {
+              if (!prev[tgtId] || prev[tgtId].mode !== 'hit') return prev;
+              const next = { ...prev };
+              delete next[tgtId];
+              return next;
+            });
+          }, 300);
+        }
+
+        setFloatingEffects(prev => [...prev, {
+          id: effectId,
+          x: targetPercentX,
+          y: targetPercentY,
+          content: dmgText,
+          color: dmgColor
+        }]);
+
+        if (projType === 'ram' || projType === 'stone') {
+          setScreenShake('heavy');
+          setTimeout(() => setScreenShake('none'), 420);
+        } else if (projType === 'fire' || projType === 'slash') {
+          setScreenShake('light');
+          setTimeout(() => setScreenShake('none'), 280);
+        }
+
+        // Remove damage float indicator after 1.15s
+        setTimeout(() => {
+          setFloatingEffects(prev => prev.filter(f => f.id !== effectId));
+        }, 1150);
+      }, travelMs);
+    }, startDelay);
   };
 
-  // Sound Synth Helper
-  const playBeep = (freq: number, type: OscillatorType = 'sine', duration: number = 0.1) => {
+  // Sound presets routed through unified audio engine
+  const playMoveSound = () => { if (soundEnabled) playUnifiedMoveSound(); };
+  const playAttackSound = (projType: 'arrow' | 'slash' | 'fire' | 'stone' | 'ram' = 'slash') => {
     if (!soundEnabled) return;
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + duration);
-    } catch (e) {
-      // Ignore audio synthesis block
-    }
+    if (projType === 'arrow') playArrowSound();
+    else if (projType === 'fire') playFireSound();
+    else if (projType === 'ram' || projType === 'stone') playHeavyImpactSound();
+    else playUnifiedClashSound();
   };
-
-  // Sound presets
-  const playMoveSound = () => playBeep(261.63, 'triangle', 0.15); // C4
-  const playAttackSound = () => { playBeep(220, 'sawtooth', 0.1); playBeep(330, 'sawtooth', 0.12); };
-  const playSkillSound = () => { playBeep(523.25, 'sawtooth', 0.08); playBeep(659.25, 'sine', 0.08); playBeep(783.99, 'sine', 0.2); };
-  const playDefeatSound = () => { playBeep(349.23, 'sawtooth', 0.3); playBeep(220, 'sawtooth', 0.4); };
-  const playVictorySound = () => { playBeep(523.25, 'sine', 0.15); playBeep(659.25, 'sine', 0.15); playBeep(783.99, 'sine', 0.15); playBeep(1046.5, 'sine', 0.4); };
+  const playSkillSound = () => { if (soundEnabled) playHealSound(); };
+  const playDefeatSound = () => { if (soundEnabled) playUnifiedDefeatSound(); };
+  const playVictorySound = () => { if (soundEnabled) playUnifiedVictorySound(); };
 
   // Set up scenario elements & initialize units
   const initBattle = () => {
@@ -380,6 +451,11 @@ export default function WarMode({
     setSelectedUnitId(null);
     setShowMoveTargets([]);
     setShowAttackTargets([]);
+    setProjectiles([]);
+    setFloatingEffects([]);
+    setImpactBursts([]);
+    setUnitMotions({});
+    setScreenShake('none');
     setBattlePhase('fighting');
   };
 
@@ -599,13 +675,14 @@ export default function WarMode({
       }
     }
 
-    // Apply 2D animation feedback
+    // Apply 2D animation feedback & weapon-specific sound
     let projType: 'arrow' | 'slash' | 'fire' | 'stone' | 'ram' = 'slash';
     if (u.type === 'archers') {
       projType = 'arrow';
     } else if (u.type === 'ram') {
       projType = 'ram';
     }
+    playAttackSound(projType);
 
     triggerCombatFeedback(
       u.row,
@@ -614,7 +691,8 @@ export default function WarMode({
       enemy.col,
       projType,
       `-${dmg}`,
-      'text-rose-500 font-serif font-black text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] animate-bounce'
+      'text-rose-500 font-serif font-black text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]',
+      { attackerId: u.id, targetId: enemy.id }
     );
 
     // Apply Damage
@@ -702,6 +780,7 @@ export default function WarMode({
       // Fire Arrow at closest or gates
       const target = validTargets.find(t => t.type === 'gate') || validTargets[0];
       const fireDmg = Math.floor((40 + Math.random() * 30) * activeSeason.tacticalModifiers.firePowerMultiplier);
+      playAttackSound('fire');
 
       // Trigger projectile and floating damage/burning feedback in 2D Space!
       triggerCombatFeedback(
@@ -711,7 +790,8 @@ export default function WarMode({
         target.col,
         'fire',
         `-${fireDmg} 🔥`,
-        'text-amber-500 font-serif font-black text-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] animate-pulse'
+        'text-amber-500 font-serif font-black text-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]',
+        { attackerId: unit.id, targetId: target.id }
       );
 
       setEnemyUnits(prev => prev.map(e => {
@@ -937,7 +1017,8 @@ export default function WarMode({
       };
     }));
 
-    // 2. Automated Wall Archers Shoot
+    // 2. Automated Wall Archers & Patrol forces engage with staggered volleys
+    let enemyActionIdx = 0;
     enemyUnits.forEach(enemy => {
       if (enemy.isDead) return;
 
@@ -958,7 +1039,7 @@ export default function WarMode({
             finalDmg = Math.floor(finalDmg * 0.25);
           }
 
-          // Trigger continuous 2D projectile animations
+          // Trigger staggered 2D projectile animations
           triggerCombatFeedback(
             enemy.row,
             enemy.col,
@@ -968,7 +1049,8 @@ export default function WarMode({
             `-${finalDmg}`,
             isShielded
               ? 'text-teal-400 font-mono font-bold text-xs bg-slate-900/95 px-1 rounded border border-teal-500/20 shadow-md'
-              : 'text-rose-500 font-serif font-black text-base drop-shadow-[0_1.5px_3px_black]'
+              : 'text-rose-500 font-serif font-black text-base drop-shadow-[0_1.5px_3px_black]',
+            { attackerId: enemy.id, targetId: target.id, delayMs: enemyActionIdx++ * 220 }
           );
 
           setPlayerUnits(prev => prev.map(p => {
@@ -996,7 +1078,7 @@ export default function WarMode({
             // attack!
             let opDmg = Math.max(10, Math.floor(enemy.atk * (1 - target.def / 160) + Math.random() * 15));
             
-            // Trigger 2D attack slash animation
+            // Trigger staggered 2D attack slash animation
             triggerCombatFeedback(
               enemy.row,
               enemy.col,
@@ -1004,7 +1086,8 @@ export default function WarMode({
               target.col,
               'slash',
               `-${opDmg}`,
-              'text-rose-550 font-serif font-black text-base drop-shadow-[0_1.5px_3.5px_black] animate-bounce'
+              'text-rose-500 font-serif font-black text-base drop-shadow-[0_1.5px_3.5px_black]',
+              { attackerId: enemy.id, targetId: target.id, delayMs: enemyActionIdx++ * 220 }
             );
 
             setPlayerUnits(prev => prev.map(p => {
@@ -1301,8 +1384,14 @@ export default function WarMode({
             <motion.div 
               className="relative w-full max-w-[420px] aspect-[1.18] my-3 rounded-2xl overflow-hidden bg-gradient-to-b from-slate-900 to-slate-950 border-4 border-slate-900 select-none mx-auto flex items-center justify-center p-1 shadow-2xl"
               style={{ perspective: '1200px' }}
-              animate={screenShake ? { x: [-8, 8, -8, 8, -3, 3, 0], y: [-3, 3, -3, 3, 0] } : {}}
-              transition={{ duration: 0.4 }}
+              animate={
+                screenShake === 'heavy'
+                  ? { x: [-9, 9, -8, 8, -4, 4, 0], y: [-4, 4, -3, 3, 0] }
+                  : screenShake === 'light'
+                  ? { x: [-4, 4, -3, 3, 0], y: [-2, 2, 0] }
+                  : { x: 0, y: 0 }
+              }
+              transition={{ duration: screenShake === 'heavy' ? 0.4 : 0.25 }}
             >
               {/* Dynamic Animated Weather Overlays (Rendered Screen-Space Flat for elegant contrast) */}
               {weatherId === 'sunny' && (
@@ -1508,16 +1597,18 @@ export default function WarMode({
                     const fromY = (proj.fromRow * (100 / GRID_ROWS)) + (100 / GRID_ROWS / 2);
                     const toX = (proj.toCol * (100 / GRID_COLS)) + (100 / GRID_COLS / 2);
                     const toY = (proj.toRow * (100 / GRID_ROWS)) + (100 / GRID_ROWS / 2);
+                    const angleDeg = Math.atan2(toY - fromY, toX - fromX) * (180 / Math.PI);
+                    const duration = proj.type === 'slash' ? 0.32 : proj.type === 'ram' ? 0.38 : 0.48;
 
                     return (
                       <motion.div
                         key={proj.id}
                         className="absolute z-40 w-10 h-10 -ml-5 -mt-5 flex items-center justify-center pointer-events-none"
                         style={{ transformStyle: 'preserve-3d' }}
-                        initial={{ left: `${fromX}%`, top: `${fromY}%` }}
-                        animate={{ left: `${toX}%`, top: `${toY}%` }}
-                        exit={{ scale: 0 }}
-                        transition={{ duration: 0.55, ease: "easeInOut" }}
+                        initial={{ left: `${fromX}%`, top: `${fromY}%`, scale: 0.85, opacity: 0.95 }}
+                        animate={{ left: `${toX}%`, top: `${toY}%`, scale: proj.type === 'slash' ? 1.35 : 1.05, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ duration, ease: proj.type === 'slash' ? 'easeOut' : 'easeInOut' }}
                       >
                         <div
                           style={{
@@ -1527,32 +1618,89 @@ export default function WarMode({
                           className="w-full h-full flex items-center justify-center"
                         >
                           {proj.type === 'arrow' && (
-                            <motion.span 
-                              className="text-lg"
-                              style={{ rotate: proj.fromCol < proj.toCol ? 45 : -135 }}
+                            <div
+                              className="flex items-center justify-center"
+                              style={{ transform: `rotate(${angleDeg}deg)` }}
                             >
-                              🏹
-                            </motion.span>
+                              <svg viewBox="0 0 40 16" className="w-9 h-4 drop-shadow-[0_0_6px_rgba(251,191,36,0.9)]">
+                                <defs>
+                                  <linearGradient id={`arrowGrad_${proj.id}`} x1="0%" y1="50%" x2="100%" y2="50%">
+                                    <stop offset="0%" stopColor="rgba(251,191,36,0)" />
+                                    <stop offset="65%" stopColor="#fbbf24" />
+                                    <stop offset="100%" stopColor="#ffffff" />
+                                  </linearGradient>
+                                </defs>
+                                <line x1="2" y1="8" x2="31" y2="8" stroke={`url(#arrowGrad_${proj.id})`} strokeWidth="2.6" strokeLinecap="round" />
+                                <polygon points="38,8 28,3.5 30.5,8 28,12.5" fill="#fef08a" />
+                              </svg>
+                            </div>
                           )}
                           {proj.type === 'fire' && (
-                            <span className="text-xl animate-pulse">🔥</span>
+                            <div className="relative flex items-center justify-center">
+                              <div className="absolute w-7 h-7 rounded-full bg-orange-500/50 blur-[3px] animate-ping" />
+                              <span className="text-2xl drop-shadow-[0_0_8px_rgba(249,115,22,0.95)]">🔥</span>
+                            </div>
                           )}
                           {proj.type === 'ram' && (
-                            <span className="text-xl animate-bounce">🪵</span>
+                            <div className="relative flex items-center justify-center">
+                              <div className="absolute w-8 h-3 rounded-full bg-amber-500/40 blur-[2px]" />
+                              <span className="text-2xl drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">🪵</span>
+                            </div>
                           )}
                           {proj.type === 'stone' && (
-                            <span className="text-lg animate-spin">🪨</span>
-                          )}
-                          {proj.type === 'slash' && (
-                            <motion.span 
-                              className="text-3xl text-yellow-405 drop-shadow-md"
-                              animate={{ scale: [1, 1.8, 0], rotate: [0, 180] }}
-                              transition={{ duration: 0.5 }}
+                            <motion.span
+                              className="text-xl drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+                              animate={{ rotate: [0, 360] }}
+                              transition={{ duration: 0.45, repeat: Infinity, ease: 'linear' }}
                             >
-                              ⚔️
+                              🪨
                             </motion.span>
                           )}
+                          {proj.type === 'slash' && (
+                            <motion.svg
+                              viewBox="0 0 48 48"
+                              className="w-11 h-11 drop-shadow-[0_0_8px_rgba(251,191,36,0.95)]"
+                              style={{ transform: `rotate(${angleDeg}deg)` }}
+                              animate={{ scale: [0.7, 1.5, 0.9], rotate: [angleDeg - 35, angleDeg + 45] }}
+                              transition={{ duration: 0.32, ease: 'easeOut' }}
+                            >
+                              <path
+                                d="M12 6 C34 12, 38 30, 14 42 C28 28, 26 16, 12 6 Z"
+                                fill="#fde047"
+                                stroke="#f97316"
+                                strokeWidth="1.5"
+                              />
+                            </motion.svg>
+                          )}
                         </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+
+                {/* IMPACT SHOCKWAVE & BURST RINGS LAYER */}
+                <AnimatePresence>
+                  {impactBursts.map(burst => {
+                    const ringColor =
+                      burst.kind === 'fire'
+                        ? 'border-orange-400 bg-orange-500/25 shadow-[0_0_14px_rgba(249,115,22,0.7)]'
+                        : burst.kind === 'ram' || burst.kind === 'stone'
+                        ? 'border-amber-300 bg-amber-500/25 shadow-[0_0_16px_rgba(245,158,11,0.7)]'
+                        : burst.kind === 'slash'
+                        ? 'border-rose-400 bg-rose-500/25 shadow-[0_0_12px_rgba(244,63,94,0.7)]'
+                        : 'border-amber-300 bg-amber-400/20 shadow-[0_0_10px_rgba(251,191,36,0.65)]';
+
+                    return (
+                      <motion.div
+                        key={burst.id}
+                        className="absolute z-40 w-12 h-12 -ml-6 -mt-6 flex items-center justify-center pointer-events-none"
+                        style={{ left: `${burst.x}%`, top: `${burst.y}%`, transformStyle: 'preserve-3d' }}
+                        initial={{ opacity: 0.95, scale: 0.3 }}
+                        animate={{ opacity: 0, scale: 2.3 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.45, ease: 'easeOut' }}
+                      >
+                        <div className={`w-full h-full rounded-full border-2 ${ringColor}`} />
                       </motion.div>
                     );
                   })}
@@ -1588,6 +1736,9 @@ export default function WarMode({
                     const isSelected = selectedUnitId === unit.id;
                     const hasShield = unit.activeBuffs.some(b => b.type === 'shield_wall');
                     const isDouble = unit.activeBuffs.some(b => b.type === 'double_atk');
+                    const motionState = unitMotions[unit.id];
+                    const isHit = motionState?.mode === 'hit';
+                    const isLunging = motionState?.mode === 'lunge';
 
                     return (
                       <motion.div
@@ -1615,19 +1766,28 @@ export default function WarMode({
                         >
                           <motion.div 
                             className={`w-[90%] h-[90%] rounded-xl bg-slate-950/90 border-2 shadow-xl flex flex-col items-center justify-center p-0.5 relative z-30 ${
-                              isSelected 
+                              isHit
+                                ? 'border-rose-400 shadow-rose-500/40'
+                                : isSelected 
                                 ? 'border-teal-400 ring-1 ring-teal-500/30 shadow-teal-500/10' 
                                 : 'border-slate-800 shadow-black/80'
                             }`}
                             animate={{ 
-                              y: isSelected ? [-1, 1, -1] : [0, 0.5, 0] 
+                              x: motionState ? motionState.dx : 0,
+                              y: motionState ? motionState.dy : (isSelected ? [-1, 1, -1] : [0, 0.5, 0]),
+                              scale: isLunging ? 1.15 : isHit ? 0.92 : 1
                             }}
-                            transition={{ 
-                              duration: isSelected ? 1.2 : 2.5, 
-                              repeat: Infinity, 
-                              ease: "easeInOut" 
-                            }}
+                            transition={
+                              motionState
+                                ? { duration: 0.16, ease: 'easeOut' }
+                                : { duration: isSelected ? 1.2 : 2.5, repeat: Infinity, ease: 'easeInOut' }
+                            }
                           >
+                            {/* Hit impact crimson flash */}
+                            {isHit && (
+                              <div className="absolute inset-0 rounded-xl bg-rose-500/45 pointer-events-none z-40 animate-pulse" />
+                            )}
+
                             {/* Selected Indicator Ring */}
                             {isSelected && (
                               <div className="absolute -inset-1 rounded-xl border border-teal-400/40 animate-ping pointer-events-none" />
@@ -1657,7 +1817,7 @@ export default function WarMode({
                               <span className="absolute -top-1 -right-1 bg-teal-950 border border-teal-500 text-teal-400 font-mono text-[5.5px] px-0.5 rounded leading-none scale-90">🛡️ 结盾</span>
                             )}
                             {isDouble && (
-                              <span className="absolute -top-1 -right-1 bg-amber-955 border border-amber-500 text-amber-400 font-mono text-[5.5px] px-0.5 rounded leading-none scale-90">⚔️ 双袭</span>
+                              <span className="absolute -top-1 -right-1 bg-amber-950 border border-amber-500 text-amber-400 font-mono text-[5.5px] px-0.5 rounded leading-none scale-90">⚔️ 双袭</span>
                             )}
                           </motion.div>
                         </div>
@@ -1670,6 +1830,9 @@ export default function WarMode({
                 <div className="absolute inset-0 z-30 pointer-events-none" style={{ transformStyle: 'preserve-3d' }}>
                   {enemyUnits.filter(e => !e.isDead).map(enemy => {
                     const isBurning = enemy.activeBuffs.some(b => b.type === 'burning');
+                    const motionState = unitMotions[enemy.id];
+                    const isHit = motionState?.mode === 'hit';
+                    const isLunging = motionState?.mode === 'lunge';
 
                     return (
                       <motion.div
@@ -1696,27 +1859,36 @@ export default function WarMode({
                         >
                           <motion.div 
                             className={`w-[90%] h-[90%] rounded-xl bg-slate-950/90 border-2 shadow-xl flex flex-col items-center justify-center p-0.5 relative z-35 ${
-                              enemy.type === 'gate' 
-                                ? 'border-rose-900 shadow-rose-950/20 bg-rose-955/5' 
+                              isHit
+                                ? 'border-amber-400 shadow-rose-500/40'
+                                : enemy.type === 'gate' 
+                                ? 'border-rose-900 shadow-rose-950/20 bg-rose-950/20' 
                                 : 'border-red-900 shadow-red-950/20'
                             }`}
                             style={{ outline: isBurning ? '1px solid #f97316' : 'none' }}
                             animate={{ 
-                              y: isBurning ? [-0.5, 0.5, -0.5] : [0, 0.6, 0] 
+                              x: motionState ? motionState.dx : 0,
+                              y: motionState ? motionState.dy : (isBurning ? [-0.5, 0.5, -0.5] : [0, 0.6, 0]),
+                              scale: isLunging ? 1.14 : isHit ? 0.91 : 1
                             }}
-                            transition={{ 
-                              duration: isBurning ? 0.8 : 3, 
-                              repeat: Infinity, 
-                              ease: "easeInOut" 
-                            }}
+                            transition={
+                              motionState
+                                ? { duration: 0.16, ease: 'easeOut' }
+                                : { duration: isBurning ? 0.8 : 3, repeat: Infinity, ease: 'easeInOut' }
+                            }
                           >
+                            {/* Hit impact crimson flash */}
+                            {isHit && (
+                              <div className="absolute inset-0 rounded-xl bg-rose-500/50 pointer-events-none z-40 animate-pulse" />
+                            )}
+
                             {/* Fire aura */}
                             {isBurning && (
                               <div className="absolute -inset-1 rounded-xl border border-orange-500/50 animate-pulse bg-orange-500/5" />
                             )}
 
                             <span className="text-xl md:text-2xl mt-0.5">{enemy.icon}</span>
-                            <span className="text-[7.5px] font-serif font-black text-rose-350 block leading-tight truncate text-center w-full px-1 mt-0.5">
+                            <span className="text-[7.5px] font-serif font-black text-rose-300 block leading-tight truncate text-center w-full px-1 mt-0.5">
                               {enemy.type === 'gate' ? '城门闸阁' : enemy.name.split(' ').slice(-1)[0]}
                             </span>
 

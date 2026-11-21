@@ -432,6 +432,7 @@ interface TacticalMapProps {
   seasonId?: SeasonId;
   weatherId?: WeatherId;
   onWeatherChange?: (weather: WeatherId) => void;
+  onBattleActiveChange?: (active: boolean) => void;
 }
 
 export default function TacticalMap({ 
@@ -457,9 +458,13 @@ export default function TacticalMap({
   diplomacyState,
   seasonId: controlledSeasonId,
   weatherId: controlledWeatherId,
-  onWeatherChange
+  onWeatherChange,
+  onBattleActiveChange
 }: TacticalMapProps) {
   const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'world-2026'>('svg-map');
+  useEffect(() => {
+    onBattleActiveChange?.(mapTab === 'war-mode');
+  }, [mapTab, onBattleActiveChange]);
   const [tradeFaction, setTradeFaction] = useState('ronin');
   const [tradeLogs, setTradeLogs] = useState<string[]>([]);
   const [disasterState, setDisasterState] = useState<DisasterState>(() => createInitialDisasterState());

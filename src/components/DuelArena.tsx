@@ -2,6 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Officer } from '../types';
 import AvatarRenderer from './AvatarRenderer';
 import { applySeasonalOfficerModifiers, SEASONS, SeasonId } from '../utils/seasons';
+import {
+  playHeavyImpactSound,
+  playParrySound,
+  playDodgeSound,
+  playUltimateSound,
+  playTauntSound,
+  playVictorySound,
+  playDefeatSound,
+} from '../utils/audio';
 import { Swords, Shield, Zap, Sparkles, Trophy, RotateCcw, Swords as SwordIcon, Heart, Play, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -23,130 +32,6 @@ interface DuelistState {
   isTaunted: boolean;
   shieldValue: number;
 }
-
-// Built-in audio synth helper for specialized duel sounds
-const playSynthSound = (type: 'slash' | 'heavy' | 'parry' | 'ultimate' | 'dodge' | 'taunt') => {
-  if (typeof window === 'undefined') return;
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    const now = ctx.currentTime;
-    const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(0.35, now);
-    masterGain.connect(ctx.destination);
-
-    if (type === 'slash') {
-      const osc = ctx.createOscillator();
-      const filter = ctx.createBiquadFilter();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(800, now);
-      osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(1000, now);
-      filter.Q.setValueAtTime(3, now);
-      
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.8, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(masterGain);
-      osc.start();
-      osc.stop(now + 0.18);
-    } else if (type === 'heavy') {
-      const osc = ctx.createOscillator();
-      const noise = ctx.createOscillator();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(220, now);
-      osc.frequency.exponentialRampToValueAtTime(45, now + 0.3);
-      
-      noise.type = 'triangle';
-      noise.frequency.setValueAtTime(120, now);
-      noise.frequency.exponentialRampToValueAtTime(30, now + 0.25);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(1.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-
-      osc.connect(gain);
-      noise.connect(gain);
-      gain.connect(masterGain);
-      osc.start();
-      noise.start();
-      osc.stop(now + 0.38);
-      noise.stop(now + 0.38);
-    } else if (type === 'parry') {
-      const osc = ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(1600, now);
-      osc.frequency.linearRampToValueAtTime(1200, now + 0.08);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.9, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
-
-      osc.connect(gain);
-      gain.connect(masterGain);
-      osc.start();
-      osc.stop(now + 0.15);
-    } else if (type === 'ultimate') {
-      // Sci-fi/fantasy charging up sound
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      osc1.type = 'sawtooth';
-      osc2.type = 'sine';
-      osc1.frequency.setValueAtTime(120, now);
-      osc1.frequency.linearRampToValueAtTime(880, now + 0.4);
-      osc2.frequency.setValueAtTime(300, now);
-      osc2.frequency.exponentialRampToValueAtTime(1200, now + 0.45);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.4, now);
-      gain.gain.exponentialRampToValueAtTime(1.2, now + 0.4);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(masterGain);
-      osc1.start();
-      osc2.start();
-      osc1.stop(now + 0.65);
-      osc2.stop(now + 0.65);
-    } else if (type === 'dodge') {
-      const osc = ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(1200, now);
-      osc.frequency.exponentialRampToValueAtTime(600, now + 0.2);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.5, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
-
-      osc.connect(gain);
-      gain.connect(masterGain);
-      osc.start();
-      osc.stop(now + 0.25);
-    } else if (type === 'taunt') {
-      const osc = ctx.createOscillator();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(300, now);
-      osc.frequency.linearRampToValueAtTime(100, now + 0.25);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.8, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
-
-      osc.connect(gain);
-      gain.connect(masterGain);
-      osc.start();
-      osc.stop(now + 0.3);
-    }
-  } catch (e) {
-    console.warn('Audio synthesis failed:', e);
-  }
-};
 
 export default function DuelArena({ officers, soundEnabled, seasonId = 'spring', playClashSound, playDrumSound, onClose }: DuelArenaProps) {
   const activeSeason = SEASONS[seasonId];
@@ -170,17 +55,53 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
   const [rightShake, setRightShake] = useState<boolean>(false);
   const [leftSlash, setLeftSlash] = useState<boolean>(false);
   const [rightSlash, setRightSlash] = useState<boolean>(false);
-  const [floatingText, setFloatingText] = useState<{ id: number; text: string; side: 'left' | 'right' }[]>([]);
+  const [floatingText, setFloatingText] = useState<{
+    id: number;
+    text: string;
+    side: 'left' | 'right';
+    tone?: 'hit' | 'crit' | 'heal' | 'miss' | 'parry' | 'rage';
+  }[]>([]);
   const [showUltFlash, setShowUltFlash] = useState<boolean>(false);
   const [winnerSide, setWinnerSide] = useState<'left' | 'right' | 'draw' | null>(null);
 
   // Animated fight states
-  const [leftActionState, setLeftActionState] = useState<'idle' | 'charging' | 'striking' | 'parrying' | 'taunting' | 'hit' | 'dead'>('idle');
-  const [rightActionState, setRightActionState] = useState<'idle' | 'charging' | 'striking' | 'parrying' | 'taunting' | 'hit' | 'dead'>('idle');
+  type DuelActionState = 'idle' | 'charging' | 'striking' | 'dodging' | 'parrying' | 'taunting' | 'hit' | 'dead';
+  const [leftActionState, setLeftActionState] = useState<DuelActionState>('idle');
+  const [rightActionState, setRightActionState] = useState<DuelActionState>('idle');
+  const [isAnimatingAction, setIsAnimatingAction] = useState<boolean>(false);
   const [lastTauntMsg, setLastTauntMsg] = useState<{left: string; right: string}>({ left: '', right: '' });
-  const [sparkParticles, setSparkParticles] = useState<{ id: number; x: number; y: number; color: string }[]>([]);
-  
+  const [sparkParticles, setSparkParticles] = useState<{
+    id: number;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    size: number;
+    duration: number;
+    color: string;
+  }[]>([]);
+  const [dustPuffs, setDustPuffs] = useState<{
+    id: number;
+    side: 'left' | 'right';
+    xPct: number;
+    vx: number;
+    scale: number;
+  }[]>([]);
+  const [clashImpact, setClashImpact] = useState<{
+    id: number;
+    type: 'slash' | 'heavy' | 'ultimate' | 'parry';
+    crit: boolean;
+    direction: 'left-to-right' | 'right-to-left';
+  } | null>(null);
+  const [ultBanner, setUltBanner] = useState<{
+    officerName: string;
+    moveName: string;
+    side: 'left' | 'right';
+  } | null>(null);
+  const [stageShake, setStageShake] = useState<'none' | 'light' | 'heavy'>('none');
+
   const logEndRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const floatingIdCounter = useRef<number>(0);
 
   const TAUNT_QUOTES = [
@@ -198,18 +119,50 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
     "看招！取你首级如探囊取物耳！"
   ];
 
-  const spawnSparks = (side: 'left' | 'right') => {
-    const centerOffset = side === 'left' ? -60 : 60;
-    const newParticles = Array.from({ length: 15 }).map((_, i) => ({
-      id: Math.random() + i,
-      x: centerOffset + (Math.random() * 100 - 50),
-      y: Math.random() * 80 - 40,
-      color: Math.random() > 0.4 ? '#fbbf24' : '#ef4444'
-    }));
+  const spawnSparks = (side: 'left' | 'right', count = 18, intense = false) => {
+    const centerOffset = side === 'left' ? -18 : 18;
+    const palette = intense
+      ? ['#fde047', '#f97316', '#ef4444', '#ffffff']
+      : ['#fbbf24', '#f59e0b', '#ef4444'];
+    const newParticles = Array.from({ length: count }).map((_, i) => {
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.45;
+      const speed = (intense ? 90 : 55) + Math.random() * (intense ? 115 : 70);
+      return {
+        id: floatingIdCounter.current++ + Math.random(),
+        x: centerOffset + (Math.random() * 24 - 12),
+        y: Math.random() * 26 - 13,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 24,
+        size: intense ? 4 + Math.random() * 5 : 3 + Math.random() * 3.5,
+        duration: 0.55 + Math.random() * 0.35,
+        color: palette[i % palette.length],
+      };
+    });
     setSparkParticles(prev => [...prev, ...newParticles]);
     setTimeout(() => {
-      setSparkParticles(prev => prev.filter(p => !newParticles.includes(p)));
-    }, 900);
+      const ids = new Set(newParticles.map(p => p.id));
+      setSparkParticles(prev => prev.filter(p => !ids.has(p.id)));
+    }, 950);
+  };
+
+  const spawnDust = (side: 'left' | 'right') => {
+    const puffs = Array.from({ length: 5 }).map((_, i) => ({
+      id: floatingIdCounter.current++ + Math.random(),
+      side,
+      xPct: side === 'left' ? 16 + i * 5 : 84 - i * 5,
+      vx: side === 'left' ? -(22 + Math.random() * 28) : 22 + Math.random() * 28,
+      scale: 0.7 + Math.random() * 0.6,
+    }));
+    setDustPuffs(prev => [...prev, ...puffs]);
+    setTimeout(() => {
+      const ids = new Set(puffs.map(p => p.id));
+      setDustPuffs(prev => prev.filter(p => !ids.has(p.id)));
+    }, 650);
+  };
+
+  const triggerStageShake = (intensity: 'light' | 'heavy') => {
+    setStageShake(intensity);
+    setTimeout(() => setStageShake('none'), intensity === 'heavy' ? 540 : 440);
   };
 
   // Default initial selections
@@ -264,9 +217,13 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
   };
 
   // Helper to trigger floating damage/heal/evade text above avatars
-  const triggerFloatingText = (text: string, side: 'left' | 'right') => {
+  const triggerFloatingText = (
+    text: string,
+    side: 'left' | 'right',
+    tone: 'hit' | 'crit' | 'heal' | 'miss' | 'parry' | 'rage' = 'hit'
+  ) => {
     const id = floatingIdCounter.current++;
-    setFloatingText(prev => [...prev, { id, text, side }]);
+    setFloatingText(prev => [...prev, { id, text, side, tone }]);
     setTimeout(() => {
       setFloatingText(prev => prev.filter(t => t.id !== id));
     }, 1400);
@@ -341,8 +298,13 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
 
     setLeftActionState('idle');
     setRightActionState('idle');
+    setIsAnimatingAction(false);
     setLastTauntMsg({ left: '', right: '' });
     setSparkParticles([]);
+    setDustPuffs([]);
+    setClashImpact(null);
+    setUltBanner(null);
+    setStageShake('none');
 
     setIsFighting(true);
     setRoundCount(1);
@@ -357,7 +319,9 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
   };
 
   const executeAction = (action: 'slash' | 'heavy' | 'parry' | 'ultimate' | 'taunt') => {
-    if (!leftDuelist || !rightDuelist || winnerSide) return;
+    if (!leftDuelist || !rightDuelist || winnerSide || isAnimatingAction) return;
+
+    setIsAnimatingAction(true);
 
     const attacker = currentTurn === 'left' ? leftDuelist : rightDuelist;
     const defender = currentTurn === 'left' ? rightDuelist : leftDuelist;
@@ -371,24 +335,23 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
     const setAttackerAction = currentTurn === 'left' ? setLeftActionState : setRightActionState;
     const setDefenderAction = currentTurn === 'left' ? setRightActionState : setLeftActionState;
 
-    // Set attacking animation triggers
-    setAttackerSlash(true);
-    setTimeout(() => setAttackerSlash(false), 500);
-
     let damage = 0;
-    let hitRoll = Math.random() * 100;
-    let criticalRoll = Math.random() * 100;
+    const hitRoll = Math.random() * 100;
+    const criticalRoll = Math.random() * 100;
     let isHit = true;
     let isCrit = false;
     let actionLog = '';
 
-    // Play retro synthesize sound effect
+    // Play synthesized sound effect via unified audio engine
     if (soundEnabled) {
-      playSynthSound(action);
+      if (action === 'slash') playClashSound();
+      else if (action === 'heavy') playHeavyImpactSound();
+      else if (action === 'parry') playParrySound();
+      else if (action === 'ultimate') playUltimateSound();
+      else if (action === 'taunt') playTauntSound();
     }
 
     if (action === 'slash') {
-      // Accurate base hit
       const acc = 85 + (attacker.officer.stats.force - defender.officer.stats.force) * 0.25;
       if (hitRoll > acc) {
         isHit = false;
@@ -400,42 +363,20 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
           damage = Math.floor(damage * 1.5);
         }
       }
-      
+
       if (!isHit) {
         actionLog = `⚔️ 第${roundCount}合：[${attacker.officer.name}] 飞身一招横扫，却被 [${defender.officer.name}] 仰天铁板桥险险躲过！`;
-        triggerFloatingText('MISS 🍃', defenderSide);
-        if (soundEnabled) playSynthSound('dodge');
       } else {
-        actionLog = isCrit 
+        actionLog = isCrit
           ? `⚡ 第${roundCount}合：💥会心一击！[${attacker.officer.name}] 刀法破空，悍然砍中 [${defender.officer.name}] 肩吞，撕开 【${damage}】 点重创！`
           : `⚔️ 第${roundCount}合：[${attacker.officer.name}] 急冲近前，错身战马，手中神兵轻取 [${defender.officer.name}] 侧肋，造成 【${damage}】 点伤害。`;
-        triggerFloatingText(`-${damage} ${isCrit ? '🔥' : '⚔️'}`, defenderSide);
       }
 
-      setAttackerAction('charging');
-      setTimeout(() => {
-        setAttackerAction('striking');
-        if (isHit) {
-          setDefenderAction('hit');
-          spawnSparks(defenderSide);
-          setTimeout(() => {
-            setDefenderAction(defender.isParrying ? 'parrying' : 'idle');
-          }, 450);
-        }
-      }, 200);
-      setTimeout(() => {
-        setAttackerAction('idle');
-      }, 550);
-
-      // Attacker builds rage, Defender builds rage
       setAttacker(prev => {
         if (!prev) return null;
         return { ...prev, rage: Math.min(100, prev.rage + 18), isParrying: false };
       });
-    }
-
-    else if (action === 'heavy') {
-      // Riskier crushing strike
+    } else if (action === 'heavy') {
       const acc = 60 + (attacker.officer.stats.force - defender.officer.stats.force) * 0.15;
       if (hitRoll > acc) {
         isHit = false;
@@ -450,103 +391,69 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
 
       if (!isHit) {
         actionLog = `🪵 第${roundCount}合：[${attacker.officer.name}] 孤注一掷挥舞重兵狂砸，却因破绽过大，被 [${defender.officer.name}] 灵动闪到一旁！`;
-        triggerFloatingText('MISS 🍃', defenderSide);
-        if (soundEnabled) playSynthSound('dodge');
       } else {
         actionLog = isCrit
           ? `💥 第${roundCount}合：🚨震天雷霆！[${attacker.officer.name}] 借战马奔袭狂澜之势劈山倒海，[${defender.officer.name}] 架挡不及，连人带马狂退，惨受 【${damage}】 点破骨重击！`
           : `🪵 第${roundCount}合：[${attacker.officer.name}] 沉腰运劲，巨力崩山的一劈当头砸落，直撄 [${defender.officer.name}] 面门，砸下 【${damage}】 点碎甲重创！`;
-        triggerFloatingText(`-${damage} 💥`, defenderSide);
       }
 
-      setAttackerAction('charging');
-      setTimeout(() => {
-        setAttackerAction('striking');
-        if (isHit) {
-          setDefenderAction('hit');
-          spawnSparks(defenderSide);
-          setTimeout(() => {
-            setDefenderAction(defender.isParrying ? 'parrying' : 'idle');
-          }, 450);
-        }
-      }, 200);
-      setTimeout(() => {
-        setAttackerAction('idle');
-      }, 550);
-
-      // Attacker gains some rage
       setAttacker(prev => {
         if (!prev) return null;
         return { ...prev, rage: Math.min(100, prev.rage + 25), isParrying: false };
       });
-    }
-
-    else if (action === 'parry') {
-      // Enter parry guard state, healing slightly
+    } else if (action === 'parry') {
       const heal = Math.floor(15 + attacker.officer.stats.leadership * 0.15);
-      actionLog = `🛡️ 第${roundCount}合：[${attacker.officer.name}] 凝神屏息，立刀护胸，使使出绝学【稳守招架】，恢复了 【${heal}】 点元气与身形，防御大幅升腾！`;
-      triggerFloatingText(`+${heal} 💖`, attackerSide);
-      
+      actionLog = `🛡️ 第${roundCount}合：[${attacker.officer.name}] 凝神屏息，立刀护胸，使出绝学【稳守招架】，恢复了 【${heal}】 点元气与身形，防御大幅升腾！`;
+      triggerFloatingText(`+${heal} 💖`, attackerSide, 'heal');
       setAttackerAction('parrying');
+      setClashImpact({
+        id: floatingIdCounter.current++,
+        type: 'parry',
+        crit: false,
+        direction: currentTurn === 'left' ? 'left-to-right' : 'right-to-left',
+      });
+      setTimeout(() => setClashImpact(null), 420);
 
       setAttacker(prev => {
         if (!prev) return null;
-        return { 
-          ...prev, 
-          hp: Math.min(prev.maxHp, prev.hp + heal), 
+        return {
+          ...prev,
+          hp: Math.min(prev.maxHp, prev.hp + heal),
           isParrying: true,
           rage: Math.min(100, prev.rage + 12)
         };
       });
-    }
-
-    else if (action === 'ultimate') {
-      // Signature supreme move (Costs 50 rage, guaranteed hit, dramatic visual flash!)
-      setShowUltFlash(true);
-      setTimeout(() => setShowUltFlash(false), 600);
-
+    } else if (action === 'ultimate') {
       const ultName = getUltimateName(attacker.officer);
+      setShowUltFlash(true);
+      setUltBanner({ officerName: attacker.officer.name, moveName: ultName, side: attackerSide });
+      setTimeout(() => setShowUltFlash(false), 750);
+      setTimeout(() => setUltBanner(null), 900);
+
       const base = 55 + attacker.officer.stats.force * 0.45;
       damage = Math.floor(base * (Math.random() * 0.2 + 0.9));
-      
+      isCrit = true;
+
       actionLog = `🔥 第${roundCount}合：☄️【狂怒神威】！[${attacker.officer.name}] 仰天长啸，虎目怒睁，浑身杀意燃作滔天战火，挥舞绝世神兵祭出威震华夏之绝技『${ultName}』！[${defender.officer.name}] 躲避无门，直受狂涛骇浪般的 【${damage}】 点毁灭大创！`;
-      triggerFloatingText(`-${damage} 💀`, defenderSide);
 
-      setAttackerAction('charging');
-      setTimeout(() => {
-        setAttackerAction('striking');
-        setDefenderAction('hit');
-        spawnSparks(defenderSide);
-        setTimeout(() => {
-          setDefenderAction(defender.isParrying ? 'parrying' : 'idle');
-        }, 600);
-      }, 250);
-      setTimeout(() => {
-        setAttackerAction('idle');
-      }, 850);
-
-      // Spend 50 Rage
       setAttacker(prev => {
         if (!prev) return null;
         return { ...prev, rage: Math.max(0, prev.rage - 50), isParrying: false };
       });
-    }
-
-    else if (action === 'taunt') {
-      // Psychological warfare (Lowers enemy rage, lowers defense temporarily)
+    } else if (action === 'taunt') {
       const rageDrain = Math.floor(20 + attacker.officer.stats.charisma * 0.15);
       actionLog = `🗣️ 第${roundCount}合：[${attacker.officer.name}] 拍马伫立沙场，戟指狂笑，厉声喝骂！[${defender.officer.name}] 怒气上涌导致破绽丛生，其怒气值惨降了 【${rageDrain}】 点！`;
-      triggerFloatingText(`怒气 -${rageDrain} 🌀`, defenderSide);
+      triggerFloatingText(`怒气 -${rageDrain} 🌀`, defenderSide, 'rage');
 
       setAttackerAction('taunting');
       const randomQuote = TAUNT_QUOTES[Math.floor(Math.random() * TAUNT_QUOTES.length)];
       setLastTauntMsg(prev => ({ ...prev, [currentTurn]: randomQuote }));
       setTimeout(() => {
         setLastTauntMsg(prev => ({ ...prev, [currentTurn]: '' }));
-      }, 2200);
+      }, 2100);
       setTimeout(() => {
         setAttackerAction('idle');
-      }, 750);
+      }, 650);
 
       setDefender(prev => {
         if (!prev) return null;
@@ -558,60 +465,117 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
       });
     }
 
-    // Resolve Parry defenses if hit
-    if (damage > 0) {
-      if (defender.isParrying) {
-        const reduction = Math.floor(damage * 0.55);
-        damage = damage - reduction;
-        actionLog += ` (🛡️ 因稳招化劲，抵免了 ${reduction} 点伤害！)`;
-      }
+    // Resolve Parry damage reduction BEFORE floating badge & HP subtraction
+    let parriedAmount = 0;
+    if (damage > 0 && defender.isParrying) {
+      parriedAmount = Math.floor(damage * 0.55);
+      damage = damage - parriedAmount;
+      actionLog += ` (🛡️ 因稳招化劲，抵免了 ${parriedAmount} 点伤害！)`;
+    }
 
-      setDefenderShake(true);
-      setTimeout(() => setDefenderShake(false), 450);
+    // Sequence visual combat choreography cleanly
+    const isAttackMove = action === 'slash' || action === 'heavy' || action === 'ultimate';
+    const chargeDelay = action === 'ultimate' ? 280 : 180;
+    const resolveDelay = action === 'ultimate' ? 760 : isAttackMove ? 560 : 420;
 
-      // Apply real-time damage
-      setDefender(prev => {
-        if (!prev) return null;
-        const newHp = Math.max(0, prev.hp - damage);
-        return { ...prev, hp: newHp, rage: Math.min(100, prev.rage + Math.floor(damage * 0.4)) };
-      });
+    if (isAttackMove) {
+      setAttackerAction('charging');
+      spawnDust(attackerSide);
+
+      setTimeout(() => {
+        setAttackerAction('striking');
+        setAttackerSlash(true);
+        setTimeout(() => setAttackerSlash(false), 450);
+
+        if (!isHit) {
+          setDefenderAction('dodging');
+          triggerFloatingText('闪避 MISS', defenderSide, 'miss');
+          if (soundEnabled) playDodgeSound();
+          setTimeout(() => {
+            setDefenderAction(defender.isParrying ? 'parrying' : 'idle');
+          }, 420);
+        } else {
+          setDefenderAction(parriedAmount > 0 ? 'parrying' : 'hit');
+          setDefenderShake(true);
+          setTimeout(() => setDefenderShake(false), 450);
+
+          spawnSparks(defenderSide, action === 'ultimate' ? 28 : action === 'heavy' || isCrit ? 22 : 16, action === 'ultimate' || action === 'heavy' || isCrit);
+          setClashImpact({
+            id: floatingIdCounter.current++,
+            type: action === 'ultimate' ? 'ultimate' : action === 'heavy' ? 'heavy' : 'slash',
+            crit: isCrit,
+            direction: currentTurn === 'left' ? 'left-to-right' : 'right-to-left',
+          });
+          setTimeout(() => setClashImpact(null), 480);
+
+          if (action === 'ultimate' || action === 'heavy' || isCrit) {
+            triggerStageShake('heavy');
+          } else {
+            triggerStageShake('light');
+          }
+
+          if (parriedAmount > 0) {
+            triggerFloatingText(`-${damage} 🛡️格挡`, defenderSide, 'parry');
+          } else if (isCrit) {
+            triggerFloatingText(`-${damage} 🔥 会心!`, defenderSide, 'crit');
+          } else {
+            triggerFloatingText(`-${damage} ⚔️`, defenderSide, 'hit');
+          }
+
+          setDefender(prev => {
+            if (!prev) return null;
+            const newHp = Math.max(0, prev.hp - damage);
+            return { ...prev, hp: newHp, rage: Math.min(100, prev.rage + Math.floor(damage * 0.4)) };
+          });
+
+          setTimeout(() => {
+            setDefenderAction(prev => (prev === 'dead' ? 'dead' : defender.isParrying ? 'parrying' : 'idle'));
+          }, action === 'ultimate' ? 540 : 420);
+        }
+      }, chargeDelay);
+
+      setTimeout(() => {
+        setAttackerAction(prev => (prev === 'dead' ? 'dead' : 'idle'));
+      }, resolveDelay - 40);
     }
 
     addLog(actionLog);
 
-    // Turn transition state machine checker
     const checkWinLose = (leftCurrentHp: number, rightCurrentHp: number) => {
       if (leftCurrentHp <= 0 && rightCurrentHp <= 0) {
         addLog('⚖️ 战况惊烈！两大巅峰武圣拼尽余力对戳，同坠马下，竟成平手不分轩轾！');
         setWinnerSide('draw');
         setLeftActionState('dead');
         setRightActionState('dead');
+        if (soundEnabled) playDefeatSound();
         return true;
       }
       if (rightCurrentHp <= 0) {
         addLog(`🎉 大捷！左侧名将 【${leftDuelist?.officer.name}】 绝尘凯旋，将 【${rightDuelist?.officer.name}】 震落马下，赢得演武大胜！`);
         setWinnerSide('left');
         setRightActionState('dead');
+        if (soundEnabled) playVictorySound();
         return true;
       }
       if (leftCurrentHp <= 0) {
         addLog(`🎉 大捷！右侧名将 【${rightDuelist?.officer.name}】 怒吼震天，横戟挑落 【${leftDuelist?.officer.name}】 首级铠吞，夺得大胜！`);
         setWinnerSide('right');
         setLeftActionState('dead');
+        if (soundEnabled) playVictorySound();
         return true;
       }
       return false;
     };
 
-    // Use simulated reactive delay to get updated state accurately
+    // Resolve turn transition strictly after the clash animation finishes
     setTimeout(() => {
+      setIsAnimatingAction(false);
       setLeftDuelist(curLeft => {
         setRightDuelist(curRight => {
           if (!curLeft || !curRight) return curRight;
-          
+
           const isGameOver = checkWinLose(curLeft.hp, curRight.hp);
           if (!isGameOver) {
-            // Swap turns
             const nextSide = currentTurn === 'left' ? 'right' : 'left';
             setCurrentTurn(nextSide);
             setRoundCount(prev => prev + 1);
@@ -620,12 +584,12 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
         });
         return curLeft;
       });
-    }, 150);
+    }, resolveDelay);
   };
 
   // Automated AI simulation ticker
   useEffect(() => {
-    if (!isFighting || winnerSide) return;
+    if (!isFighting || winnerSide || isAnimatingAction) return;
 
     // AI controls right turn if not player_vs_player, AI controls left turn if ai_vs_ai
     const isLeftAi = combatType === 'ai_vs_ai';
@@ -652,11 +616,11 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
         } else {
           executeAction('slash');
         }
-      }, 1100);
+      }, 850);
 
       return () => clearTimeout(timer);
     }
-  }, [isFighting, currentTurn, leftDuelist, rightDuelist, winnerSide, combatType]);
+  }, [isFighting, currentTurn, leftDuelist, rightDuelist, winnerSide, combatType, isAnimatingAction]);
 
   const resetDuel = () => {
     setIsFighting(false);
@@ -666,8 +630,13 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
     setWinnerSide(null);
     setLeftActionState('idle');
     setRightActionState('idle');
+    setIsAnimatingAction(false);
     setLastTauntMsg({ left: '', right: '' });
     setSparkParticles([]);
+    setDustPuffs([]);
+    setClashImpact(null);
+    setUltBanner(null);
+    setStageShake('none');
   };
 
   const leftPct = leftDuelist ? (leftDuelist.hp / leftDuelist.maxHp) * 100 : 100;
@@ -680,10 +649,10 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
         {showUltFlash && (
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.9, 0.4, 0] }}
+            animate={{ opacity: [0, 0.85, 0.35, 0] }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.55 }}
-            className="absolute inset-0 z-50 bg-gradient-to-r from-red-650 via-yellow-500/20 to-rose-650 mix-blend-color-dodge pointer-events-none"
+            transition={{ duration: 0.7 }}
+            className="absolute inset-0 z-40 bg-gradient-to-r from-rose-600/30 via-amber-400/25 to-rose-600/30 pointer-events-none"
           />
         )}
       </AnimatePresence>
@@ -898,18 +867,32 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
 
               {/* Floating hit/healing text animation overlay */}
               <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col gap-1">
-                {floatingText.filter(t => t.side === 'left').map(t => (
-                  <motion.span
-                    key={t.id}
-                    initial={{ scale: 0.5, y: 15, opacity: 0 }}
-                    animate={{ scale: 1.2, y: -25, opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.8 }}
-                    className="text-lg font-serif font-black text-rose-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)] whitespace-nowrap bg-slate-950/90 px-2 py-0.5 rounded-lg border border-slate-800"
-                  >
-                    {t.text}
-                  </motion.span>
-                ))}
+                <AnimatePresence>
+                  {floatingText.filter(t => t.side === 'left').map(t => (
+                    <motion.span
+                      key={t.id}
+                      initial={{ scale: 0.45, y: 16, opacity: 0 }}
+                      animate={{ scale: t.tone === 'crit' ? 1.32 : 1.12, y: -28, opacity: 1 }}
+                      exit={{ opacity: 0, y: -42 }}
+                      transition={{ duration: 0.55, ease: 'easeOut' }}
+                      className={`text-base md:text-lg font-serif font-black whitespace-nowrap bg-slate-950/95 px-2.5 py-0.5 rounded-lg border shadow-lg ${
+                        t.tone === 'heal'
+                          ? 'text-emerald-400 border-emerald-500/40'
+                          : t.tone === 'miss'
+                          ? 'text-slate-300 border-slate-600/50'
+                          : t.tone === 'parry'
+                          ? 'text-teal-300 border-teal-500/40'
+                          : t.tone === 'rage'
+                          ? 'text-sky-300 border-sky-500/40'
+                          : t.tone === 'crit'
+                          ? 'text-amber-300 border-amber-400/70 drop-shadow-[0_0_12px_rgba(251,191,36,0.65)]'
+                          : 'text-rose-400 border-rose-500/40 drop-shadow-[0_0_10px_rgba(239,68,68,0.45)]'
+                      }`}
+                    >
+                      {t.text}
+                    </motion.span>
+                  ))}
+                </AnimatePresence>
               </div>
 
               {/* Avatar and Info Header */}
@@ -1017,18 +1000,32 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
 
               {/* Floating hit/healing text animation overlay */}
               <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col gap-1">
-                {floatingText.filter(t => t.side === 'right').map(t => (
-                  <motion.span
-                    key={t.id}
-                    initial={{ scale: 0.5, y: 15, opacity: 0 }}
-                    animate={{ scale: 1.2, y: -25, opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.8 }}
-                    className="text-lg font-serif font-black text-rose-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)] whitespace-nowrap bg-slate-950/90 px-2 py-0.5 rounded-lg border border-slate-800"
-                  >
-                    {t.text}
-                  </motion.span>
-                ))}
+                <AnimatePresence>
+                  {floatingText.filter(t => t.side === 'right').map(t => (
+                    <motion.span
+                      key={t.id}
+                      initial={{ scale: 0.45, y: 16, opacity: 0 }}
+                      animate={{ scale: t.tone === 'crit' ? 1.32 : 1.12, y: -28, opacity: 1 }}
+                      exit={{ opacity: 0, y: -42 }}
+                      transition={{ duration: 0.55, ease: 'easeOut' }}
+                      className={`text-base md:text-lg font-serif font-black whitespace-nowrap bg-slate-950/95 px-2.5 py-0.5 rounded-lg border shadow-lg ${
+                        t.tone === 'heal'
+                          ? 'text-emerald-400 border-emerald-500/40'
+                          : t.tone === 'miss'
+                          ? 'text-slate-300 border-slate-600/50'
+                          : t.tone === 'parry'
+                          ? 'text-teal-300 border-teal-500/40'
+                          : t.tone === 'rage'
+                          ? 'text-sky-300 border-sky-500/40'
+                          : t.tone === 'crit'
+                          ? 'text-amber-300 border-amber-400/70 drop-shadow-[0_0_12px_rgba(251,191,36,0.65)]'
+                          : 'text-rose-400 border-rose-500/40 drop-shadow-[0_0_10px_rgba(239,68,68,0.45)]'
+                      }`}
+                    >
+                      {t.text}
+                    </motion.span>
+                  ))}
+                </AnimatePresence>
               </div>
 
               {/* Avatar and Info Header */}
@@ -1092,14 +1089,20 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
           </div>
           
           {/* ================= FIGHTING ARENA THEATER STAGE ================= */}
-          <div className="w-full bg-slate-950 border border-slate-900 rounded-3xl h-72 md:h-80 overflow-hidden relative shadow-inner flex flex-col justify-between p-4 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-amber-950/20 via-slate-950 to-black z-10" id="battle-theater-canvas">
-            
+          <div
+            ref={stageRef}
+            className={`w-full bg-slate-950 border border-slate-900 rounded-3xl h-72 md:h-80 overflow-hidden relative shadow-inner flex flex-col justify-between p-4 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-amber-950/25 via-slate-950 to-black z-10 ${
+              stageShake === 'heavy' ? 'animate-shake-heavy' : stageShake === 'light' ? 'animate-shake' : ''
+            }`}
+            id="battle-theater-canvas"
+          >
             {/* Background Atmosphere Elements */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
-              {/* Ground perspective line */}
-              <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-amber-950/15 to-transparent border-t border-slate-900/40 z-0" />
-              
-              {/* Waving Castle/Camp Walls Silhouette or sand storm */}
+              {/* Arena Horizon & Ground Perspective */}
+              <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-amber-950/20 via-slate-900/30 to-transparent border-t border-slate-800/50 z-0" />
+              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-[78%] h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
+
+              {/* Waving Castle/Camp Battlements Silhouette */}
               <div className="absolute bottom-16 inset-x-0 h-1 flex justify-around opacity-20">
                 <div className="w-4 h-8 bg-slate-800 rounded-t-sm" />
                 <div className="w-4 h-8 bg-slate-800 rounded-t-sm" />
@@ -1107,7 +1110,7 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
                 <div className="w-4 h-8 bg-slate-800 rounded-t-sm" />
               </div>
 
-              {/* Floating dust/spark wind effects */}
+              {/* Floating dust/wind streaks */}
               <motion.div
                 animate={{ x: ['100%', '-100%'] }}
                 transition={{ repeat: Infinity, duration: 15, ease: 'linear' }}
@@ -1116,21 +1119,43 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
               <motion.div
                 animate={{ x: ['120%', '-80%'] }}
                 transition={{ repeat: Infinity, duration: 18, ease: 'linear', delay: 4 }}
-                className="absolute inset-y-0 w-48 bg-gradient-to-r from-transparent via-orange-500/3 to-transparent pointer-events-none -rotate-12"
+                className="absolute inset-y-0 w-48 bg-gradient-to-r from-transparent via-orange-500/5 to-transparent pointer-events-none -rotate-12"
               />
 
               {/* Central Glowing Battlefield Seal */}
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-10 flex flex-col items-center">
-                <Swords className="text-amber-500 scale-[2.5] animate-pulse" />
+                <Swords className="text-amber-500 scale-[2.5]" />
                 <span className="text-[10px] font-mono tracking-widest text-amber-500 font-bold mt-4 uppercase">虎牢演武擂</span>
               </div>
             </div>
+
+            {/* Ultimate Cut-In Banner */}
+            <AnimatePresence>
+              {ultBanner && (
+                <motion.div
+                  initial={{ opacity: 0, scaleX: 0.2 }}
+                  animate={{ opacity: 1, scaleX: 1 }}
+                  exit={{ opacity: 0, scaleX: 1.15 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                  className="absolute inset-x-0 top-6 z-40 pointer-events-none flex justify-center px-4"
+                >
+                  <div className="bg-gradient-to-r from-transparent via-rose-950/95 to-transparent border-y border-amber-400/70 px-10 py-2 text-center shadow-[0_0_24px_rgba(245,158,11,0.35)]">
+                    <span className="text-[10px] font-mono tracking-widest text-amber-300 block">
+                      🔥 {ultBanner.officerName} · 无双奥义发动
+                    </span>
+                    <strong className="text-base md:text-lg font-serif font-black tracking-widest text-amber-100">
+                      『{ultBanner.moveName}』
+                    </strong>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Left/Right Military Standards (Faction Flags) */}
             {(() => {
               const leftFaction = leftDuelist ? getFactionLetter(leftDuelist.officer.name) : '群';
               const rightFaction = rightDuelist ? getFactionLetter(rightDuelist.officer.name) : '群';
-              
+
               const flagStyles = {
                 '蜀': 'from-emerald-900 to-teal-950 border-emerald-600/50 text-emerald-300',
                 '魏': 'from-blue-900 to-indigo-950 border-blue-600/50 text-blue-300',
@@ -1140,8 +1165,7 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
 
               return (
                 <div className="absolute inset-0 pointer-events-none flex justify-between px-6 py-8 z-10">
-                  {/* Left Flag */}
-                  <motion.div 
+                  <motion.div
                     animate={{ rotate: [-2, 2, -2], y: [0, 2, 0] }}
                     transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
                     className="flex flex-col items-center origin-bottom"
@@ -1153,8 +1177,7 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
                     </div>
                   </motion.div>
 
-                  {/* Right Flag */}
-                  <motion.div 
+                  <motion.div
                     animate={{ rotate: [2, -2, 2], y: [0, 2, 0] }}
                     transition={{ repeat: Infinity, duration: 3.8, ease: "easeInOut" }}
                     className="flex flex-col items-center origin-bottom"
@@ -1169,207 +1192,313 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
               );
             })()}
 
-            {/* Spark Collision Particles overlay */}
-            <div className="absolute inset-0 pointer-events-none z-30">
-              {sparkParticles.map(p => (
-                <motion.div
-                  key={p.id}
-                  initial={{ x: `calc(50% + ${p.x}px)`, y: `calc(130px + ${p.y}px)`, scale: 1, opacity: 1 }}
-                  animate={{ 
-                    x: `calc(50% + ${p.x + (Math.random() * 200 - 100)}px)`, 
-                    y: `calc(130px + ${p.y + (Math.random() * -120 - 40)}px)`, 
-                    scale: 0.1, 
-                    opacity: 0 
-                  }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="absolute w-1.5 h-1.5 rounded-full shadow-lg"
-                  style={{ backgroundColor: p.color, boxShadow: `0 0 6px ${p.color}` }}
-                />
-              ))}
+            {/* Gallop Dust Clouds */}
+            <div className="absolute inset-x-0 bottom-8 h-16 pointer-events-none z-15">
+              <AnimatePresence>
+                {dustPuffs.map(d => (
+                  <motion.div
+                    key={d.id}
+                    initial={{ x: 0, y: 0, scale: 0.4, opacity: 0.7 }}
+                    animate={{ x: d.vx, y: -14, scale: d.scale * 1.45, opacity: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.55, ease: 'easeOut' }}
+                    style={{ left: `${d.xPct}%`, bottom: '6px' }}
+                    className="absolute w-5 h-3 rounded-full bg-amber-200/25 blur-[2px]"
+                  />
+                ))}
+              </AnimatePresence>
             </div>
 
-            {/* Turn status overlay / Clash Slash Light overlay */}
+            {/* Central Clash Shockwave & Cross-Slash Arcs */}
             <AnimatePresence>
-              {(leftActionState === 'striking' || rightActionState === 'striking') && (
+              {clashImpact && (
                 <motion.div
-                  initial={{ opacity: 0, scaleY: 0.1 }}
-                  animate={{ opacity: [0, 1, 0], scaleY: [0.1, 1.5, 0.1] }}
+                  key={clashImpact.id}
+                  initial={{ opacity: 0, scale: 0.35 }}
+                  animate={{ opacity: [0, 1, 0], scale: clashImpact.type === 'ultimate' ? [0.45, 1.55, 1.85] : [0.45, 1.15, 1.35] }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/15 to-transparent blur-md pointer-events-none z-20 flex items-center justify-center"
+                  transition={{ duration: clashImpact.type === 'ultimate' ? 0.5 : 0.38, ease: 'easeOut' }}
+                  className="absolute left-1/2 top-[52%] -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30"
                 >
-                  <div className="w-full h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent shadow-[0_0_15px_rgba(245,158,11,0.8)] transform -rotate-12" />
+                  <svg width="160" height="160" viewBox="0 0 160 160" className="overflow-visible">
+                    {/* Expanding Shockwave Ring */}
+                    <circle
+                      cx="80"
+                      cy="80"
+                      r={clashImpact.type === 'ultimate' ? 62 : 44}
+                      fill="none"
+                      stroke={clashImpact.type === 'parry' ? '#2dd4bf' : clashImpact.crit || clashImpact.type === 'ultimate' ? '#fbbf24' : '#f87171'}
+                      strokeWidth={clashImpact.type === 'ultimate' ? 4 : 2.5}
+                      strokeDasharray={clashImpact.type === 'parry' ? '8 6' : undefined}
+                      opacity="0.9"
+                    />
+                    {clashImpact.type !== 'parry' && (
+                      <>
+                        {/* Primary Slash Crescent */}
+                        <path
+                          d={
+                            clashImpact.direction === 'left-to-right'
+                              ? 'M 25 125 Q 75 25 138 30'
+                              : 'M 135 125 Q 85 25 22 30'
+                          }
+                          fill="none"
+                          stroke={clashImpact.type === 'ultimate' ? '#fde047' : '#ffffff'}
+                          strokeWidth={clashImpact.type === 'ultimate' ? 7 : clashImpact.type === 'heavy' ? 5.5 : 4}
+                          strokeLinecap="round"
+                        />
+                        {/* Secondary Cross Slash on Heavy/Crit/Ultimate */}
+                        {(clashImpact.crit || clashImpact.type === 'heavy' || clashImpact.type === 'ultimate') && (
+                          <path
+                            d={
+                              clashImpact.direction === 'left-to-right'
+                                ? 'M 32 32 Q 82 78 130 132'
+                                : 'M 128 32 Q 78 78 30 132'
+                            }
+                            fill="none"
+                            stroke="#fb7185"
+                            strokeWidth={clashImpact.type === 'ultimate' ? 5 : 3.5}
+                            strokeLinecap="round"
+                          />
+                        )}
+                      </>
+                    )}
+                  </svg>
                 </motion.div>
               )}
             </AnimatePresence>
 
+            {/* Spark Collision Particles overlay (deterministic radial bursts) */}
+            <div className="absolute inset-0 pointer-events-none z-30">
+              {sparkParticles.map(p => (
+                <motion.div
+                  key={p.id}
+                  initial={{ x: `calc(50% + ${p.x}px)`, y: `calc(54% + ${p.y}px)`, scale: 1.15, opacity: 1 }}
+                  animate={{
+                    x: `calc(50% + ${p.x + p.vx}px)`,
+                    y: `calc(54% + ${p.y + p.vy}px)`,
+                    scale: 0.15,
+                    opacity: 0
+                  }}
+                  transition={{ duration: p.duration, ease: "easeOut" }}
+                  className="absolute rounded-full"
+                  style={{
+                    width: `${p.size}px`,
+                    height: `${p.size}px`,
+                    backgroundColor: p.color,
+                    boxShadow: `0 0 8px ${p.color}`
+                  }}
+                />
+              ))}
+            </div>
+
             {/* ================= STAGE FIGHTER CONTAINERS ================= */}
-            {leftDuelist && rightDuelist && (
-              <div className="absolute inset-0 flex items-end justify-between px-16 pb-10 z-20">
-                
-                {/* LEFT ANIMATED COMBATANT */}
-                <motion.div
-                  animate={
-                    leftActionState === 'charging' ? { x: 130, y: -5, rotate: 10 } :
-                    leftActionState === 'striking' ? { x: 175, y: -15, rotate: -15 } :
-                    leftActionState === 'parrying' ? { x: -10, y: 0, rotate: 0 } :
-                    leftActionState === 'taunting' ? { x: 0, y: -25, rotate: [0, -4, 4, 0] } :
-                    leftActionState === 'hit' ? { x: -40, y: 10, rotate: -15 } :
-                    leftActionState === 'dead' ? { x: -60, y: 60, rotate: -90, opacity: 0.5 } :
-                    { x: 0, y: [0, -3, 0], rotate: 0 }
-                  }
-                  transition={
-                    leftActionState === 'charging' ? { duration: 0.2, ease: "easeOut" } :
-                    leftActionState === 'striking' ? { duration: 0.15, ease: "easeIn" } :
-                    leftActionState === 'idle' ? { y: { repeat: Infinity, duration: 1.6, ease: "easeInOut" } } :
-                    { duration: 0.35 }
-                  }
-                  className="relative flex flex-col items-center"
-                >
-                  {/* Left Taunt Speech Bubble */}
-                  <AnimatePresence>
-                    {lastTauntMsg.left && (
-                      <motion.div
-                        initial={{ scale: 0.4, opacity: 0, y: 15 }}
-                        animate={{ scale: 1, opacity: 1, y: -5 }}
-                        exit={{ scale: 0.4, opacity: 0 }}
-                        className="absolute bottom-28 left-0 z-30 bg-slate-900/95 border border-amber-500/40 text-slate-100 px-3 py-1.5 rounded-2xl rounded-bl-none text-[10.5px] font-serif leading-tight whitespace-nowrap shadow-xl"
-                      >
-                        <span className="text-amber-400 block font-bold mb-0.5">🗣️ 阵前嘲讽：</span>
-                        {lastTauntMsg.left}
-                        <div className="absolute -bottom-1.5 left-2 w-3 h-3 bg-slate-900 border-r border-b border-amber-500/40 transform rotate-45" />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+            {leftDuelist && rightDuelist && (() => {
+              const stageWidth = stageRef.current?.clientWidth ?? 640;
+              const chargeDist = Math.round(Math.min(175, stageWidth * 0.22));
+              const strikeDist = Math.round(Math.min(245, stageWidth * 0.31));
 
-                  {/* Parry Shield Aura bubble */}
-                  {leftActionState === 'parrying' && (
-                    <motion.div
-                      animate={{ scale: [1, 1.1, 1], opacity: [0.6, 0.85, 0.6] }}
-                      transition={{ repeat: Infinity, duration: 1.5 }}
-                      className="absolute inset-0 -m-3 border-2 border-dashed border-teal-400 rounded-full pointer-events-none z-15 flex items-center justify-center bg-teal-500/5 shadow-[0_0_15px_rgba(45,212,191,0.2)]"
-                    />
-                  )}
-
-                  {/* Attacker Weapon Model Graphic */}
-                  <motion.div 
+              return (
+                <div className="absolute inset-0 flex items-end justify-between px-8 md:px-16 pb-9 z-20">
+                  {/* LEFT ANIMATED COMBATANT */}
+                  <motion.div
                     animate={
-                      leftActionState === 'striking' ? { rotate: [0, 45, -25, 0] } :
-                      leftActionState === 'charging' ? { rotate: 20 } :
-                      { rotate: 0 }
+                      leftActionState === 'charging' ? { x: chargeDist, y: -8, rotate: 9, scale: 1.04 } :
+                      leftActionState === 'striking' ? { x: strikeDist, y: -16, rotate: -8, scale: 1.1 } :
+                      leftActionState === 'dodging' ? { x: -34, y: -12, rotate: -14, opacity: 0.72 } :
+                      leftActionState === 'parrying' ? { x: -8, y: 0, rotate: -3, scale: 1.02 } :
+                      leftActionState === 'taunting' ? { x: 14, y: -20, rotate: [0, -5, 5, 0] } :
+                      leftActionState === 'hit' ? { x: -36, y: 8, rotate: -16, scale: 0.96 } :
+                      leftActionState === 'dead' ? { x: -45, y: 46, rotate: -86, opacity: 0.45 } :
+                      { x: 0, y: [0, -3, 0], rotate: 0, scale: 1, opacity: 1 }
                     }
-                    transition={{ duration: 0.35 }}
-                    className="absolute -right-14 bottom-4 w-16 h-8 origin-left pointer-events-none z-10 flex items-center"
+                    transition={
+                      leftActionState === 'charging' ? { duration: 0.18, ease: "easeOut" } :
+                      leftActionState === 'striking' ? { type: "spring", stiffness: 380, damping: 20 } :
+                      leftActionState === 'dodging' ? { duration: 0.16, ease: "easeOut" } :
+                      leftActionState === 'hit' ? { duration: 0.18, ease: "easeOut" } :
+                      leftActionState === 'idle' ? { y: { repeat: Infinity, duration: 1.6, ease: "easeInOut" }, x: { duration: 0.24 } } :
+                      { duration: 0.3 }
+                    }
+                    className="relative flex flex-col items-center"
                   >
-                    <div className="w-16 h-1 bg-amber-800 rounded-full relative">
-                      {/* Weapon Tip spear head */}
-                      <div className="absolute -right-2 -top-1 w-4 h-3 bg-slate-300 border border-slate-400 rotate-45 rounded-tr-md shadow" style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 50%)' }} />
-                      {/* Red horsehair tassel */}
-                      <div className="absolute -right-0 w-2 h-4 bg-red-600 rounded-full -top-1.5" />
+                    {/* Left Taunt Speech Bubble */}
+                    <AnimatePresence>
+                      {lastTauntMsg.left && (
+                        <motion.div
+                          initial={{ scale: 0.4, opacity: 0, y: 15 }}
+                          animate={{ scale: 1, opacity: 1, y: -5 }}
+                          exit={{ scale: 0.4, opacity: 0 }}
+                          className="absolute bottom-28 left-0 z-30 bg-slate-900/95 border border-amber-500/40 text-slate-100 px-3 py-1.5 rounded-2xl rounded-bl-none text-[10.5px] font-serif leading-tight whitespace-nowrap shadow-xl"
+                        >
+                          <span className="text-amber-400 block font-bold mb-0.5">🗣️ 阵前嘲讽：</span>
+                          {lastTauntMsg.left}
+                          <div className="absolute -bottom-1.5 left-2 w-3 h-3 bg-slate-900 border-r border-b border-amber-500/40 transform rotate-45" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Parry Shield Aura bubble */}
+                    {leftActionState === 'parrying' && (
+                      <motion.div
+                        animate={{ scale: [1, 1.12, 1], opacity: [0.55, 0.9, 0.55] }}
+                        transition={{ repeat: Infinity, duration: 1.2 }}
+                        className="absolute inset-0 -m-3 border-2 border-dashed border-teal-400 rounded-full pointer-events-none z-15 flex items-center justify-center bg-teal-500/10 shadow-[0_0_18px_rgba(45,212,191,0.3)]"
+                      />
+                    )}
+
+                    {/* Left Officer Polearm / Glaive Weapon + Crescent Trail */}
+                    <motion.div
+                      animate={
+                        leftActionState === 'striking' ? { rotate: [-35, 58, -10], scale: 1.18 } :
+                        leftActionState === 'charging' ? { rotate: -22, x: 4 } :
+                        leftActionState === 'parrying' ? { rotate: -65, x: 6, y: -8 } :
+                        { rotate: 6, scale: 1 }
+                      }
+                      transition={{ duration: 0.24, ease: "easeOut" }}
+                      className="absolute -right-14 bottom-5 w-20 h-10 origin-left pointer-events-none z-20 flex items-center"
+                    >
+                      <svg width="82" height="36" viewBox="0 0 82 36" className="overflow-visible drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
+                        <line x1="0" y1="20" x2="58" y2="20" stroke="#92400e" strokeWidth="4" strokeLinecap="round" />
+                        <path d="M54 14 Q74 10 80 20 Q68 26 54 22 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.2" />
+                        <path d="M52 20 Q48 27 44 29" stroke="#dc2626" strokeWidth="3" strokeLinecap="round" fill="none" />
+                        {leftSlash && (
+                          <path d="M40 2 Q78 8 74 34" stroke="#fbbf24" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.85" />
+                        )}
+                      </svg>
+                    </motion.div>
+
+                    {/* Character Avatar base */}
+                    <div className={`w-16 h-16 rounded-2xl overflow-hidden border-2 ${currentTurn === 'left' ? 'border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.45)]' : 'border-slate-800'} relative bg-slate-900 shrink-0 z-10`}>
+                      {leftActionState === 'hit' && (
+                        <motion.div
+                          initial={{ opacity: 0.85 }}
+                          animate={{ opacity: 0 }}
+                          transition={{ duration: 0.35 }}
+                          className="absolute inset-0 bg-rose-500/60 z-20"
+                        />
+                      )}
+                      <AvatarRenderer style={leftDuelist.officer.avatarStyle} />
                     </div>
+
+                    {/* Horse riding base */}
+                    <motion.div
+                      animate={
+                        leftActionState === 'charging' || leftActionState === 'striking'
+                          ? { rotate: [-4, 4, -4], y: [0, -3, 0] }
+                          : { rotate: 0, y: 0 }
+                      }
+                      transition={{ duration: 0.22, repeat: leftActionState === 'charging' ? Infinity : 0 }}
+                      className="relative mt-1 text-center shrink-0 z-10 select-none pointer-events-none flex flex-col items-center"
+                    >
+                      <span className="text-[22px] scale-x-[-1] filter drop-shadow">🐎</span>
+                      <span className="text-[9px] font-serif font-black bg-slate-950/90 border border-slate-800 px-1.5 py-0.5 rounded text-amber-500 block -mt-1">{leftDuelist.officer.name}</span>
+                    </motion.div>
+
+                    {/* Bottom shadow */}
+                    <div className="w-14 h-2.5 bg-black/55 rounded-full filter blur-[2px] absolute -bottom-1 z-0" />
                   </motion.div>
 
-                  {/* Character Avatar base */}
-                  <div className={`w-16 h-16 rounded-2xl overflow-hidden border-2 ${currentTurn === 'left' ? 'border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]' : 'border-slate-800'} relative bg-slate-900 shrink-0 z-10`}>
-                    {leftActionState === 'hit' && (
-                      <div className="absolute inset-0 bg-red-600/40 animate-pulse z-20" />
-                    )}
-                    <AvatarRenderer style={leftDuelist.officer.avatarStyle} />
-                  </div>
-
-                  {/* Horse riding base */}
-                  <div className="relative mt-1 text-center shrink-0 z-10 select-none pointer-events-none flex flex-col items-center">
-                    <span className="text-[20px] filter drop-shadow">🐎</span>
-                    <span className="text-[9px] font-serif font-black bg-slate-950/90 border border-slate-800 px-1.5 py-0.5 rounded text-amber-500 block -mt-1">{leftDuelist.officer.name}</span>
-                  </div>
-
-                  {/* Bottom shadow */}
-                  <div className="w-14 h-2.5 bg-black/55 rounded-full filter blur-[2px] absolute -bottom-1 z-0" />
-                </motion.div>
-
-
-                {/* RIGHT ANIMATED COMBATANT */}
-                <motion.div
-                  animate={
-                    rightActionState === 'charging' ? { x: -130, y: -5, rotate: -10 } :
-                    rightActionState === 'striking' ? { x: -175, y: -15, rotate: 15 } :
-                    rightActionState === 'parrying' ? { x: 10, y: 0, rotate: 0 } :
-                    rightActionState === 'taunting' ? { x: 0, y: -25, rotate: [0, 4, -4, 0] } :
-                    rightActionState === 'hit' ? { x: 40, y: 10, rotate: 15 } :
-                    rightActionState === 'dead' ? { x: 60, y: 60, rotate: 90, opacity: 0.5 } :
-                    { x: 0, y: [0, -3, 0], rotate: 0 }
-                  }
-                  transition={
-                    rightActionState === 'charging' ? { duration: 0.2, ease: "easeOut" } :
-                    rightActionState === 'striking' ? { duration: 0.15, ease: "easeIn" } :
-                    rightActionState === 'idle' ? { y: { repeat: Infinity, duration: 1.6, ease: "easeInOut", delay: 0.2 } } :
-                    { duration: 0.35 }
-                  }
-                  className="relative flex flex-col items-center"
-                >
-                  {/* Right Taunt Speech Bubble */}
-                  <AnimatePresence>
-                    {lastTauntMsg.right && (
-                      <motion.div
-                        initial={{ scale: 0.4, opacity: 0, y: 15 }}
-                        animate={{ scale: 1, opacity: 1, y: -5 }}
-                        exit={{ scale: 0.4, opacity: 0 }}
-                        className="absolute bottom-28 right-0 z-30 bg-slate-900/95 border border-amber-500/40 text-slate-100 px-3 py-1.5 rounded-2xl rounded-br-none text-[10.5px] font-serif leading-tight whitespace-nowrap shadow-xl"
-                      >
-                        <span className="text-amber-400 block font-bold mb-0.5">🗣️ 阵前嘲讽：</span>
-                        {lastTauntMsg.right}
-                        <div className="absolute -bottom-1.5 right-2 w-3 h-3 bg-slate-900 border-l border-b border-amber-500/40 transform rotate-45" />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Parry Shield Aura bubble */}
-                  {rightActionState === 'parrying' && (
-                    <motion.div
-                      animate={{ scale: [1, 1.1, 1], opacity: [0.6, 0.85, 0.6] }}
-                      transition={{ repeat: Infinity, duration: 1.5 }}
-                      className="absolute inset-0 -m-3 border-2 border-dashed border-teal-400 rounded-full pointer-events-none z-15 flex items-center justify-center bg-teal-500/5 shadow-[0_0_15px_rgba(45,212,191,0.2)]"
-                    />
-                  )}
-
-                  {/* Attacker Weapon Model Graphic */}
-                  <motion.div 
+                  {/* RIGHT ANIMATED COMBATANT */}
+                  <motion.div
                     animate={
-                      rightActionState === 'striking' ? { rotate: [0, -45, 25, 0] } :
-                      rightActionState === 'charging' ? { rotate: -20 } :
-                      { rotate: 0 }
+                      rightActionState === 'charging' ? { x: -chargeDist, y: -8, rotate: -9, scale: 1.04 } :
+                      rightActionState === 'striking' ? { x: -strikeDist, y: -16, rotate: 8, scale: 1.1 } :
+                      rightActionState === 'dodging' ? { x: 34, y: -12, rotate: 14, opacity: 0.72 } :
+                      rightActionState === 'parrying' ? { x: 8, y: 0, rotate: 3, scale: 1.02 } :
+                      rightActionState === 'taunting' ? { x: -14, y: -20, rotate: [0, 5, -5, 0] } :
+                      rightActionState === 'hit' ? { x: 36, y: 8, rotate: 16, scale: 0.96 } :
+                      rightActionState === 'dead' ? { x: 45, y: 46, rotate: 86, opacity: 0.45 } :
+                      { x: 0, y: [0, -3, 0], rotate: 0, scale: 1, opacity: 1 }
                     }
-                    transition={{ duration: 0.35 }}
-                    className="absolute -left-14 bottom-4 w-16 h-8 origin-right pointer-events-none z-10 flex items-center justify-end"
+                    transition={
+                      rightActionState === 'charging' ? { duration: 0.18, ease: "easeOut" } :
+                      rightActionState === 'striking' ? { type: "spring", stiffness: 380, damping: 20 } :
+                      rightActionState === 'dodging' ? { duration: 0.16, ease: "easeOut" } :
+                      rightActionState === 'hit' ? { duration: 0.18, ease: "easeOut" } :
+                      rightActionState === 'idle' ? { y: { repeat: Infinity, duration: 1.6, ease: "easeInOut", delay: 0.2 }, x: { duration: 0.24 } } :
+                      { duration: 0.3 }
+                    }
+                    className="relative flex flex-col items-center"
                   >
-                    <div className="w-16 h-1 bg-amber-800 rounded-full relative">
-                      {/* Weapon Tip spear head */}
-                      <div className="absolute -left-2 -top-1 w-4 h-3 bg-slate-300 border border-slate-400 rotate-45 rounded-bl-md shadow" style={{ clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
-                      {/* Red horsehair tassel */}
-                      <div className="absolute -left-0 w-2 h-4 bg-red-600 rounded-full -top-1.5" />
-                    </div>
-                  </motion.div>
+                    {/* Right Taunt Speech Bubble */}
+                    <AnimatePresence>
+                      {lastTauntMsg.right && (
+                        <motion.div
+                          initial={{ scale: 0.4, opacity: 0, y: 15 }}
+                          animate={{ scale: 1, opacity: 1, y: -5 }}
+                          exit={{ scale: 0.4, opacity: 0 }}
+                          className="absolute bottom-28 right-0 z-30 bg-slate-900/95 border border-amber-500/40 text-slate-100 px-3 py-1.5 rounded-2xl rounded-br-none text-[10.5px] font-serif leading-tight whitespace-nowrap shadow-xl"
+                        >
+                          <span className="text-amber-400 block font-bold mb-0.5">🗣️ 阵前嘲讽：</span>
+                          {lastTauntMsg.right}
+                          <div className="absolute -bottom-1.5 right-2 w-3 h-3 bg-slate-900 border-l border-b border-amber-500/40 transform rotate-45" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
-                  {/* Character Avatar base */}
-                  <div className={`w-16 h-16 rounded-2xl overflow-hidden border-2 ${currentTurn === 'right' ? 'border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]' : 'border-slate-800'} relative bg-slate-900 shrink-0 z-10`}>
-                    {rightActionState === 'hit' && (
-                      <div className="absolute inset-0 bg-red-600/40 animate-pulse z-20" />
+                    {/* Parry Shield Aura bubble */}
+                    {rightActionState === 'parrying' && (
+                      <motion.div
+                        animate={{ scale: [1, 1.12, 1], opacity: [0.55, 0.9, 0.55] }}
+                        transition={{ repeat: Infinity, duration: 1.2 }}
+                        className="absolute inset-0 -m-3 border-2 border-dashed border-teal-400 rounded-full pointer-events-none z-15 flex items-center justify-center bg-teal-500/10 shadow-[0_0_18px_rgba(45,212,191,0.3)]"
+                      />
                     )}
-                    <AvatarRenderer style={rightDuelist.officer.avatarStyle} />
-                  </div>
 
-                  {/* Horse riding base */}
-                  <div className="relative mt-1 text-center shrink-0 z-10 select-none pointer-events-none flex flex-col items-center">
-                    <span className="text-[20px] scale-x-[-1] filter drop-shadow">🐎</span>
-                    <span className="text-[9px] font-serif font-black bg-slate-950/90 border border-slate-800 px-1.5 py-0.5 rounded text-amber-500 block -mt-1">{rightDuelist.officer.name}</span>
-                  </div>
+                    {/* Right Officer Halberd / Spear Weapon + Crescent Trail */}
+                    <motion.div
+                      animate={
+                        rightActionState === 'striking' ? { rotate: [35, -58, 10], scale: 1.18 } :
+                        rightActionState === 'charging' ? { rotate: 22, x: -4 } :
+                        rightActionState === 'parrying' ? { rotate: 65, x: -6, y: -8 } :
+                        { rotate: -6, scale: 1 }
+                      }
+                      transition={{ duration: 0.24, ease: "easeOut" }}
+                      className="absolute -left-14 bottom-5 w-20 h-10 origin-right pointer-events-none z-20 flex items-center justify-end"
+                    >
+                      <svg width="82" height="36" viewBox="0 0 82 36" className="overflow-visible drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
+                        <line x1="82" y1="20" x2="24" y2="20" stroke="#92400e" strokeWidth="4" strokeLinecap="round" />
+                        <path d="M28 14 Q8 10 2 20 Q14 26 28 22 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.2" />
+                        <path d="M30 20 Q34 27 38 29" stroke="#dc2626" strokeWidth="3" strokeLinecap="round" fill="none" />
+                        {rightSlash && (
+                          <path d="M42 2 Q4 8 8 34" stroke="#fbbf24" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.85" />
+                        )}
+                      </svg>
+                    </motion.div>
 
-                  {/* Bottom shadow */}
-                  <div className="w-14 h-2.5 bg-black/55 rounded-full filter blur-[2px] absolute -bottom-1 z-0" />
-                </motion.div>
+                    {/* Character Avatar base */}
+                    <div className={`w-16 h-16 rounded-2xl overflow-hidden border-2 ${currentTurn === 'right' ? 'border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.45)]' : 'border-slate-800'} relative bg-slate-900 shrink-0 z-10`}>
+                      {rightActionState === 'hit' && (
+                        <motion.div
+                          initial={{ opacity: 0.85 }}
+                          animate={{ opacity: 0 }}
+                          transition={{ duration: 0.35 }}
+                          className="absolute inset-0 bg-rose-500/60 z-20"
+                        />
+                      )}
+                      <AvatarRenderer style={rightDuelist.officer.avatarStyle} />
+                    </div>
 
-              </div>
-            )}
+                    {/* Horse riding base */}
+                    <motion.div
+                      animate={
+                        rightActionState === 'charging' || rightActionState === 'striking'
+                          ? { rotate: [4, -4, 4], y: [0, -3, 0] }
+                          : { rotate: 0, y: 0 }
+                      }
+                      transition={{ duration: 0.22, repeat: rightActionState === 'charging' ? Infinity : 0 }}
+                      className="relative mt-1 text-center shrink-0 z-10 select-none pointer-events-none flex flex-col items-center"
+                    >
+                      <span className="text-[22px] filter drop-shadow">🐎</span>
+                      <span className="text-[9px] font-serif font-black bg-slate-950/90 border border-slate-800 px-1.5 py-0.5 rounded text-amber-500 block -mt-1">{rightDuelist.officer.name}</span>
+                    </motion.div>
+
+                    {/* Bottom shadow */}
+                    <div className="w-14 h-2.5 bg-black/55 rounded-full filter blur-[2px] absolute -bottom-1 z-0" />
+                  </motion.div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Interactive Player Combat Action bar */}
@@ -1382,9 +1511,9 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
                   🏆 三军见证！演武竞技尘埃落定 🏆
                 </span>
                 <span className="text-xs text-slate-300 block mt-1.5 leading-relaxed max-w-lg mx-auto font-serif">
-                  {winnerSide === 'draw' 
-                    ? '双方武艺登峰造极，两败俱伤坠马，不枉一世名豪宿怨！' 
-                    : `左军大捷！名将【${winnerSide === 'left' ? leftDuelist!.officer.name : rightDuelist!.officer.name}】于第 ${roundCount} 合中阵前斩胜，扬威疆域沙场！`}
+                  {winnerSide === 'draw'
+                    ? '双方武艺登峰造极，两败俱伤坠马，不枉一世名豪宿怨！'
+                    : `${winnerSide === 'left' ? '左军大捷！' : '右军大捷！'}名将【${winnerSide === 'left' ? leftDuelist!.officer.name : rightDuelist!.officer.name}】于第 ${roundCount} 合中阵前斩胜，扬威疆域沙场！`}
                 </span>
               </div>
             ) : (
@@ -1394,14 +1523,17 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
                 const isLeftAi = combatType === 'ai_vs_ai';
                 const isRightAi = combatType !== 'player_vs_player';
                 const isAiThinking = (isLeftTurn && isLeftAi) || (!isLeftTurn && isRightAi);
+                const actionsDisabled = isAiThinking || isAnimatingAction;
 
                 return (
                   <div className="flex flex-col gap-3">
                     <div className="flex justify-between items-center text-xs font-mono text-slate-400">
                       <span>🕹️ 控制盘: 【{isLeftTurn ? leftDuelist!.officer.name : rightDuelist!.officer.name}】的战斗回合</span>
                       <span>
-                        {isAiThinking 
-                          ? '🤖 敌将正在思索克敌阵法...' 
+                        {isAiThinking
+                          ? '🤖 敌将正在思索克敌阵法...'
+                          : isAnimatingAction
+                          ? '⚔️ 正在交锋过招...'
                           : '👉 请点击下方招式对敌将造成物理克制...'}
                       </span>
                     </div>
@@ -1409,7 +1541,7 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                       <button
                         onClick={() => executeAction('slash')}
-                        disabled={isAiThinking}
+                        disabled={actionsDisabled}
                         className="bg-slate-900 hover:bg-slate-850 disabled:opacity-45 text-slate-200 border border-slate-800 rounded-xl p-3 text-xs font-serif text-left transition hover:border-amber-500/40 active:scale-95 cursor-pointer flex flex-col gap-1"
                       >
                         <span className="font-bold text-amber-400 flex items-center gap-1">🗡️ 抢攻/对斩</span>
@@ -1418,7 +1550,7 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
 
                       <button
                         onClick={() => executeAction('heavy')}
-                        disabled={isAiThinking}
+                        disabled={actionsDisabled}
                         className="bg-slate-900 hover:bg-slate-850 disabled:opacity-45 text-slate-200 border border-slate-800 rounded-xl p-3 text-xs font-serif text-left transition hover:border-amber-500/40 active:scale-95 cursor-pointer flex flex-col gap-1"
                       >
                         <span className="font-bold text-rose-400 flex items-center gap-1">🪵 崩山重击</span>
@@ -1427,7 +1559,7 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
 
                       <button
                         onClick={() => executeAction('parry')}
-                        disabled={isAiThinking}
+                        disabled={actionsDisabled}
                         className="bg-slate-900 hover:bg-slate-850 disabled:opacity-45 text-slate-200 border border-slate-800 rounded-xl p-3 text-xs font-serif text-left transition hover:border-amber-500/40 active:scale-95 cursor-pointer flex flex-col gap-1"
                       >
                         <span className="font-bold text-teal-400 flex items-center gap-1">🛡️ 稳守招架</span>
@@ -1436,10 +1568,10 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
 
                       <button
                         onClick={() => executeAction('ultimate')}
-                        disabled={isAiThinking || (isLeftTurn ? leftDuelist!.rage < 50 : rightDuelist!.rage < 50)}
+                        disabled={actionsDisabled || (isLeftTurn ? leftDuelist!.rage < 50 : rightDuelist!.rage < 50)}
                         className={`rounded-xl p-3 text-xs font-serif text-left transition flex flex-col gap-1 cursor-pointer border ${
-                          (isLeftTurn ? leftDuelist!.rage >= 50 : rightDuelist!.rage >= 50) && !isAiThinking
-                            ? 'bg-amber-500/10 hover:bg-amber-500/15 border-amber-500 text-amber-200 active:scale-95' 
+                          (isLeftTurn ? leftDuelist!.rage >= 50 : rightDuelist!.rage >= 50) && !actionsDisabled
+                            ? 'bg-amber-500/10 hover:bg-amber-500/15 border-amber-500 text-amber-200 active:scale-95'
                             : 'bg-slate-900 border-slate-800 text-slate-500 opacity-50'
                         }`}
                       >
@@ -1451,7 +1583,7 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
 
                       <button
                         onClick={() => executeAction('taunt')}
-                        disabled={isAiThinking}
+                        disabled={actionsDisabled}
                         className="bg-slate-900 hover:bg-slate-850 disabled:opacity-45 text-slate-200 border border-slate-800 rounded-xl p-3 text-xs font-serif text-left transition hover:border-amber-500/40 active:scale-95 cursor-pointer flex flex-col gap-1 col-span-2 md:col-span-1"
                       >
                         <span className="font-bold text-sky-400 flex items-center gap-1">🗣️ 阵前嘲讽</span>

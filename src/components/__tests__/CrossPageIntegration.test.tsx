@@ -5,6 +5,8 @@ import InternalAffairs from '../InternalAffairs';
 import DuelArena from '../DuelArena';
 import TacticalMap, { getNearbyTargetCities } from '../TacticalMap';
 import RelationshipTree from '../RelationshipTree';
+import DiplomacyPanel from '../DiplomacyPanel';
+import { createInitialDiplomacyState } from '../../utils/diplomacy';
 import { FACTIONS, SCENARIOS } from '../../data';
 import { Officer } from '../../types';
 
@@ -292,3 +294,56 @@ describe('RelationshipTree Root Officer Faction Filter', () => {
     assert.ok(!rootSelectMatch[0].includes('value="caocao"'));
   });
 });
+
+describe('DiplomacyPanel Player Faction Filter', () => {
+  test('restricts #diplomacy-player-faction to playerFactionId while keeping target factions open', () => {
+    const html = renderToStaticMarkup(
+      <DiplomacyPanel
+        factions={FACTIONS}
+        officers={officers}
+        playerFactions={['shu', 'wei', 'wu']}
+        playerFactionId="shu"
+        diplomacyState={createInitialDiplomacyState(FACTIONS)}
+        gold={1500}
+        timestampLabel="公元 208 年 · 5 月 · 上旬"
+        onExecuteMission={() => ({ ok: true })}
+        onCancelPact={noop}
+      />,
+    );
+    const senderMatch = html.match(/<select[^>]*id="diplomacy-player-faction"[\s\S]*?<\/select>/);
+    const targetMatch = html.match(/<select[^>]*id="diplomacy-target-faction"[\s\S]*?<\/select>/);
+    assert.ok(senderMatch, 'expected select#diplomacy-player-faction');
+    assert.ok(targetMatch, 'expected select#diplomacy-target-faction');
+
+    const senderSelect = senderMatch[0];
+    const targetSelect = targetMatch[0];
+
+    assert.ok(senderSelect.includes('value="shu"'), 'expected own faction shu in sender select');
+    assert.ok(!senderSelect.includes('value="wei"'), 'expected rival faction wei excluded from sender select');
+    assert.ok(!senderSelect.includes('value="wu"'), 'expected wu excluded from sender select when playerFactionId is shu');
+    assert.ok(!senderSelect.includes('value="rome"'), 'expected foreign faction rome excluded from sender select');
+    assert.ok(targetSelect.includes('value="wei"'), 'expected wei still available in target select');
+  });
+
+  test('renders non-sovereign empty state in #diplomacy-player-faction for ronin', () => {
+    const html = renderToStaticMarkup(
+      <DiplomacyPanel
+        factions={FACTIONS}
+        officers={officers}
+        playerFactions={['ronin']}
+        playerFactionId="ronin"
+        diplomacyState={createInitialDiplomacyState(FACTIONS)}
+        gold={1500}
+        timestampLabel="公元 190 年 · 1 月 · 上旬"
+        onExecuteMission={() => ({ ok: true })}
+        onCancelPact={noop}
+      />,
+    );
+    const senderMatch = html.match(/<select[^>]*id="diplomacy-player-faction"[\s\S]*?<\/select>/);
+    assert.ok(senderMatch, 'expected select#diplomacy-player-faction');
+    assert.ok(senderMatch[0].includes('当前所属势力暂无外交主权'));
+    assert.ok(!senderMatch[0].includes('value="shu"'));
+    assert.ok(!senderMatch[0].includes('value="wei"'));
+  });
+});
+

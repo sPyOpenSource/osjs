@@ -30,6 +30,7 @@ interface DiplomacyPanelProps {
   factions: Faction[];
   officers: Officer[];
   playerFactions: string[];
+  playerFactionId?: string;
   diplomacyState: DiplomacyState;
   gold: number;
   timestampLabel: string;
@@ -62,6 +63,7 @@ export default function DiplomacyPanel({
   factions,
   officers,
   playerFactions,
+  playerFactionId,
   diplomacyState,
   gold,
   timestampLabel,
@@ -73,18 +75,25 @@ export default function DiplomacyPanel({
     [factions]
   );
 
-  const defaultPlayerFaction = useMemo(() => {
-    const controlled = playerFactions.find(id => id !== 'ronin' && diplomaticFactions.some(f => f.id === id));
-    return controlled || diplomaticFactions[0]?.id || 'shu';
-  }, [playerFactions, diplomaticFactions]);
+  const ownDiplomaticFactions = useMemo(() => {
+    if (playerFactionId) {
+      return diplomaticFactions.filter(f => f.id === playerFactionId);
+    }
+    return diplomaticFactions.filter(f => playerFactions.includes(f.id));
+  }, [diplomaticFactions, playerFactionId, playerFactions]);
+
+  const defaultPlayerFaction = useMemo(
+    () => ownDiplomaticFactions[0]?.id || '',
+    [ownDiplomaticFactions]
+  );
 
   const [playerFaction, setPlayerFaction] = useState<string>(defaultPlayerFaction);
 
   useEffect(() => {
-    if (!diplomaticFactions.some(f => f.id === playerFaction)) {
+    if (!ownDiplomaticFactions.some(f => f.id === playerFaction)) {
       setPlayerFaction(defaultPlayerFaction);
     }
-  }, [diplomaticFactions, playerFaction, defaultPlayerFaction]);
+  }, [ownDiplomaticFactions, playerFaction, defaultPlayerFaction]);
 
   const targetOptions = useMemo(
     () => diplomaticFactions.filter(f => f.id !== playerFaction),
@@ -215,12 +224,15 @@ export default function DiplomacyPanel({
                 setFormError('');
               }}
             >
-              {diplomaticFactions.map(f => (
-                <option key={f.id} value={f.id}>
-                  {f.crest} {f.name} · {f.ruler}
-                  {playerFactions.includes(f.id) ? ' [我方]' : ''}
-                </option>
-              ))}
+              {ownDiplomaticFactions.length > 0 ? (
+                ownDiplomaticFactions.map(f => (
+                  <option key={f.id} value={f.id}>
+                    {f.crest} {f.name} · {f.ruler} [我方]
+                  </option>
+                ))
+              ) : (
+                <option value="">当前所属势力暂无外交主权</option>
+              )}
             </select>
           </label>
 

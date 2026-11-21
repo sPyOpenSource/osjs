@@ -1360,7 +1360,65 @@ export default function App() {
           {/* Tab 1: Officer Roster */}
           {activeTab === 'roster' && (
             <div className="flex flex-col gap-5">
-              
+              {/* Unified party console: manage the party (left) and recruit from the pool (right) */}
+              <PartyConsole
+                party={party}
+                characters={rpgCharacters}
+                officers={officers}
+                recruitCandidates={filteredOfficers}
+                availableEquipment={partyEquipmentPool}
+                onRecruit={onRecruit}
+                onDismiss={onDismiss}
+                onSpendSkillPoint={onSpendSkillPoint}
+                onEquip={onEquip}
+                relationships={relationships}
+                diplomacyState={diplomacyState}
+                playerFactionId={activePlayerFactionId}
+                recruitNotice={recruitNotice}
+              />
+
+              {/* Officer database: edit, delete, promote, or request an AI biography */}
+              <details className="game-disclosure">
+                <summary>
+                  <User size={16} />
+                  <span>名将档案 · {filteredOfficers.length} 位</span>
+                </summary>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                  {filteredOfficers.length > 0 ? (
+                    filteredOfficers.map(off => (
+                      <OfficerCard
+                        key={off.id}
+                        officer={off}
+                        seasonId={currentSeason.id}
+                        onEdit={(updated) => {
+                          setOfficers(prev => prev.map(o => o.id === updated.id ? updated : o));
+                          setSelectedOfficerId(updated.id);
+                          if (ws && ws.readyState === WebSocket.OPEN) {
+                             ws.send(JSON.stringify({
+                              type: 'add_officer',
+                              data: updated
+                            }));
+                          }
+                        }}
+                        onDelete={handleDeleteOfficer}
+                        onSelectForStrategy={(selected) => setSelectedOfficerId(selected.id)}
+                        isSelectableForStrategy={true}
+                        onGenerateBio={(tgt) => {
+                          const matchedFaction = FACTIONS.find(f => f.id === tgt.factionId) || FACTIONS[FACTIONS.length - 1];
+                          return requestBioAI(tgt, matchedFaction);
+                        }}
+                      />
+                    ))
+                  ) : (
+                    <div className="col-span-1 md:col-span-2 text-center py-12 bg-slate-900/10 border border-slate-900 border-dashed rounded-2xl">
+                      <User size={24} className="text-slate-600 mx-auto mb-2" />
+                      <p className="text-sm text-slate-400 font-medium">在这片乱世天盘的坐标格段，未能寻到任何出仕武将。</p>
+                      <p className="text-xs text-slate-500 mt-1">请尝试清除搜索字或变更所属势力分类。</p>
+                    </div>
+                  )}
+                </div>
+              </details>
+
               {/* Filter controls */}
               <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col gap-3.5">
                 {/* Category selector row */}
@@ -1467,65 +1525,6 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              
-              {/* Unified party console: manage the party (left) and recruit from the pool (right) */}
-              <PartyConsole
-                party={party}
-                characters={rpgCharacters}
-                officers={officers}
-                recruitCandidates={filteredOfficers}
-                availableEquipment={partyEquipmentPool}
-                onRecruit={onRecruit}
-                onDismiss={onDismiss}
-                onSpendSkillPoint={onSpendSkillPoint}
-                onEquip={onEquip}
-                relationships={relationships}
-                diplomacyState={diplomacyState}
-                playerFactionId={activePlayerFactionId}
-                recruitNotice={recruitNotice}
-              />
-
-              {/* Officer database: edit, delete, promote, or request an AI biography */}
-              <details className="game-disclosure">
-                <summary>
-                  <User size={16} />
-                  <span>名将档案 · {filteredOfficers.length} 位</span>
-                </summary>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                  {filteredOfficers.length > 0 ? (
-                    filteredOfficers.map(off => (
-                      <OfficerCard
-                        key={off.id}
-                        officer={off}
-                        seasonId={currentSeason.id}
-                        onEdit={(updated) => {
-                          setOfficers(prev => prev.map(o => o.id === updated.id ? updated : o));
-                          setSelectedOfficerId(updated.id);
-                          if (ws && ws.readyState === WebSocket.OPEN) {
-                             ws.send(JSON.stringify({
-                              type: 'add_officer',
-                              data: updated
-                            }));
-                          }
-                        }}
-                        onDelete={handleDeleteOfficer}
-                        onSelectForStrategy={(selected) => setSelectedOfficerId(selected.id)}
-                        isSelectableForStrategy={true}
-                        onGenerateBio={(tgt) => {
-                          const matchedFaction = FACTIONS.find(f => f.id === tgt.factionId) || FACTIONS[FACTIONS.length - 1];
-                          return requestBioAI(tgt, matchedFaction);
-                        }}
-                      />
-                    ))
-                  ) : (
-                    <div className="col-span-1 md:col-span-2 text-center py-12 bg-slate-900/10 border border-slate-900 border-dashed rounded-2xl">
-                      <User size={24} className="text-slate-600 mx-auto mb-2" />
-                      <p className="text-sm text-slate-400 font-medium">在这片乱世天盘的坐标格段，未能寻到任何出仕武将。</p>
-                      <p className="text-xs text-slate-500 mt-1">请尝试清除搜索字或变更所属势力分类。</p>
-                    </div>
-                  )}
-                </div>
-              </details>
             </div>
           )}
 
@@ -2025,6 +2024,7 @@ export default function App() {
               factions={FACTIONS}
               officers={officers}
               playerFactions={playerFactions}
+              playerFactionId={activePlayerFactionId}
               diplomacyState={diplomacyState}
               gold={playerGold}
               timestampLabel={timestampLabel}

@@ -73,7 +73,7 @@ export const DISASTER_CATEGORY_META: Record<
   { label: string; icon: string; badgeClass: string }
 > = {
   pandemic: {
-    label: '瘟疫 / COVID',
+    label: '瘟疫',
     icon: '🦠',
     badgeClass: 'is-pandemic',
   },
@@ -104,7 +104,7 @@ export const HISTORICAL_DISASTERS: HistoricalDisasterEvent[] = [
     id: 'covid_19_pandemic',
     category: 'pandemic',
     severity: 'catastrophic',
-    title: 'COVID-19 全球大流行疫情',
+    title: '全球大流行疫情',
     historicalReference: '2019–2023 年 COVID-19 全球公共卫生危机',
     description:
       '高传染性呼吸道疫病沿国际航路迅速蔓延，多国口岸封控、市井萧条、粮草供应链受阻，守军减员与民心承压。',

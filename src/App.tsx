@@ -1932,30 +1932,40 @@ export default function App() {
 
           {/* Tab 6: Internal Affairs (内政经略) */}
           <div className={activeTab === 'affairs' ? 'block' : 'hidden'}>
-            <InternalAffairs 
-              officers={officers}
-              soundEnabled={soundEnabled}
-              playDrumSound={playDrumSound}
-              playClashSound={playClashSound}
-              playHarvestSound={playHarvestSound}
-              onSelectOfficer={(off) => {
-                setSelectedOfficerId(off.id);
-              }}
-              gameYear={gameYear}
-              gameMonth={gameMonth}
-              gameXun={gameXun}
-              isAutoTime={isAutoTime}
-              timeSpeed={timeSpeed}
-              onToggleAutoTime={() => setIsAutoTime(!isAutoTime)}
-              onSetTimeSpeed={(s) => setTimeSpeed(s)}
-              onAdvanceXun={handleAdvanceXun}
-              onAdvanceMonth={handleAdvanceMonth}
-              selectedOfficerId={selectedOfficerId}
-              currentCityId={currentCityId}
-              onSetSelectedOfficerId={setSelectedOfficerId}
-              onSetCurrentCity={setCurrentCityId}
-              isActiveTab={activeTab === 'affairs'}
-            />
+            {(() => {
+              const myFactionId =
+                officers.find(o => o.id === protagonistId)?.factionId ??
+                playerFactions[0];
+              const myFactionName = FACTIONS.find(f => f.id === myFactionId)?.name;
+              return (
+                <InternalAffairs 
+                  officers={officers}
+                  soundEnabled={soundEnabled}
+                  playDrumSound={playDrumSound}
+                  playClashSound={playClashSound}
+                  playHarvestSound={playHarvestSound}
+                  onSelectOfficer={(off) => {
+                    setSelectedOfficerId(off.id);
+                  }}
+                  gameYear={gameYear}
+                  gameMonth={gameMonth}
+                  gameXun={gameXun}
+                  isAutoTime={isAutoTime}
+                  timeSpeed={timeSpeed}
+                  onToggleAutoTime={() => setIsAutoTime(!isAutoTime)}
+                  onSetTimeSpeed={(s) => setTimeSpeed(s)}
+                  onAdvanceXun={handleAdvanceXun}
+                  onAdvanceMonth={handleAdvanceMonth}
+                  selectedOfficerId={selectedOfficerId}
+                  currentCityId={currentCityId}
+                  onSetSelectedOfficerId={setSelectedOfficerId}
+                  onSetCurrentCity={setCurrentCityId}
+                  isActiveTab={activeTab === 'affairs'}
+                  playerFactionId={myFactionId}
+                  playerFactionName={myFactionName}
+                />
+              );
+            })()}
           </div>
 
         </section>

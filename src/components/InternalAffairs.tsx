@@ -55,6 +55,10 @@ interface InternalAffairsProps {
   onSetSelectedOfficerId?: (id: string) => void;
   onSetCurrentCity?: (cityName: string) => void;
   isActiveTab?: boolean;
+  /** Player's current faction ID to restrict officer assignment strictly to own faction. */
+  playerFactionId?: string;
+  /** Optional display name of the player's current faction. */
+  playerFactionName?: string;
 }
 
 // Configuration for tasks with detailed mathematical formulas and descriptions
@@ -150,8 +154,46 @@ export default function InternalAffairs({
   currentCityId,
   onSetSelectedOfficerId,
   onSetCurrentCity,
-  isActiveTab = false
+  isActiveTab = false,
+  playerFactionId,
+  playerFactionName
 }: InternalAffairsProps) {
+  // Restrict assignable officers to the player's current faction when specified
+  const factionOfficers = useMemo(() => {
+    if (!playerFactionId) return officers;
+    return officers.filter(o => o.factionId === playerFactionId);
+  }, [officers, playerFactionId]);
+
+  const buildDefaultAssignments = (pool: Officer[]): TaskAssignment[] => {
+    const pick = (preferredId: string, fallbackIdx: number) =>
+      pool.find(o => o.id === preferredId) || pool[fallbackIdx];
+
+    const slotSpecs: Array<{ preferredId: string; fallbackIdx: number; taskType: InternalTaskType; progress: number; completedCycles: number; summary: string }> = [
+      { preferredId: 'zhugeliang', fallbackIdx: 0, taskType: 'agriculture', progress: 65, completedCycles: 1, summary: '上期引灌都江清渠，增产军粮 +1,980 石' },
+      { preferredId: 'guanyu', fallbackIdx: 1, taskType: 'drill', progress: 40, completedCycles: 2, summary: '校场斩木列阵，三军训练度 +18，士气提升至高昂' },
+      { preferredId: 'caocao', fallbackIdx: 2, taskType: 'fortify', progress: 80, completedCycles: 1, summary: '修筑外郭拒马壕沟，城防坚固度 +110' },
+    ];
+
+    const seenIds = new Set<string>();
+    const result: TaskAssignment[] = [];
+    slotSpecs.forEach((spec, idx) => {
+      const off = pick(spec.preferredId, spec.fallbackIdx);
+      if (off && !seenIds.has(off.id)) {
+        seenIds.add(off.id);
+        result.push({
+          id: `task-${idx + 1}`,
+          officerId: off.id,
+          taskType: spec.taskType,
+          progress: spec.progress,
+          targetDays: 30,
+          completedCycles: spec.completedCycles,
+          lastOutputSummary: spec.summary,
+        });
+      }
+    });
+    return result;
+  };
+
   // City Affairs Status
   const resolvedCityIndex = currentCityId
     ? PRESET_CITIES.findIndex((c) => c.cityName === currentCityId)
@@ -175,42 +217,26 @@ export default function InternalAffairs({
   // Task Selection & Officer Assignment
   const [activeTaskType, setActiveTaskType] = useState<InternalTaskType>('agriculture');
 
-  // Canonical selected officer id, driven by prop when provided.
+  // Canonical selected officer id, driven by prop when provided (constrained to player's faction).
   const [localSelectedOfficerId, setLocalSelectedOfficerId] = useState<string>(
-    officers.find(o => o.id === 'zhugeliang')?.id || officers[0]?.id || ''
+    factionOfficers.find(o => o.id === 'zhugeliang')?.id || factionOfficers[0]?.id || ''
   );
-  const effectiveSelectedOfficerId = selectedOfficerId ?? localSelectedOfficerId;
+  const candidateSelectedId = selectedOfficerId ?? localSelectedOfficerId;
+  const effectiveSelectedOfficerId = factionOfficers.some(o => o.id === candidateSelectedId)
+    ? candidateSelectedId
+    : (factionOfficers[0]?.id ?? '');
 
   // Active Ongoing Task Slots (max 4 concurrent officers)
-  const [assignments, setAssignments] = useState<TaskAssignment[]>([
-    {
-      id: 'task-1',
-      officerId: officers.find(o => o.id === 'zhugeliang')?.id || officers[0]?.id,
-      taskType: 'agriculture',
-      progress: 65,
-      targetDays: 30,
-      completedCycles: 1,
-      lastOutputSummary: '上期引灌都江清渠，增产军粮 +1,980 石'
-    },
-    {
-      id: 'task-2',
-      officerId: officers.find(o => o.id === 'guanyu')?.id || officers[1]?.id,
-      taskType: 'drill',
-      progress: 40,
-      targetDays: 30,
-      completedCycles: 2,
-      lastOutputSummary: '校场斩木列阵，三军训练度 +18，士气提升至高昂'
-    },
-    {
-      id: 'task-3',
-      officerId: officers.find(o => o.id === 'caocao')?.id || officers[2]?.id,
-      taskType: 'fortify',
-      progress: 80,
-      targetDays: 30,
-      completedCycles: 1,
-      lastOutputSummary: '修筑外郭拒马壕沟，城防坚固度 +110'
+  const [assignments, setAssignments] = useState<TaskAssignment[]>(() => buildDefaultAssignments(factionOfficers));
+
+  const prevFactionRef = useRef(playerFactionId);
+  useEffect(() => {
+    if (prevFactionRef.current !== playerFactionId) {
+      prevFactionRef.current = playerFactionId;
+      setAssignments(buildDefaultAssignments(factionOfficers));
+      setLocalSelectedOfficerId(factionOfficers[0]?.id ?? '');
     }
-  ]);
+  }, [playerFactionId, factionOfficers]);
 
   // Chronicle Log (奏折大事记)
   const [chronicleLogs, setChronicleLogs] = useState<Array<{
@@ -246,9 +272,9 @@ export default function InternalAffairs({
 
   // Selected officer object (with seasonal stat modifiers applied)
   const currentOfficer = useMemo(() => {
-    const base = officers.find(o => o.id === effectiveSelectedOfficerId) || officers[0];
+    const base = factionOfficers.find(o => o.id === effectiveSelectedOfficerId) || factionOfficers[0];
     return base ? applySeasonalOfficerModifiers(base, currentSeason.id) : base;
-  }, [officers, effectiveSelectedOfficerId, currentSeason.id]);
+  }, [factionOfficers, effectiveSelectedOfficerId, currentSeason.id]);
 
   // Current task config
   const currentTaskConfig = useMemo(() => {
@@ -355,9 +381,9 @@ export default function InternalAffairs({
     };
   }, [currentOfficer, activeTaskType, currentSeason]);
 
-  // Ranking of all officers for the selected task (using seasonal effective stats)
+  // Ranking of faction officers for the selected task (using seasonal effective stats)
   const topRecommendedOfficers = useMemo(() => {
-    return [...officers].map(baseOff => {
+    return [...factionOfficers].map(baseOff => {
       const off = applySeasonalOfficerModifiers(baseOff, currentSeason.id);
       const { politics: pol, leadership: ldr, force: frc, intelligence: itl, charisma: chr } = off.stats;
       let score = 0;
@@ -368,7 +394,7 @@ export default function InternalAffairs({
       else if (activeTaskType === 'commerce') score = pol * 0.50 + itl * 0.50;
       return { officer: baseOff, score: Math.round(score) };
     }).sort((a, b) => b.score - a.score);
-  }, [officers, activeTaskType, currentSeason.id]);
+  }, [factionOfficers, activeTaskType, currentSeason.id]);
 
   // Assign current officer to current task
   const handleAssignTask = () => {
@@ -1016,13 +1042,18 @@ export default function InternalAffairs({
                 二、遴选任命主理武将 (Assign Officer)
               </span>
               <span className="text-[11px] font-mono text-slate-500">
-                当前军中名将库：{officers.length} 位
+                {playerFactionId ? `${playerFactionName || playerFactionId} 麾下武将：` : '当前军中名将库：'}{factionOfficers.length} 位
               </span>
             </div>
 
             {/* Officer Selection Quick Grid (Showing Top Recommendations First) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-h-[220px] overflow-y-auto pr-1">
-              {topRecommendedOfficers.map(({ officer, score }, idx) => {
+              {topRecommendedOfficers.length === 0 ? (
+                <div className="col-span-full py-6 text-center text-xs font-mono text-slate-500">
+                  当前所属阵营暂无可委任武将。
+                </div>
+              ) : (
+                topRecommendedOfficers.map(({ officer, score }, idx) => {
                 const isSelected = effectiveSelectedOfficerId === officer.id;
                 return (
                   <button
@@ -1064,7 +1095,7 @@ export default function InternalAffairs({
                     </div>
                   </button>
                 );
-              })}
+              }))}
             </div>
 
             {/* 3. Mathematical Formula HUD Calculation Card */}

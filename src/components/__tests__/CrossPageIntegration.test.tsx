@@ -44,6 +44,8 @@ function buttonTag(html: string, id: string): string {
 function render(
   overrides: {
     officers?: Officer[];
+    playerFactionId?: string;
+    playerFactionName?: string;
     selectedOfficerId?: string;
     currentCityId?: string;
     onSetSelectedOfficerId?: (id: string) => void;
@@ -53,6 +55,8 @@ function render(
   return renderToStaticMarkup(
     <InternalAffairs
       officers={overrides.officers ?? officers}
+      playerFactionId={overrides.playerFactionId}
+      playerFactionName={overrides.playerFactionName}
       soundEnabled={false}
       playDrumSound={noop}
       playClashSound={noop}
@@ -83,6 +87,22 @@ describe('Cross-Page Integration (InternalAffairs canonical props)', () => {
     const tag = buttonTag(html, 'btn-select-officer-guanyu');
     assert.ok(tag.includes('bg-amber-500/15'), 'expected selected officer highlight on guanyu');
     assert.ok(html.includes('关羽'), 'expected selected officer name in markup');
+  });
+
+  test('filters Assign Officer grid to only characters belonging to playerFactionId', () => {
+    const html = render({ playerFactionId: 'shu', playerFactionName: '蜀汉' });
+    assert.ok(html.includes('id="btn-select-officer-liubei"'), 'expected own-faction officer liubei');
+    assert.ok(html.includes('id="btn-select-officer-guanyu"'), 'expected own-faction officer guanyu');
+    assert.ok(html.includes('id="btn-select-officer-zhangfei"'), 'expected own-faction officer zhangfei');
+    assert.ok(!html.includes('id="btn-select-officer-caocao"'), 'expected rival officer caocao to be excluded');
+    assert.ok(html.includes('蜀汉 麾下武将：3 位'), 'expected faction officer count header');
+  });
+
+  test('renders empty-state message when playerFactionId has no officers', () => {
+    const html = render({ playerFactionId: 'wu', playerFactionName: '东吴' });
+    assert.ok(html.includes('当前所属阵营暂无可委任武将'), 'expected empty state when faction has no officers');
+    assert.ok(!html.includes('id="btn-select-officer-liubei"'), 'expected no shu officers');
+    assert.ok(!html.includes('id="btn-select-officer-caocao"'), 'expected no wei officers');
   });
 
   test('renders city selector driven by currentCityId prop', () => {

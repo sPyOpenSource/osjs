@@ -23,6 +23,8 @@ interface RelationshipTreeProps {
   officers: Officer[];
   factions: Faction[];
   relationships: RelationshipRelation[];
+  playerFactionId?: string;
+  playerFactionName?: string;
   selectedOfficerId?: string;
   onSelectOfficer?: (officer: Officer) => void;
   onDuelPair: (off1: Officer, off2: Officer) => void;
@@ -33,6 +35,8 @@ export default function RelationshipTree({
   officers,
   factions,
   relationships,
+  playerFactionId,
+  playerFactionName,
   selectedOfficerId,
   onSelectOfficer,
   onDuelPair,
@@ -41,16 +45,30 @@ export default function RelationshipTree({
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree');
   const [filterType, setFilterType] = useState<RelationFilterType>('all');
   const [maxDepth, setMaxDepth] = useState<number>(3);
-  const [rootOfficerId, setRootOfficerId] = useState<string>(
-    () => selectedOfficerId || officers[0]?.id || ''
+  const ownOfficers = useMemo(
+    () =>
+      playerFactionId
+        ? officers.filter(o => o.factionId === playerFactionId)
+        : officers,
+    [officers, playerFactionId]
   );
+
+  const [rootOfficerId, setRootOfficerId] = useState<string>(() => {
+    const initialPool = playerFactionId
+      ? officers.filter(o => o.factionId === playerFactionId)
+      : officers;
+    if (selectedOfficerId && initialPool.some(o => o.id === selectedOfficerId)) {
+      return selectedOfficerId;
+    }
+    return initialPool[0]?.id || '';
+  });
   const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (!officers.some(o => o.id === rootOfficerId)) {
-      setRootOfficerId(officers[0]?.id || '');
+    if (!ownOfficers.some(o => o.id === rootOfficerId)) {
+      setRootOfficerId(ownOfficers[0]?.id || '');
     }
-  }, [officers, rootOfficerId]);
+  }, [ownOfficers, rootOfficerId]);
 
   const factionMap = useMemo(
     () => new Map(factions.map(f => [f.id, f])),
@@ -77,12 +95,12 @@ export default function RelationshipTree({
       degreeById.set(rel.fromOfficerId, (degreeById.get(rel.fromOfficerId) ?? 0) + 1);
       degreeById.set(rel.toOfficerId, (degreeById.get(rel.toOfficerId) ?? 0) + 1);
     }
-    return [...officers].sort((a, b) => {
+    return [...ownOfficers].sort((a, b) => {
       const diff = (degreeById.get(b.id) ?? 0) - (degreeById.get(a.id) ?? 0);
       if (diff !== 0) return diff;
       return a.name.localeCompare(b.name, 'zh-CN');
     });
-  }, [officers, relationships]);
+  }, [ownOfficers, relationships]);
 
   const handleReroot = (officer: Officer) => {
     setRootOfficerId(officer.id);
@@ -260,21 +278,28 @@ export default function RelationshipTree({
       <div className="rel-tree-toolbar">
         {viewMode === 'tree' && (
           <label className="rel-tree-control">
-            <span>树根中心人物</span>
+            <span>
+              树根中心人物{playerFactionId ? ` (${playerFactionName ?? playerFactionId} · ${sortedOfficerOptions.length} 位)` : ''}
+            </span>
             <select
               id="rel-tree-root-select"
               aria-label="树根中心人物"
-              value={rootOfficerId}
+              value={ownOfficers.some(o => o.id === rootOfficerId) ? rootOfficerId : ''}
+              disabled={sortedOfficerOptions.length === 0}
               onChange={e => {
                 const chosen = officerMap.get(e.target.value);
                 if (chosen) handleReroot(chosen);
               }}
             >
-              {sortedOfficerOptions.map(o => (
-                <option key={o.id} value={o.id}>
-                  {o.name} ({factionMap.get(o.factionId)?.name || '在野'})
-                </option>
-              ))}
+              {sortedOfficerOptions.length === 0 ? (
+                <option value="">当前所属阵营暂无武将</option>
+              ) : (
+                sortedOfficerOptions.map(o => (
+                  <option key={o.id} value={o.id}>
+                    {o.name} ({factionMap.get(o.factionId)?.name || '在野'})
+                  </option>
+                ))
+              )}
             </select>
           </label>
         )}

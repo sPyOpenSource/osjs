@@ -3,7 +3,7 @@ import { Officer, Faction, CampaignScenario, RelationshipRelation, AvatarStyle, 
 import { FACTIONS, FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS, SCENARIOS, AVAILABLE_SKILLS, AVAILABLE_TRAITS } from './data';
 import { ALL_QUESTS, INITIAL_QUEST_STATES } from './data/quests';
 import { createRpgCharacter, applyXp, validateEquipAssignment } from './utils/rpg';
-import { getCandidateOfficers, MAX_COMPANIONS } from './utils/party';
+import { getCandidateOfficers, getRecruitRefusal, MAX_COMPANIONS } from './utils/party';
 import { completeObjective, isQuestComplete, markQuestCompleted } from './utils/quest';
 import OfficerCard from './components/OfficerCard';
 import AvatarRenderer from './components/AvatarRenderer';
@@ -13,7 +13,7 @@ import GameNavigation from './components/GameNavigation';
 import Button from './components/Button';
 import DuelArena from './components/DuelArena';
 import InternalAffairs from './components/InternalAffairs';
-import PartyConsole from './components/PartyConsole';
+import PartyConsole, { RecruitNotice } from './components/PartyConsole';
 import DiplomacyPanel from './components/DiplomacyPanel';
 import RelationshipTree from './components/RelationshipTree';
 import {
@@ -85,6 +85,7 @@ export default function App() {
   const [party, setParty] = useState<Party>(() => ({ protagonistId: defaultProtagonistId, companionIds: [] }));
   const [rpgCharacters, setRpgCharacters] = useState<Record<string, RpgCharacter>>(() => ({ [defaultProtagonistId]: createRpgCharacter(defaultProtagonistId) }));
   const [rpgLog, setRpgLog] = useState<string[]>([]);
+  const [recruitNotice, setRecruitNotice] = useState<RecruitNotice | null>(null);
   const [questStates, setQuestStates] = useState<QuestState[]>(INITIAL_QUEST_STATES);
   const [partyEquipment, setPartyEquipment] = useState<Record<string, Equipment[]>>({});
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -201,11 +202,12 @@ export default function App() {
   // Keep the party and per-character RPG state in sync with the protagonist.
   // Return the same reference when nothing changed so React can bail out.
   useEffect(() => {
+    setRecruitNotice(null);
     setParty(prev => (prev.protagonistId === protagonistId ? prev : { ...prev, protagonistId }));
     setRpgCharacters(prev =>
       prev[protagonistId] ? prev : { ...prev, [protagonistId]: createRpgCharacter(protagonistId) }
     );
-  }, [protagonistId]);
+  }, [protagonistId, selectedScenario]);
 
   // Apply combat XP to every party member and surface level-ups in the RPG log.
   const grantBattleXp = useCallback((amount: number) => {
@@ -269,17 +271,44 @@ export default function App() {
     }
   }, [ALL_QUESTS, questStates, party, rpgCharacters, grantBattleXp]);
 
-  // Recruit a companion: max MAX_COMPANIONS companions, never the protagonist.
+  const activePlayerFactionId = useMemo(
+    () => officers.find(o => o.id === party.protagonistId)?.factionId ?? playerFactions[0],
+    [officers, party.protagonistId, playerFactions]
+  );
+
+  // Recruit a companion: max MAX_COMPANIONS companions, never the protagonist,
+  // and blocked when personal rivalry or hostile diplomacy causes a refusal.
   const onRecruit = useCallback((officerId: string) => {
     if (officerId === party.protagonistId) return;
     if (party.companionIds.length >= MAX_COMPANIONS) return;
     if (party.companionIds.includes(officerId)) return;
     const officer = officers.find(o => o.id === officerId);
     if (!officer) return;
+
+    const refusal = getRecruitRefusal({
+      candidate: officer,
+      party,
+      officers,
+      relationships,
+      diplomacyState,
+      playerFactionId: activePlayerFactionId,
+      factions: FACTIONS,
+    });
+    if (refusal.refused && refusal.reason) {
+      setRecruitNotice({
+        officerId: officer.id,
+        officerName: officer.name,
+        reason: refusal.reason,
+      });
+      setRpgLog(prev => [`【婉拒招募】${refusal.reason}`, ...prev].slice(0, 50));
+      return;
+    }
+
+    setRecruitNotice(null);
     setParty(prev => ({ ...prev, companionIds: [...prev.companionIds, officerId] }));
     setRpgCharacters(prev => (prev[officerId] ? prev : { ...prev, [officerId]: createRpgCharacter(officerId) }));
     setRpgLog(prev => [`【招募】${officer.name} 加入队伍`, ...prev].slice(0, 50));
-  }, [party, officers]);
+  }, [party, officers, relationships, diplomacyState, activePlayerFactionId]);
 
   // Dismiss a companion.
   const onDismiss = useCallback((officerId: string) => {
@@ -1450,6 +1479,10 @@ export default function App() {
                 onDismiss={onDismiss}
                 onSpendSkillPoint={onSpendSkillPoint}
                 onEquip={onEquip}
+                relationships={relationships}
+                diplomacyState={diplomacyState}
+                playerFactionId={activePlayerFactionId}
+                recruitNotice={recruitNotice}
               />
 
               {/* Officer database: edit, delete, promote, or request an AI biography */}
@@ -1904,15 +1937,25 @@ export default function App() {
 
               {/* Interactive Relationship Tree & Network */}
               <div className="bg-slate-950 border border-slate-900 rounded-2xl p-6">
-                <RelationshipTree
-                  officers={officers}
-                  factions={FACTIONS}
-                  relationships={relationships}
-                  selectedOfficerId={selectedOfficerId}
-                  onSelectOfficer={(off) => setSelectedOfficerId(off.id)}
-                  onDuelPair={runBattleDuelSim}
-                  onBreakRelationship={handleBreakRelationship}
-                />
+                {(() => {
+                  const myFactionId =
+                    officers.find(o => o.id === protagonistId)?.factionId ??
+                    playerFactions[0];
+                  const myFactionName = FACTIONS.find(f => f.id === myFactionId)?.name;
+                  return (
+                    <RelationshipTree
+                      officers={officers}
+                      factions={FACTIONS}
+                      relationships={relationships}
+                      playerFactionId={myFactionId}
+                      playerFactionName={myFactionName}
+                      selectedOfficerId={selectedOfficerId}
+                      onSelectOfficer={(off) => setSelectedOfficerId(off.id)}
+                      onDuelPair={runBattleDuelSim}
+                      onBreakRelationship={handleBreakRelationship}
+                    />
+                  );
+                })()}
               </div>
 
               {/* Battle result box if active */}

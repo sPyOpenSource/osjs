@@ -4,12 +4,13 @@ import { FACTIONS } from '../data';
 import { Shield, Swords, Brain, Scroll, Sparkles, type LucideIcon } from 'lucide-react';
 import Button from './Button';
 import { getRating } from '../utils/rating';
-import { MAX_COMPANIONS } from '../utils/party';
+import { MAX_COMPANIONS, RecruitRefusal } from '../utils/party';
 
 interface RecruitPoolProps {
   officers: Officer[];
   atLimit: boolean;
   onRecruit: (officerId: string) => void;
+  refusalsByOfficerId?: Record<string, RecruitRefusal>;
 }
 
 const STAT_DISPLAY: Record<keyof Officer['stats'], { icon: LucideIcon; label: string }> = {
@@ -30,7 +31,12 @@ function topStat(officer: Officer): [keyof Officer['stats'], number] {
   );
 }
 
-export default function RecruitPool({ officers, atLimit, onRecruit }: RecruitPoolProps) {
+export default function RecruitPool({
+  officers,
+  atLimit,
+  onRecruit,
+  refusalsByOfficerId,
+}: RecruitPoolProps) {
   if (officers.length === 0) {
     return <p className="trade-muted text-sm">无可招募武将</p>;
   }
@@ -48,13 +54,16 @@ export default function RecruitPool({ officers, atLimit, onRecruit }: RecruitPoo
           const { icon: Icon, label } = STAT_DISPLAY[statKey];
           const factionName = FACTIONS_BY_ID.get(officer.factionId)?.name || officer.factionId;
           const rating = getRating(statVal);
+          const refusal = refusalsByOfficerId?.[officer.id];
+          const isRefused = Boolean(refusal?.refused);
           return (
             <li key={officer.id} data-testid={`recruit-card-${officer.id}`}>
               <Button
                 data-testid={`btn-recruit-${officer.id}`}
                 disabled={atLimit}
+                title={isRefused ? refusal?.reason : undefined}
                 onClick={() => onRecruit(officer.id)}
-                className="recruit-pool-button"
+                className={`recruit-pool-button${isRefused ? ' is-refused' : ''}`}
               >
                 <span className="recruit-pool-row">
                   <span className="recruit-pool-name">{officer.name}</span>
@@ -68,6 +77,14 @@ export default function RecruitPool({ officers, atLimit, onRecruit }: RecruitPoo
                     </span>
                   </span>
                 </span>
+                {isRefused && (
+                  <span
+                    className="recruit-pool-refusal-tag"
+                    data-testid={`recruit-refusal-${officer.id}`}
+                  >
+                    {refusal?.shortLabel ?? '关系交恶拒召'}
+                  </span>
+                )}
               </Button>
             </li>
           );
@@ -76,3 +93,4 @@ export default function RecruitPool({ officers, atLimit, onRecruit }: RecruitPoo
     </div>
   );
 }
+

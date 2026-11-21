@@ -4,7 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import InternalAffairs from '../InternalAffairs';
 import DuelArena from '../DuelArena';
 import TacticalMap, { getNearbyTargetCities } from '../TacticalMap';
-import { SCENARIOS } from '../../data';
+import RelationshipTree from '../RelationshipTree';
+import { FACTIONS, SCENARIOS } from '../../data';
 import { Officer } from '../../types';
 
 function makeOfficer(id: string, name: string, overrides: Partial<Officer> = {}): Officer {
@@ -238,5 +239,56 @@ describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {
     const yamataiTargets = getNearbyTargetCities('yamatai').map(c => c.id);
     assert.equal(yamataiTargets.length, 3);
     assert.deepEqual(yamataiTargets, ['xiangping', 'xiapi', 'beiping']);
+  });
+});
+
+describe('RelationshipTree Root Officer Faction Filter', () => {
+  const sampleRels = [
+    { fromOfficerId: 'liubei', toOfficerId: 'guanyu', type: 'Sworn Brother' as const },
+    { fromOfficerId: 'liubei', toOfficerId: 'caocao', type: 'Rival' as const },
+  ];
+
+  test('restricts #rel-tree-root-select to playerFactionId while preserving cross-faction tree nodes', () => {
+    const html = renderToStaticMarkup(
+      <RelationshipTree
+        officers={officers}
+        factions={FACTIONS}
+        relationships={sampleRels}
+        playerFactionId="shu"
+        playerFactionName="蜀汉"
+        selectedOfficerId="liubei"
+        onDuelPair={noop}
+        onBreakRelationship={noop}
+      />,
+    );
+    const rootSelectMatch = html.match(/<select[^>]*id="rel-tree-root-select"[\s\S]*?<\/select>/);
+    assert.ok(rootSelectMatch, 'expected select#rel-tree-root-select');
+    const rootSelect = rootSelectMatch[0];
+
+    assert.ok(rootSelect.includes('value="liubei"'), 'expected own-faction officer liubei in root select');
+    assert.ok(rootSelect.includes('value="guanyu"'), 'expected own-faction officer guanyu in root select');
+    assert.ok(rootSelect.includes('value="zhangfei"'), 'expected own-faction officer zhangfei in root select');
+    assert.ok(!rootSelect.includes('value="caocao"'), 'expected rival officer caocao excluded from root select');
+    // Cross-faction rival node still appears in the expanded relationship tree
+    assert.ok(html.includes('data-testid="rel-tree-node-caocao"'), 'expected rival node in tree graph');
+  });
+
+  test('renders empty option in #rel-tree-root-select when playerFactionId has no officers', () => {
+    const html = renderToStaticMarkup(
+      <RelationshipTree
+        officers={officers}
+        factions={FACTIONS}
+        relationships={sampleRels}
+        playerFactionId="wu"
+        playerFactionName="东吴"
+        onDuelPair={noop}
+        onBreakRelationship={noop}
+      />,
+    );
+    const rootSelectMatch = html.match(/<select[^>]*id="rel-tree-root-select"[\s\S]*?<\/select>/);
+    assert.ok(rootSelectMatch, 'expected select#rel-tree-root-select');
+    assert.ok(rootSelectMatch[0].includes('当前所属阵营暂无武将'));
+    assert.ok(!rootSelectMatch[0].includes('value="liubei"'));
+    assert.ok(!rootSelectMatch[0].includes('value="caocao"'));
   });
 });

@@ -4,7 +4,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import PartyConsole from '../PartyConsole';
 import PartyRoster from '../PartyRoster';
 import RecruitPool from '../RecruitPool';
-import { Equipment, Officer, Party, RpgCharacter } from '../../types';
+import { FACTIONS } from '../../data';
+import { createInitialDiplomacyState } from '../../utils/diplomacy';
+import { getRecruitRefusal } from '../../utils/party';
+import { Equipment, Officer, Party, RelationshipRelation, RpgCharacter } from '../../types';
 
 function makeOfficer(id: string, name: string, overrides: Partial<Officer> = {}): Officer {
   return {
@@ -244,4 +247,141 @@ describe('PartyConsole', () => {
     assert.ok(roster.includes('guanyu'));
     assert.ok(!roster.includes('data-testid="party-card-caocao"'));
   });
+
+  test('renders inline refusal indicators and refusal alert banner inside recruit pane', () => {
+    const sunquan = makeOfficer('sunquan', '孙权', { factionId: 'wu' });
+    const caocao = makeOfficer('caocao', '曹操', { factionId: 'wei' });
+    const simayi = makeOfficer('simayi', '司马懿', { factionId: 'wei' });
+    const roster = [makeOfficer('liubei', '刘备'), makeOfficer('guanyu', '关羽'), sunquan, caocao, simayi];
+    const diplomacyState = createInitialDiplomacyState(FACTIONS);
+    const relationships: RelationshipRelation[] = [
+      { fromOfficerId: 'liubei', toOfficerId: 'caocao', type: 'Rival' },
+    ];
+
+    const html = renderToStaticMarkup(
+      <PartyConsole
+        party={{ protagonistId: 'liubei', companionIds: ['guanyu'] }}
+        characters={{ liubei: makeChar('liubei') }}
+        officers={roster}
+        recruitCandidates={[caocao, simayi, sunquan]}
+        availableEquipment={[]}
+        onRecruit={noop}
+        onDismiss={noop}
+        onSpendSkillPoint={noop}
+        onEquip={noop}
+        relationships={relationships}
+        diplomacyState={diplomacyState}
+        playerFactionId="shu"
+        recruitNotice={{
+          officerId: 'caocao',
+          officerName: '曹操',
+          reason: '曹操 与主公 刘备 系生平宿敌，断然拒召。',
+        }}
+      />,
+    );
+
+    const { roster: rosterPane, recruit } = panes(html);
+    assert.ok(!rosterPane.includes('data-testid="recruit-refusal-banner"'));
+    assert.ok(recruit.includes('data-testid="recruit-refusal-banner"'));
+    assert.ok(recruit.includes('曹操 与主公 刘备 系生平宿敌，断然拒召。'));
+    assert.ok(recruit.includes('data-testid="recruit-refusal-caocao"'));
+    assert.ok(recruit.includes('宿敌拒召'));
+    assert.ok(recruit.includes('data-testid="recruit-refusal-simayi"'));
+    assert.ok(recruit.includes('猜忌冷淡·拒召'));
+    assert.ok(!recruit.includes('data-testid="recruit-refusal-sunquan"'));
+  });
 });
+
+describe('getRecruitRefusal', () => {
+  const diplomacy = createInitialDiplomacyState(FACTIONS);
+  const liubei = makeOfficer('liubei', '刘备', { factionId: 'shu' });
+  const zhugeliang = makeOfficer('zhugeliang', '诸葛亮', { factionId: 'shu' });
+  const caocao = makeOfficer('caocao', '曹操', { factionId: 'wei' });
+  const guojia = makeOfficer('guojia', '郭嘉', { factionId: 'wei' });
+  const sunquan = makeOfficer('sunquan', '孙权', { factionId: 'wu' });
+  const diaochan = makeOfficer('diaochan', '貂蝉', { factionId: 'ronin' });
+  const sampleOfficers = [liubei, zhugeliang, caocao, guojia, sunquan, diaochan];
+
+  test('refuses direct Rival with protagonist and Rival with an active companion', () => {
+    const rels: RelationshipRelation[] = [
+      { fromOfficerId: 'zhugeliang', toOfficerId: 'caocao', type: 'Rival' },
+    ];
+
+    const rivalWithProtagonist = getRecruitRefusal({
+      candidate: zhugeliang,
+      party: { protagonistId: 'caocao', companionIds: [] },
+      officers: sampleOfficers,
+      relationships: rels,
+      diplomacyState: diplomacy,
+      playerFactionId: 'wei',
+      factions: FACTIONS,
+    });
+    assert.equal(rivalWithProtagonist.refused, true);
+    assert.equal(rivalWithProtagonist.kind, 'rival');
+    assert.equal(rivalWithProtagonist.shortLabel, '宿敌拒召');
+    assert.ok(rivalWithProtagonist.reason?.includes('曹操'));
+
+    const rivalWithCompanion = getRecruitRefusal({
+      candidate: zhugeliang,
+      party: { protagonistId: 'guojia', companionIds: ['caocao'] },
+      officers: sampleOfficers,
+      relationships: rels,
+      diplomacyState: diplomacy,
+      playerFactionId: 'wei',
+      factions: FACTIONS,
+    });
+    assert.equal(rivalWithCompanion.refused, true);
+    assert.equal(rivalWithCompanion.kind, 'rival');
+    assert.equal(rivalWithCompanion.shortLabel, '宿怨拒召');
+    assert.ok(rivalWithCompanion.reason?.includes('曹操'));
+  });
+
+  test('refuses foreign officers on cold/hostile diplomacy unless allied or sharing a warm bond with protagonist', () => {
+    const coldForeign = getRecruitRefusal({
+      candidate: guojia,
+      party: { protagonistId: 'liubei', companionIds: [] },
+      officers: sampleOfficers,
+      relationships: [],
+      diplomacyState: diplomacy,
+      playerFactionId: 'shu',
+      factions: FACTIONS,
+    });
+    assert.equal(coldForeign.refused, true);
+    assert.equal(coldForeign.kind, 'hostile_faction');
+    assert.ok(coldForeign.reason?.includes('-55'));
+
+    const warmOverride = getRecruitRefusal({
+      candidate: guojia,
+      party: { protagonistId: 'liubei', companionIds: [] },
+      officers: sampleOfficers,
+      relationships: [{ fromOfficerId: 'liubei', toOfficerId: 'guojia', type: 'Trust' }],
+      diplomacyState: diplomacy,
+      playerFactionId: 'shu',
+      factions: FACTIONS,
+    });
+    assert.equal(warmOverride.refused, false);
+
+    const alliedForeign = getRecruitRefusal({
+      candidate: sunquan,
+      party: { protagonistId: 'liubei', companionIds: [] },
+      officers: sampleOfficers,
+      relationships: [],
+      diplomacyState: diplomacy,
+      playerFactionId: 'shu',
+      factions: FACTIONS,
+    });
+    assert.equal(alliedForeign.refused, false);
+
+    const unalignedRonin = getRecruitRefusal({
+      candidate: diaochan,
+      party: { protagonistId: 'liubei', companionIds: [] },
+      officers: sampleOfficers,
+      relationships: [],
+      diplomacyState: diplomacy,
+      playerFactionId: 'shu',
+      factions: FACTIONS,
+    });
+    assert.equal(unalignedRonin.refused, false);
+  });
+});
+

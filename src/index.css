@@ -125,6 +125,10 @@ body {
 .recruit-pool-stat { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 10px; color: var(--color-trade-muted); }
 .recruit-pool-grade { font-family: var(--font-mono); font-size: 10px; border-width: 1px; border-style: solid; border-radius: 4px; padding: 0 4px; line-height: 1.4; }
 .recruit-pool-cta { font-family: var(--font-mono); font-size: 10px; color: var(--color-trade-accent); }
+.recruit-pool-refusal-banner { font-size: 12px; line-height: 1.5; color: var(--color-trade-error); background: rgba(253, 164, 175, 0.08); border: 1px solid rgba(253, 164, 175, 0.35); border-radius: 6px; padding: 8px 10px; margin: 0; }
+.recruit-pool-button.is-refused { border-color: rgba(253, 164, 175, 0.35); background: rgba(15, 23, 42, 0.72); }
+.recruit-pool-button.is-refused:hover { border-color: rgba(253, 164, 175, 0.65); background: rgba(253, 164, 175, 0.08); }
+.recruit-pool-refusal-tag { font-family: var(--font-mono); font-size: 10px; color: var(--color-trade-error); line-height: 1.4; }
 .party-dismiss-button { padding: 4px 8px; font-size: 11px; border-color: var(--color-trade-error); color: var(--color-trade-error); background: transparent; min-width: 24px; min-height: 24px; }
 .party-dismiss-button:hover { background: rgba(253,164,175,0.15); }
 

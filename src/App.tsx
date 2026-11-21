@@ -1938,34 +1938,42 @@ export default function App() {
 
           {/* Tab 4: Tactical Map Simulation */}
           <div className={activeTab === 'map' ? 'block' : 'hidden'}>
-            <TacticalMap 
-              selectedScenario={selectedScenario} 
-              officers={officers} 
-              onSelectOfficer={(off) => {
-                setSelectedOfficerId(off.id);
-              }}
-              currentCityId={currentCityId}
-              onSetCurrentCity={setCurrentCityId}
-              soundEnabled={soundEnabled}
-              gameYear={gameYear}
-              gameMonth={gameMonth}
-              gameXun={gameXun}
-              isAutoTime={isAutoTime}
-              playerFactions={playerFactions}
-              rpgCharacters={rpgCharacters}
-              onRpgCharactersChange={setRpgCharacters}
-              onBattleXp={grantBattleXp}
-              quests={ALL_QUESTS}
-              questStates={questStates}
-              onCompleteQuestObjective={completeQuestObjective}
-              playerGold={playerGold}
-              onGoldChange={setPlayerGold}
-              diplomacyState={diplomacyState}
-              seasonId={currentSeason.id}
-              weatherId={weatherId}
-              onWeatherChange={setWeatherId}
-              onBattleActiveChange={setInSiegeBattle}
-            />
+            {(() => {
+              const myFactionId =
+                officers.find(o => o.id === protagonistId)?.factionId ??
+                playerFactions[0];
+              return (
+                <TacticalMap 
+                  selectedScenario={selectedScenario} 
+                  officers={officers} 
+                  onSelectOfficer={(off) => {
+                    setSelectedOfficerId(off.id);
+                  }}
+                  currentCityId={currentCityId}
+                  onSetCurrentCity={setCurrentCityId}
+                  soundEnabled={soundEnabled}
+                  gameYear={gameYear}
+                  gameMonth={gameMonth}
+                  gameXun={gameXun}
+                  isAutoTime={isAutoTime}
+                  playerFactions={playerFactions}
+                  playerFactionId={myFactionId}
+                  rpgCharacters={rpgCharacters}
+                  onRpgCharactersChange={setRpgCharacters}
+                  onBattleXp={grantBattleXp}
+                  quests={ALL_QUESTS}
+                  questStates={questStates}
+                  onCompleteQuestObjective={completeQuestObjective}
+                  playerGold={playerGold}
+                  onGoldChange={setPlayerGold}
+                  diplomacyState={diplomacyState}
+                  seasonId={currentSeason.id}
+                  weatherId={weatherId}
+                  onWeatherChange={setWeatherId}
+                  onBattleActiveChange={setInSiegeBattle}
+                />
+              );
+            })()}
           </div>
 
           {/* Tab 4B: Diplomacy & Envoy Missions */}

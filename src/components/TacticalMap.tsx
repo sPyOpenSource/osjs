@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Officer, Faction, CampaignScenario, RpgCharacter, Quest, QuestState } from '../types';
 import { FACTIONS } from '../data';
 import { INITIAL_QUEST_STATES } from '../data/quests';
@@ -136,6 +136,24 @@ const CITIES: City[] = [
   // 7. 岭南交州 (Southeast Asia)
   { id: 'jiaozhi', name: '交趾', pinyin: 'Jiaozhi', x: 72, y: 75, region: '交广', theater: 'southeast', description: '汉末士燮割据岭南交州之治所（今越南红河三角洲龙编）。百越通海第一大港，输出象牙、翡翠与南珠，后归孙吴。' }
 ];
+
+const NEARBY_CITY_RADIUS = 12;
+const MIN_NEARBY_CITIES = 3;
+
+export function getNearbyTargetCities(originId: string, cities: City[] = CITIES): City[] {
+  if (!originId) return [];
+  const origin = cities.find(c => c.id === originId);
+  if (!origin) return [];
+  const ranked = cities
+    .filter(c => c.id !== originId)
+    .map(c => ({ city: c, dist: Math.hypot(c.x - origin.x, c.y - origin.y) }))
+    .sort((a, b) => a.dist - b.dist);
+  const withinRadius = ranked.filter(item => item.dist <= NEARBY_CITY_RADIUS);
+  const selected = withinRadius.length >= MIN_NEARBY_CITIES
+    ? withinRadius
+    : ranked.slice(0, MIN_NEARBY_CITIES);
+  return selected.map(item => item.city);
+}
 
 // Helper to get initial ownership according to scenario
 const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string> => {
@@ -418,6 +436,7 @@ interface TacticalMapProps {
   gameXun?: number;
   isAutoTime?: boolean;
   playerFactions?: string[];
+  playerFactionId?: string;
   rpgCharacters?: Record<string, RpgCharacter>;
   onRpgCharactersChange?: React.Dispatch<React.SetStateAction<Record<string, RpgCharacter>>>;
   onBattleXp?: (amount: number) => void;
@@ -445,6 +464,7 @@ export default function TacticalMap({
   gameXun,
   isAutoTime = true,
   playerFactions: initialPlayerFactions,
+  playerFactionId,
   rpgCharacters,
   onRpgCharactersChange,
   onBattleXp,
@@ -743,8 +763,43 @@ export default function TacticalMap({
   // Stationed generals at currently selected city (based on faction ownership)
   const stationedOfficers = officers.filter(o => o.factionId === selectedCityControllerId);
 
+  // Expedition Origin cities restricted to the player's own faction
+  const ownFactionId = playerFactionId ?? initialPlayerFactions?.[0];
+  const ownCities = useMemo(
+    () =>
+      ownFactionId
+        ? CITIES.filter(c => (cityOwnership[c.id] || 'ronin') === ownFactionId)
+        : CITIES,
+    [ownFactionId, cityOwnership],
+  );
+  const effectiveExpeditionOriginId = ownCities.some(c => c.id === expeditionOriginId)
+    ? expeditionOriginId
+    : (ownCities[0]?.id ?? '');
+
+  useEffect(() => {
+    if (effectiveExpeditionOriginId !== expeditionOriginId) {
+      setExpeditionOriginId(effectiveExpeditionOriginId);
+    }
+  }, [effectiveExpeditionOriginId, expeditionOriginId]);
+
+  const nearbyTargetCities = useMemo(
+    () => getNearbyTargetCities(effectiveExpeditionOriginId),
+    [effectiveExpeditionOriginId],
+  );
+  const effectiveExpeditionTargetId = nearbyTargetCities.some(c => c.id === expeditionTargetId)
+    ? expeditionTargetId
+    : (nearbyTargetCities[0]?.id ?? '');
+
+  useEffect(() => {
+    if (effectiveExpeditionTargetId !== expeditionTargetId) {
+      setExpeditionTargetId(effectiveExpeditionTargetId);
+    }
+  }, [effectiveExpeditionTargetId, expeditionTargetId]);
+
   // Potential expeditions leaders available at Origin city's owner faction
-  const originControllerId = cityOwnership[expeditionOriginId] || 'ronin';
+  const originControllerId = effectiveExpeditionOriginId
+    ? (cityOwnership[effectiveExpeditionOriginId] || 'ronin')
+    : (ownFactionId || 'ronin');
   const leadersAvailable = officers.filter(o => o.factionId === originControllerId);
 
   const handleCountryDebt = (amount: number, action: 'borrow' | 'repay') => {
@@ -1480,7 +1535,8 @@ export default function TacticalMap({
   // Launch Battle/Expedition via manual form
   const handleLaunchExpedition = (e: React.FormEvent) => {
     e.preventDefault();
-    executeExpedition(expeditionOriginId, expeditionTargetId, selectedGeneralId);
+    if (!effectiveExpeditionOriginId || !effectiveExpeditionTargetId) return;
+    executeExpedition(effectiveExpeditionOriginId, effectiveExpeditionTargetId, selectedGeneralId);
   };
 
   // AI Auto-Play: let AI autonomously command factions and expand territory
@@ -2280,8 +2336,8 @@ export default function TacticalMap({
                 const faction = FACTIONS.find(f => f.id === controllerId) || FACTIONS[5];
                 const isSelected = selectedCity.id === city.id;
                 
-                const isOrig = expeditionOriginId === city.id;
-                const isTarg = expeditionTargetId === city.id;
+                const isOrig = effectiveExpeditionOriginId === city.id;
+                const isTarg = effectiveExpeditionTargetId === city.id;
                 
                 const isStationedNum = officers.filter(o => o.factionId === controllerId).length;
                 const isFocusedTheater = selectedTheater === 'all' || city.theater === selectedTheater;
@@ -3437,12 +3493,12 @@ export default function TacticalMap({
         </div>
       ) : mapTab === 'war-mode' ? (
         <WarMode
-          originCity={CITIES.find(c => c.id === expeditionOriginId) || CITIES[0]}
-          targetCity={CITIES.find(c => c.id === expeditionTargetId) || CITIES[1]}
+          originCity={CITIES.find(c => c.id === effectiveExpeditionOriginId) || CITIES[0]}
+          targetCity={CITIES.find(c => c.id === effectiveExpeditionTargetId) || CITIES[1]}
           attackerFaction={FACTIONS.find(f => f.id === originControllerId) || FACTIONS[5]}
-          defenderFaction={FACTIONS.find(f => f.id === (cityOwnership[expeditionTargetId] || 'ronin')) || FACTIONS[5]}
+          defenderFaction={FACTIONS.find(f => f.id === (cityOwnership[effectiveExpeditionTargetId] || 'ronin')) || FACTIONS[5]}
           attackingOfficer={officers.find(o => o.id === selectedGeneralId) || null}
-          defendingOfficer={officers.filter(o => o.factionId === (cityOwnership[expeditionTargetId] || 'ronin'))[0] || null}
+          defendingOfficer={officers.filter(o => o.factionId === (cityOwnership[effectiveExpeditionTargetId] || 'ronin'))[0] || null}
           weatherId={weatherId}
           seasonId={activeSeasonId}
           soundEnabled={soundEnabled}
@@ -3455,8 +3511,8 @@ export default function TacticalMap({
             const controllerId = cityOwnership[city.id] || 'ronin';
             const faction = FACTIONS.find(f => f.id === controllerId) || FACTIONS[5];
             const stationed = officers.filter(o => o.factionId === controllerId);
-            const isOrig = expeditionOriginId === city.id;
-            const isTarg = expeditionTargetId === city.id;
+            const isOrig = effectiveExpeditionOriginId === city.id;
+            const isTarg = effectiveExpeditionTargetId === city.id;
             const isSelected = selectedCity.id === city.id;
             
             // Strategic metadata tags & info
@@ -3783,56 +3839,68 @@ export default function TacticalMap({
           <form onSubmit={handleLaunchExpedition} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] font-mono text-slate-400 block mb-1">🚩 起源郡地</label>
+                <label className="text-[10px] font-mono text-slate-400 block mb-1">
+                  🚩 起源郡地{ownFactionId ? ` · 本势 ${ownCities.length} 城` : ''}
+                </label>
                 <select
                   id="select-exp-origin"
-                  value={expeditionOriginId}
+                  value={effectiveExpeditionOriginId}
                   onChange={(e) => setExpeditionOriginId(e.target.value)}
-                  disabled={isExpeditionRunning}
-                  className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs"
+                  disabled={isExpeditionRunning || ownCities.length === 0}
+                  className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs disabled:opacity-50"
                 >
-                  {ASIA_THEATERS.filter(t => t.id !== 'all').map(th => {
-                    const thCities = CITIES.filter(c => c.theater === th.id);
-                    if (thCities.length === 0) return null;
-                    return (
-                      <optgroup key={th.id} label={`${th.icon} ${th.name}`}>
-                        {thCities.map(c => {
-                          const owner = cityOwnership[c.id] || 'ronin';
-                          const fact = FACTIONS.find(f => f.id === owner)?.name || '在野';
-                          return (
-                            <option key={c.id} value={c.id}>{c.name} - {c.region} ({fact})</option>
-                          );
-                        })}
-                      </optgroup>
-                    );
-                  })}
+                  {ownCities.length === 0 ? (
+                    <option value="">当前所属势力暂无城池</option>
+                  ) : (
+                    ASIA_THEATERS.filter(t => t.id !== 'all').map(th => {
+                      const thCities = ownCities.filter(c => c.theater === th.id);
+                      if (thCities.length === 0) return null;
+                      return (
+                        <optgroup key={th.id} label={`${th.icon} ${th.name}`}>
+                          {thCities.map(c => {
+                            const owner = cityOwnership[c.id] || 'ronin';
+                            const fact = FACTIONS.find(f => f.id === owner)?.name || '在野';
+                            return (
+                              <option key={c.id} value={c.id}>{c.name} - {c.region} ({fact})</option>
+                            );
+                          })}
+                        </optgroup>
+                      );
+                    })
+                  )}
                 </select>
               </div>
 
               <div>
-                <label className="text-[10px] font-mono text-slate-400 block mb-1">🎯 进攻/调遣郡地</label>
+                <label className="text-[10px] font-mono text-slate-400 block mb-1">
+                  🎯 进攻/调遣郡地{effectiveExpeditionOriginId ? ` · 邻近 ${nearbyTargetCities.length} 城` : ''}
+                </label>
                 <select
                   id="select-exp-target"
-                  value={expeditionTargetId}
+                  value={effectiveExpeditionTargetId}
                   onChange={(e) => setExpeditionTargetId(e.target.value)}
-                  disabled={isExpeditionRunning}
-                  className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs"
+                  disabled={isExpeditionRunning || nearbyTargetCities.length === 0}
+                  className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs disabled:opacity-50"
                 >
-                  {ASIA_THEATERS.filter(t => t.id !== 'all').map(th => {
-                    const thCities = CITIES.filter(c => c.theater === th.id);
-                    if (thCities.length === 0) return null;
-                    return (
-                      <optgroup key={th.id} label={`${th.icon} ${th.name}`}>
-                        {thCities.map(c => {
-                          const owner = cityOwnership[c.id] || 'ronin';
-                          const fact = FACTIONS.find(f => f.id === owner)?.name || '在野';
-                          return (
-                            <option key={c.id} value={c.id}>{c.name} - {c.region} ({fact})</option>
-                          );
-                        })}
-                      </optgroup>
-                    );
-                  })}
+                  {nearbyTargetCities.length === 0 ? (
+                    <option value="">请先选择起源城池</option>
+                  ) : (
+                    ASIA_THEATERS.filter(t => t.id !== 'all').map(th => {
+                      const thCities = nearbyTargetCities.filter(c => c.theater === th.id);
+                      if (thCities.length === 0) return null;
+                      return (
+                        <optgroup key={th.id} label={`${th.icon} ${th.name}`}>
+                          {thCities.map(c => {
+                            const owner = cityOwnership[c.id] || 'ronin';
+                            const fact = FACTIONS.find(f => f.id === owner)?.name || '在野';
+                            return (
+                              <option key={c.id} value={c.id}>{c.name} - {c.region} ({fact})</option>
+                            );
+                          })}
+                        </optgroup>
+                      );
+                    })
+                  )}
                 </select>
               </div>
             </div>
@@ -3863,8 +3931,8 @@ export default function TacticalMap({
             <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-900 text-[11px] text-slate-400 space-y-1">
               <div className="flex justify-between font-mono">
                 <span>远征策略形式:</span>
-                <span className={originControllerId === cityOwnership[expeditionTargetId] ? 'text-emerald-400' : 'text-rose-400'}>
-                  {originControllerId === cityOwnership[expeditionTargetId] ? '🛡️ 内部粮草输配 / 兵力调配' : '⚔️ 主动军势讨伐 / 攻城掠地'}
+                <span className={originControllerId === cityOwnership[effectiveExpeditionTargetId] ? 'text-emerald-400' : 'text-rose-400'}>
+                  {originControllerId === cityOwnership[effectiveExpeditionTargetId] ? '🛡️ 内部粮草输配 / 兵力调配' : '⚔️ 主动军势讨伐 / 攻城掠地'}
                 </span>
               </div>
               <p className="text-[9.5px] text-slate-500 leading-relaxed">
@@ -3994,14 +4062,14 @@ export default function TacticalMap({
             <button
               id="btn-launch-exp"
               type="submit"
-              disabled={isExpeditionRunning || leadersAvailable.length === 0}
+              disabled={isExpeditionRunning || leadersAvailable.length === 0 || !effectiveExpeditionTargetId}
               className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 text-xs font-black uppercase tracking-widest py-3 px-4 rounded-xl transition duration-300 shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Play size={12} fill="currentColor" />
               {isExpeditionRunning ? '大军兵临绝地，推演克敌中...' : '传令三军：发兵演武！'}
             </button>
 
-            {originControllerId !== (cityOwnership[expeditionTargetId] || 'ronin') && (
+            {effectiveExpeditionTargetId && originControllerId !== (cityOwnership[effectiveExpeditionTargetId] || 'ronin') && (
               <button
                 id="btn-launch-war-mode-direct"
                 type="button"

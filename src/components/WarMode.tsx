@@ -143,6 +143,8 @@ export default function WarMode({
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
   const [showMoveTargets, setShowMoveTargets] = useState<{row: number, col: number}[]>([]);
   const [showAttackTargets, setShowAttackTargets] = useState<{row: number, col: number}[]>([]);
+  const [viewPerspective, setViewPerspective] = useState<'tactical' | 'diorama'>('tactical');
+  const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
 
   // 2D Animation feedback states
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
@@ -1380,10 +1382,10 @@ export default function WarMode({
               </div>
             </div>
 
-            {/* 3D Isometric Battlefield Arena Graphics Layout */}
-            <motion.div 
-              className="relative w-full max-w-[420px] aspect-[1.18] my-3 rounded-2xl overflow-hidden bg-gradient-to-b from-slate-900 to-slate-950 border-4 border-slate-900 select-none mx-auto flex items-center justify-center p-1 shadow-2xl"
-              style={{ perspective: '1200px' }}
+            {/* Live Tactical Battlefield View (div:nth-of-type(3)) */}
+            <motion.div
+              id="war-live-arena"
+              className="relative w-full my-2 rounded-2xl overflow-hidden bg-slate-950 border border-slate-800/90 select-none flex flex-col shadow-2xl"
               animate={
                 screenShake === 'heavy'
                   ? { x: [-9, 9, -8, 8, -4, 4, 0], y: [-4, 4, -3, 3, 0] }
@@ -1393,235 +1395,303 @@ export default function WarMode({
               }
               transition={{ duration: screenShake === 'heavy' ? 0.4 : 0.25 }}
             >
-              {/* Dynamic Animated Weather Overlays (Rendered Screen-Space Flat for elegant contrast) */}
-              {weatherId === 'sunny' && (
-                <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.06)_0%,_transparent_65%)]">
-                  {[...Array(6)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="absolute w-1.5 h-1.5 rounded-full bg-yellow-400/30 blur-xs"
-                      style={{ left: `${15 + i * 15}%`, top: `${20 + (i % 3) * 20}%` }}
-                      animate={{ y: [-20, 20, -20], opacity: [0.2, 0.7, 0.2] }}
-                      transition={{ duration: 3.5 + i * 0.5, repeat: Infinity, ease: 'easeInOut' }}
-                    />
-                  ))}
-                </div>
-              )}
+              {/* Top Live Frontline Strength & View Controls Bar */}
+              {(() => {
+                const alivePlayers = playerUnits.filter(u => !u.isDead);
+                const aliveEnemies = enemyUnits.filter(e => !e.isDead);
+                const gateUnit = enemyUnits.find(e => e.type === 'gate');
+                const atkTotalHp = alivePlayers.reduce((sum, u) => sum + u.hp, 0);
+                const atkMaxHp = Math.max(1, playerUnits.reduce((sum, u) => sum + u.maxHp, 0));
+                const defTotalHp = aliveEnemies.reduce((sum, e) => sum + e.hp, 0);
+                const defMaxHp = Math.max(1, enemyUnits.reduce((sum, e) => sum + e.maxHp, 0));
+                const atkPct = Math.round((atkTotalHp / atkMaxHp) * 100);
+                const defPct = Math.round((defTotalHp / defMaxHp) * 100);
 
-              {weatherId === 'rainy' && (
-                <div className="absolute inset-0 pointer-events-none overflow-hidden z-40">
-                  {[...Array(14)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="absolute w-0.5 h-6 bg-sky-450/40 rounded-full"
-                      style={{ left: `${i * 7.5}%`, top: '-30px' }}
-                      animate={{ y: ['0%', '1150%'], x: ['0px', '-45px'] }}
-                      transition={{ duration: 0.7 + (i % 3) * 0.15, repeat: Infinity, delay: (i % 4) * 0.1, ease: 'linear' }}
-                    />
-                  ))}
-                </div>
-              )}
+                return (
+                  <div className="shrink-0 px-3 py-2 bg-slate-950/95 border-b border-slate-800/80 grid grid-cols-12 items-center gap-2 text-[11px] z-20">
+                    <div className="col-span-5 flex items-center gap-2 min-w-0">
+                      <span
+                        className="w-2.5 h-2.5 rounded-sm shrink-0"
+                        style={{ backgroundColor: attackerFaction.color }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1 font-mono text-[10px]">
+                          <span className="font-serif font-bold text-slate-100 truncate">
+                            {attackerFaction.name} ({alivePlayers.length}/{playerUnits.length} 营)
+                          </span>
+                          <span className="text-emerald-400 tabular-nums shrink-0">{atkPct}%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden mt-1 border border-slate-800">
+                          <div
+                            className="h-full bg-emerald-500 transition-all duration-300"
+                            style={{ width: `${atkPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
 
-              {weatherId === 'heavy_rain' && (
-                <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-sky-950/20">
-                  {/* Lightning flash flicker */}
-                  <motion.div
-                    className="absolute inset-0 bg-white/10"
-                    animate={{ opacity: [0, 0, 0.4, 0, 0, 0.2, 0] }}
-                    transition={{ duration: 4.8, repeat: Infinity, ease: 'easeInOut' }}
-                  />
-                  {[...Array(24)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="absolute w-1 h-8 bg-sky-300/60 rounded-full shadow-[0_0_4px_rgba(56,189,248,0.5)]"
-                      style={{ left: `${(i * 4.2)}%`, top: '-40px' }}
-                      animate={{ y: ['0%', '1200%'], x: ['0px', '-65px'] }}
-                      transition={{ duration: 0.45 + (i % 4) * 0.08, repeat: Infinity, delay: (i % 5) * 0.06, ease: 'linear' }}
-                    />
-                  ))}
-                </div>
-              )}
+                    <div className="col-span-2 flex flex-col items-center justify-center">
+                      <button
+                        id="btn-war-view-toggle"
+                        type="button"
+                        onClick={() => setViewPerspective(p => (p === 'tactical' ? 'diorama' : 'tactical'))}
+                        className="px-2 py-1 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-[10px] font-mono text-slate-200 transition-colors cursor-pointer whitespace-nowrap"
+                        title="切换战场视角"
+                      >
+                        {viewPerspective === 'tactical' ? '俯瞰平视' : '沙盘透视'}
+                      </button>
+                    </div>
 
-              {weatherId === 'windy' && (
-                <div className="absolute inset-0 pointer-events-none overflow-hidden z-40">
-                  {[...Array(8)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="absolute text-xs"
-                      style={{ right: '-30px', top: `${15 + i * 11}%` }}
-                      animate={{ x: ['110%', '-1100%'], rotate: [0, 360], y: [0, 25, -25, 0] }}
-                      transition={{ duration: 1.6 + (i % 3) * 0.3, repeat: Infinity, delay: (i % 3) * 0.15, ease: 'linear' }}
-                    >
-                      {i % 2 === 0 ? '🍃' : '💨'}
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+                    <div className="col-span-5 flex items-center gap-2 min-w-0">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1 font-mono text-[10px]">
+                          <span className="text-rose-400 tabular-nums shrink-0">
+                            {gateUnit ? `城门 ${gateUnit.hp}/${gateUnit.maxHp}` : `${defPct}%`}
+                          </span>
+                          <span className="font-serif font-bold text-slate-100 truncate">
+                            {defenderFaction.name} ({aliveEnemies.length} 守备)
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden mt-1 border border-slate-800 flex justify-end">
+                          <div
+                            className="h-full bg-rose-500 transition-all duration-300"
+                            style={{ width: `${defPct}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span
+                        className="w-2.5 h-2.5 rounded-sm shrink-0"
+                        style={{ backgroundColor: defenderFaction.color }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
 
-              {weatherId === 'foggy' && (
-                <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-slate-900/10">
-                  {[...Array(4)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="absolute w-36 h-36 rounded-full bg-slate-200/10 blur-xl"
-                      style={{ left: `${i * 25}%`, top: `${15 + (i % 2) * 40}%` }}
-                      animate={{ scale: [1, 1.35, 1], x: [-30, 30, -30] }}
-                      transition={{ duration: 5.5 + i * 1.5, repeat: Infinity, ease: 'easeInOut' }}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {weatherId === 'dense_fog' && (
-                <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-indigo-950/25 backdrop-blur-[0.5px]">
-                  {[...Array(8)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="absolute w-44 h-44 rounded-full bg-indigo-200/20 blur-2xl"
-                      style={{ left: `${(i % 4) * 28}%`, top: `${Math.floor(i / 4) * 45}%` }}
-                      animate={{ scale: [0.9, 1.4, 0.9], x: [-40, 40, -40], opacity: [0.25, 0.55, 0.25] }}
-                      transition={{ duration: 4.5 + i * 0.8, repeat: Infinity, ease: 'easeInOut' }}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {weatherId === 'snow' && (
-                <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-cyan-950/10">
-                  {[...Array(18)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="absolute w-1.5 h-1.5 rounded-full bg-white/70 shadow-sm"
-                      style={{ left: `${(i * 5.8)}%`, top: '-20px' }}
-                      animate={{ y: ['0%', '1150%'], x: [0, (i % 2 === 0 ? 30 : -30), 0] }}
-                      transition={{ duration: 2.2 + (i % 3) * 0.6, repeat: Infinity, delay: (i % 4) * 0.2, ease: 'linear' }}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* ROTATED ISOMETRIC MAP STAGE WRAPPER */}
-              <div 
-                style={{
-                  width: '124%',
-                  height: '124%',
-                  transform: 'rotateX(58deg) rotateZ(-45deg) scale(0.72)',
-                  transformStyle: 'preserve-3d',
-                }}
-                className="absolute transform-gpu w-full h-full origin-center"
+              {/* Main Full-Width Live Battlefield Viewport */}
+              <div
+                className="relative w-full aspect-[4/3] min-h-[410px] overflow-hidden bg-[radial-gradient(ellipse_at_center,_#111c33_0%,_#060b16_100%)]"
+                style={{ perspective: '1100px' }}
               >
-                {/* Columns Scenic Background Graphics Layer */}
-                <div className="absolute inset-0 grid pointer-events-none z-0" style={{ gridTemplateColumns: 'repeat(20, minmax(0, 1fr))' }}>
-                  {/* Col 0 - 3: Rear Army Camp */}
-                  <div className="border-r border-slate-800/25 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-teal-950/20 via-transparent to-transparent flex flex-col justify-between p-2" style={{ gridColumn: 'span 4' }}>
-                    <div className="text-[9px] font-serif font-black text-teal-600/40 uppercase tracking-widest text-center">后军本营</div>
-                    <div className="flex flex-col gap-4 items-center justify-center py-2">
-                      <span className="text-xl opacity-30 animate-pulse">⛺</span>
-                      <motion.span 
-                        className="text-lg opacity-45 drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]"
-                        animate={{ scale: [1, 1.15, 1], rotate: [-5, 5, -5] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                      >
-                        🔥
-                      </motion.span>
-                    </div>
-                    <div className="text-[8px] font-mono text-slate-800 text-center">SAFE ZONE</div>
-                  </div>
-
-                  {/* Col 4 - 11: Buffer Plains & Obstacles */}
-                  <div className="border-r border-slate-800/25 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900/40 via-transparent to-transparent flex flex-col justify-between p-2" style={{ gridColumn: 'span 8' }}>
-                    <div className="text-[9px] font-serif font-black text-slate-500/40 uppercase tracking-widest text-center">平原前川</div>
-                    <div className="flex justify-around items-center opacity-15">
-                      <span className="text-sm">🪨</span>
-                      <span className="text-xs">🪵</span>
-                      <span className="text-sm">🪵</span>
-                    </div>
-                    <div className="text-[8px] font-mono text-slate-800 text-center">MIDPLAIN COMBAT ZONE</div>
-                  </div>
-
-                  {/* Col 12 - 18: Moat crossing, gate outskirts */}
-                  <div className="border-r border-slate-800/25 bg-sky-955/5 flex flex-col justify-between p-2 relative" style={{ gridColumn: 'span 7' }}>
-                    {/* Decorative moat streaming river line */}
-                    <div className="absolute inset-y-0 right-1 w-1 bg-sky-500/10 pointer-events-none" />
-                    <div className="text-[9px] font-serif font-black text-sky-600/40 uppercase tracking-widest text-center">护城壕堑</div>
-                    <div className="flex flex-col gap-6 items-center justify-center opacity-20">
-                      <span className="text-xs">🌊</span>
-                      <span className="text-xs">🌊</span>
-                    </div>
-                    <div className="text-[8px] font-mono text-slate-800 text-center">OUTER FORTRESS</div>
-                  </div>
-
-                  {/* Col 19: Castle Wall Fortifications & Towers */}
-                  <div className="bg-slate-900/60 flex flex-col justify-between p-1.5 relative border-l-2 border-slate-850" style={{ gridColumn: 'span 1' }}>
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-rose-955/5 via-transparent to-transparent opacity-40 pointer-events-none" />
-                    
-                    <div className="h-[30%] bg-slate-950/80 rounded-lg border border-slate-800/60 p-1 flex flex-col justify-between items-center">
-                      <span className="text-[8px] font-serif font-black text-rose-500/45 block text-center leading-tight">女墙垛口</span>
-                      <motion.span 
-                        className="text-sm mt-1"
-                        animate={{ y: [-1, 1, -1] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      >
-                        🏹
-                      </motion.span>
-                    </div>
-
-                    <div className="h-[30%] bg-rose-955/20 rounded-lg border border-rose-900/30 p-1 flex flex-col justify-between items-center">
-                      <span className="text-[8px] font-serif font-black text-amber-500/50 block text-center leading-tight">闸门道</span>
-                      <motion.span 
-                        className="text-lg drop-shadow-[0_0_10px_rgba(225,29,72,0.3)] mt-1"
-                        animate={{ scale: [1, 1.05, 1] }}
-                        transition={{ duration: 2.2, repeat: Infinity }}
-                      >
-                        🏰
-                      </motion.span>
-                    </div>
-
-                    <div className="h-[30%] bg-slate-950/80 rounded-lg border border-slate-800/60 p-1 flex flex-col justify-between items-center">
-                      <span className="text-[8px] font-serif font-black text-rose-500/45 block text-center leading-tight">女墙垛口</span>
-                      <motion.span 
-                        className="text-sm mt-1"
-                        animate={{ y: [1, -1, 1] }}
-                        transition={{ duration: 1.7, repeat: Infinity }}
-                      >
-                        🏹
-                      </motion.span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ACTIVE BULLET PROJECTILES TRAJECTORY ANIMATIONS LAYER */}
-                <AnimatePresence>
-                  {projectiles.map(proj => {
-                    const fromX = (proj.fromCol * (100 / GRID_COLS)) + (100 / GRID_COLS / 2);
-                    const fromY = (proj.fromRow * (100 / GRID_ROWS)) + (100 / GRID_ROWS / 2);
-                    const toX = (proj.toCol * (100 / GRID_COLS)) + (100 / GRID_COLS / 2);
-                    const toY = (proj.toRow * (100 / GRID_ROWS)) + (100 / GRID_ROWS / 2);
-                    const angleDeg = Math.atan2(toY - fromY, toX - fromX) * (180 / Math.PI);
-                    const duration = proj.type === 'slash' ? 0.32 : proj.type === 'ram' ? 0.38 : 0.48;
-
-                    return (
+                {/* Dynamic Animated Weather Overlays */}
+                {weatherId === 'sunny' && (
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.08)_0%,_transparent_65%)]">
+                    {[...Array(6)].map((_, i) => (
                       <motion.div
-                        key={proj.id}
-                        className="absolute z-40 w-10 h-10 -ml-5 -mt-5 flex items-center justify-center pointer-events-none"
-                        style={{ transformStyle: 'preserve-3d' }}
-                        initial={{ left: `${fromX}%`, top: `${fromY}%`, scale: 0.85, opacity: 0.95 }}
-                        animate={{ left: `${toX}%`, top: `${toY}%`, scale: proj.type === 'slash' ? 1.35 : 1.05, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
-                        transition={{ duration, ease: proj.type === 'slash' ? 'easeOut' : 'easeInOut' }}
+                        key={i}
+                        className="absolute w-1.5 h-1.5 rounded-full bg-yellow-400/35 blur-xs"
+                        style={{ left: `${15 + i * 15}%`, top: `${20 + (i % 3) * 20}%` }}
+                        animate={{ y: [-18, 18, -18], opacity: [0.2, 0.7, 0.2] }}
+                        transition={{ duration: 3.5 + i * 0.5, repeat: Infinity, ease: 'easeInOut' }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {weatherId === 'rainy' && (
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden z-40">
+                    {[...Array(14)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute w-0.5 h-6 bg-sky-400/40 rounded-full"
+                        style={{ left: `${i * 7.5}%`, top: '-30px' }}
+                        animate={{ y: ['0%', '1150%'], x: ['0px', '-45px'] }}
+                        transition={{ duration: 0.7 + (i % 3) * 0.15, repeat: Infinity, delay: (i % 4) * 0.1, ease: 'linear' }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {weatherId === 'heavy_rain' && (
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-sky-950/20">
+                    <motion.div
+                      className="absolute inset-0 bg-white/10"
+                      animate={{ opacity: [0, 0, 0.35, 0, 0, 0.18, 0] }}
+                      transition={{ duration: 4.8, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    {[...Array(24)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute w-1 h-8 bg-sky-300/60 rounded-full shadow-[0_0_4px_rgba(56,189,248,0.5)]"
+                        style={{ left: `${i * 4.2}%`, top: '-40px' }}
+                        animate={{ y: ['0%', '1200%'], x: ['0px', '-65px'] }}
+                        transition={{ duration: 0.45 + (i % 4) * 0.08, repeat: Infinity, delay: (i % 5) * 0.06, ease: 'linear' }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {weatherId === 'windy' && (
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden z-40">
+                    {[...Array(8)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute text-xs"
+                        style={{ right: '-30px', top: `${15 + i * 11}%` }}
+                        animate={{ x: ['110%', '-1100%'], rotate: [0, 360], y: [0, 22, -22, 0] }}
+                        transition={{ duration: 1.6 + (i % 3) * 0.3, repeat: Infinity, delay: (i % 3) * 0.15, ease: 'linear' }}
                       >
-                        <div
-                          style={{
-                            transform: 'rotateZ(45deg) rotateX(-60deg)',
-                            transformOrigin: '50% 50%',
-                          }}
-                          className="w-full h-full flex items-center justify-center"
+                        {i % 2 === 0 ? '🍃' : '💨'}
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+
+                {weatherId === 'foggy' && (
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-slate-900/10">
+                    {[...Array(4)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute w-36 h-36 rounded-full bg-slate-200/10 blur-xl"
+                        style={{ left: `${i * 25}%`, top: `${15 + (i % 2) * 40}%` }}
+                        animate={{ scale: [1, 1.3, 1], x: [-25, 25, -25] }}
+                        transition={{ duration: 5.5 + i * 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {weatherId === 'dense_fog' && (
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-indigo-950/25 backdrop-blur-[0.5px]">
+                    {[...Array(8)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute w-44 h-44 rounded-full bg-indigo-200/20 blur-2xl"
+                        style={{ left: `${(i % 4) * 28}%`, top: `${Math.floor(i / 4) * 45}%` }}
+                        animate={{ scale: [0.9, 1.35, 0.9], x: [-35, 35, -35], opacity: [0.22, 0.5, 0.22] }}
+                        transition={{ duration: 4.5 + i * 0.8, repeat: Infinity, ease: 'easeInOut' }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {weatherId === 'snow' && (
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden z-40 bg-cyan-950/10">
+                    {[...Array(18)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute w-1.5 h-1.5 rounded-full bg-white/70 shadow-sm"
+                        style={{ left: `${i * 5.8}%`, top: '-20px' }}
+                        animate={{ y: ['0%', '1150%'], x: [0, (i % 2 === 0 ? 28 : -28), 0] }}
+                        transition={{ duration: 2.2 + (i % 3) * 0.6, repeat: Infinity, delay: (i % 4) * 0.2, ease: 'linear' }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* LIVE 20x20 TACTICAL STAGE */}
+                <div
+                  className="absolute inset-0 origin-center transition-transform duration-300"
+                  style={{
+                    transform: viewPerspective === 'diorama' ? 'rotateX(22deg) scale(0.95)' : 'none',
+                    transformStyle: 'preserve-3d',
+                  }}
+                >
+                  {/* Terrain Zones Backdrop Aligned to Columns 0-19 */}
+                  <div
+                    className="absolute inset-0 grid pointer-events-none z-0"
+                    style={{ gridTemplateColumns: 'repeat(20, minmax(0, 1fr))' }}
+                  >
+                    {/* Col 0 - 3: Attacker Rear Camp */}
+                    <div
+                      className="border-r border-teal-500/20 bg-gradient-to-r from-teal-950/35 via-emerald-950/15 to-transparent flex flex-col justify-between py-3 px-2 relative"
+                      style={{ gridColumn: 'span 4' }}
+                    >
+                      <div className="text-[10px] font-serif font-bold text-teal-300/75 tracking-wider text-center">
+                        后军本营
+                      </div>
+                      <div className="flex flex-col gap-5 items-center justify-center opacity-45">
+                        <span className="text-xl">⛺</span>
+                        <motion.span
+                          className="text-lg drop-shadow-[0_0_8px_rgba(234,179,8,0.45)]"
+                          animate={{ scale: [1, 1.15, 1], rotate: [-4, 4, -4] }}
+                          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          🔥
+                        </motion.span>
+                        <span className="text-lg">🚩</span>
+                      </div>
+                      <div className="text-[9px] font-mono text-teal-500/50 text-center">攻方营垒</div>
+                    </div>
+
+                    {/* Col 4 - 11: Contested Plains */}
+                    <div
+                      className="border-r border-slate-700/25 bg-[radial-gradient(ellipse_at_center,_rgba(51,65,85,0.22)_0%,_transparent_75%)] flex flex-col justify-between py-3 px-2 relative"
+                      style={{ gridColumn: 'span 8' }}
+                    >
+                      {/* Central Siege Road leading horizontally toward gate row 10 */}
+                      <div className="absolute inset-x-0 top-[47%] h-[11%] bg-amber-950/20 border-y border-amber-700/15 pointer-events-none" />
+                      <div className="text-[10px] font-serif font-bold text-slate-300/65 tracking-wider text-center relative">
+                        平原战线
+                      </div>
+                      <div className="flex justify-around items-center opacity-25 relative">
+                        <span className="text-sm">🪨</span>
+                        <span className="text-xs">🪵</span>
+                        <span className="text-sm">🌾</span>
+                      </div>
+                      <div className="text-[9px] font-mono text-slate-500/70 text-center relative">交锋开阔地</div>
+                    </div>
+
+                    {/* Col 12 - 18: Moat & Outer Fortress Approach */}
+                    <div
+                      className="border-r border-sky-500/25 bg-gradient-to-r from-sky-950/20 via-slate-900/35 to-rose-950/15 flex flex-col justify-between py-3 px-2 relative"
+                      style={{ gridColumn: 'span 7' }}
+                    >
+                      {/* Animated Moat Canal down Col 12 */}
+                      <motion.div
+                        className="absolute inset-y-0 left-0 w-[28.5%] bg-gradient-to-b from-sky-500/15 via-cyan-500/25 to-sky-500/15 border-x border-sky-400/25 pointer-events-none"
+                        animate={{ opacity: [0.65, 1, 0.65] }}
+                        transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+                      />
+                      {/* Assault Bridge over Moat aligned with Gate Row 10 */}
+                      <div className="absolute left-0 w-[30%] top-[46%] h-[13%] bg-amber-800/45 border-y border-amber-400/40 pointer-events-none" />
+
+                      <div className="text-[10px] font-serif font-bold text-sky-300/75 tracking-wider text-center relative">
+                        护城河堑
+                      </div>
+                      <div className="flex flex-col gap-8 items-start pl-2 opacity-30 relative">
+                        <span className="text-xs">🌊</span>
+                        <span className="text-xs">🌊</span>
+                      </div>
+                      <div className="text-[9px] font-mono text-sky-400/60 text-center relative">外濠拒马阵</div>
+                    </div>
+
+                    {/* Col 19: Fortress Rampart Wall & Gatehouse */}
+                    <div
+                      className="bg-gradient-to-b from-slate-800/85 via-rose-950/55 to-slate-800/85 border-l-2 border-amber-500/35 flex flex-col justify-between py-2 px-0.5 relative"
+                      style={{ gridColumn: 'span 1' }}
+                    >
+                      <div className="text-[8px] font-serif font-black text-rose-300/80 text-center leading-tight">
+                        城墙
+                      </div>
+                      <div className="w-full h-[14%] rounded bg-rose-950/60 border border-amber-500/40 flex items-center justify-center text-[9px] text-amber-300 font-serif font-bold">
+                        门
+                      </div>
+                      <div className="text-[8px] font-mono text-rose-300/70 text-center">壁垒</div>
+                    </div>
+                  </div>
+
+                  {/* ACTIVE PROJECTILES LAYER */}
+                  <AnimatePresence>
+                    {projectiles.map(proj => {
+                      const fromX = proj.fromCol * (100 / GRID_COLS) + 100 / GRID_COLS / 2;
+                      const fromY = proj.fromRow * (100 / GRID_ROWS) + 100 / GRID_ROWS / 2;
+                      const toX = proj.toCol * (100 / GRID_COLS) + 100 / GRID_COLS / 2;
+                      const toY = proj.toRow * (100 / GRID_ROWS) + 100 / GRID_ROWS / 2;
+                      const angleDeg = Math.atan2(toY - fromY, toX - fromX) * (180 / Math.PI);
+                      const duration = proj.type === 'slash' ? 0.32 : proj.type === 'ram' ? 0.38 : 0.48;
+
+                      return (
+                        <motion.div
+                          key={proj.id}
+                          className="absolute z-40 w-10 h-10 -ml-5 -mt-5 flex items-center justify-center pointer-events-none"
+                          initial={{ left: `${fromX}%`, top: `${fromY}%`, scale: 0.85, opacity: 0.95 }}
+                          animate={{ left: `${toX}%`, top: `${toY}%`, scale: proj.type === 'slash' ? 1.35 : 1.05, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={{ duration, ease: proj.type === 'slash' ? 'easeOut' : 'easeInOut' }}
                         >
                           {proj.type === 'arrow' && (
-                            <div
-                              className="flex items-center justify-center"
-                              style={{ transform: `rotate(${angleDeg}deg)` }}
-                            >
+                            <div className="flex items-center justify-center" style={{ transform: `rotate(${angleDeg}deg)` }}>
                               <svg viewBox="0 0 40 16" className="w-9 h-4 drop-shadow-[0_0_6px_rgba(251,191,36,0.9)]">
                                 <defs>
                                   <linearGradient id={`arrowGrad_${proj.id}`} x1="0%" y1="50%" x2="100%" y2="50%">
@@ -1661,7 +1731,7 @@ export default function WarMode({
                               viewBox="0 0 48 48"
                               className="w-11 h-11 drop-shadow-[0_0_8px_rgba(251,191,36,0.95)]"
                               style={{ transform: `rotate(${angleDeg}deg)` }}
-                              animate={{ scale: [0.7, 1.5, 0.9], rotate: [angleDeg - 35, angleDeg + 45] }}
+                              animate={{ scale: [0.7, 1.45, 0.9], rotate: [angleDeg - 30, angleDeg + 40] }}
                               transition={{ duration: 0.32, ease: 'easeOut' }}
                             >
                               <path
@@ -1672,322 +1742,336 @@ export default function WarMode({
                               />
                             </motion.svg>
                           )}
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
 
-                {/* IMPACT SHOCKWAVE & BURST RINGS LAYER */}
-                <AnimatePresence>
-                  {impactBursts.map(burst => {
-                    const ringColor =
-                      burst.kind === 'fire'
-                        ? 'border-orange-400 bg-orange-500/25 shadow-[0_0_14px_rgba(249,115,22,0.7)]'
-                        : burst.kind === 'ram' || burst.kind === 'stone'
-                        ? 'border-amber-300 bg-amber-500/25 shadow-[0_0_16px_rgba(245,158,11,0.7)]'
-                        : burst.kind === 'slash'
-                        ? 'border-rose-400 bg-rose-500/25 shadow-[0_0_12px_rgba(244,63,94,0.7)]'
-                        : 'border-amber-300 bg-amber-400/20 shadow-[0_0_10px_rgba(251,191,36,0.65)]';
+                  {/* IMPACT SHOCKWAVE RINGS LAYER */}
+                  <AnimatePresence>
+                    {impactBursts.map(burst => {
+                      const ringColor =
+                        burst.kind === 'fire'
+                          ? 'border-orange-400 bg-orange-500/25 shadow-[0_0_14px_rgba(249,115,22,0.7)]'
+                          : burst.kind === 'ram' || burst.kind === 'stone'
+                          ? 'border-amber-300 bg-amber-500/25 shadow-[0_0_16px_rgba(245,158,11,0.7)]'
+                          : burst.kind === 'slash'
+                          ? 'border-rose-400 bg-rose-500/25 shadow-[0_0_12px_rgba(244,63,94,0.7)]'
+                          : 'border-amber-300 bg-amber-400/20 shadow-[0_0_10px_rgba(251,191,36,0.65)]';
 
-                    return (
+                      return (
+                        <motion.div
+                          key={burst.id}
+                          className="absolute z-40 w-12 h-12 -ml-6 -mt-6 flex items-center justify-center pointer-events-none"
+                          style={{ left: `${burst.x}%`, top: `${burst.y}%` }}
+                          initial={{ opacity: 0.95, scale: 0.3 }}
+                          animate={{ opacity: 0, scale: 2.3 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.45, ease: 'easeOut' }}
+                        >
+                          <div className={`w-full h-full rounded-full border-2 ${ringColor}`} />
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+
+                  {/* FLOATING COMBAT INDICATORS LAYER */}
+                  <AnimatePresence>
+                    {floatingEffects.map(ef => (
                       <motion.div
-                        key={burst.id}
-                        className="absolute z-40 w-12 h-12 -ml-6 -mt-6 flex items-center justify-center pointer-events-none"
-                        style={{ left: `${burst.x}%`, top: `${burst.y}%`, transformStyle: 'preserve-3d' }}
-                        initial={{ opacity: 0.95, scale: 0.3 }}
-                        animate={{ opacity: 0, scale: 2.3 }}
+                        key={ef.id}
+                        className={`absolute z-50 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-center select-none whitespace-nowrap ${ef.color}`}
+                        style={{ left: `${ef.x}%`, top: `${ef.y}%` }}
+                        initial={{ opacity: 1, scale: 0.6, y: 0 }}
+                        animate={{ opacity: 0, scale: 1.25, y: -36 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.45, ease: 'easeOut' }}
-                      >
-                        <div className={`w-full h-full rounded-full border-2 ${ringColor}`} />
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-
-                {/* FLOATING TEXT / COMBAT DAMAGE INDICATORS LAYER */}
-                <AnimatePresence>
-                  {floatingEffects.map(ef => (
-                    <motion.div
-                      key={ef.id}
-                      className={`absolute z-50 -ml-12 -mt-6 pointer-events-none text-center select-none ${ef.color}`}
-                      style={{ left: `${ef.x}%`, top: `${ef.y}%`, transformStyle: 'preserve-3d' }}
-                      initial={{ opacity: 1, scale: 0.5, y: 0 }}
-                      animate={{ opacity: 0, scale: 1.4, y: -50 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 1.1, ease: "easeOut" }}
-                    >
-                      <div
-                        style={{
-                          transform: 'rotateZ(45deg) rotateX(-60deg)',
-                          transformOrigin: '50% 50%',
-                        }}
+                        transition={{ duration: 1.1, ease: 'easeOut' }}
                       >
                         {ef.content}
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
 
-                {/* REAL-TIME SLIDING TROOP FIGURES LAYER (Attackers / Player units) */}
-                <div className="absolute inset-0 z-30 pointer-events-none" style={{ transformStyle: 'preserve-3d' }}>
-                  {playerUnits.filter(u => !u.isDead).map(unit => {
-                    const isSelected = selectedUnitId === unit.id;
-                    const hasShield = unit.activeBuffs.some(b => b.type === 'shield_wall');
-                    const isDouble = unit.activeBuffs.some(b => b.type === 'double_atk');
-                    const motionState = unitMotions[unit.id];
-                    const isHit = motionState?.mode === 'hit';
-                    const isLunging = motionState?.mode === 'lunge';
+                  {/* PLAYER UNITS LAYER */}
+                  <div className="absolute inset-0 z-30 pointer-events-none">
+                    {playerUnits.filter(u => !u.isDead).map(unit => {
+                      const isSelected = selectedUnitId === unit.id;
+                      const hasShield = unit.activeBuffs.some(b => b.type === 'shield_wall');
+                      const isDouble = unit.activeBuffs.some(b => b.type === 'double_atk');
+                      const motionState = unitMotions[unit.id];
+                      const isHit = motionState?.mode === 'hit';
+                      const isLunging = motionState?.mode === 'lunge';
 
-                    return (
-                      <motion.div
-                        key={unit.id}
-                        className="absolute p-0.5 flex items-center justify-center transition-all duration-300"
-                        style={{
-                          width: `${100 / GRID_COLS}%`,
-                          height: `${100 / GRID_ROWS}%`,
-                          transformStyle: 'preserve-3d',
-                        }}
-                        animate={{ 
-                          left: `${unit.col * (100 / GRID_COLS)}%`, 
-                          top: `${unit.row * (100 / GRID_ROWS)}%`,
-                          scale: isSelected ? 1.05 : 1
-                        }}
-                        transition={{ type: "spring", stiffness: 130, damping: 18 }}
-                      >
-                        <div 
+                      return (
+                        <motion.div
+                          key={unit.id}
+                          className="absolute p-[1px] flex items-center justify-center"
                           style={{
-                            transform: 'rotateZ(45deg) rotateX(-60deg)',
-                            transformOrigin: '50% 100%',
-                            transformStyle: 'preserve-3d'
+                            width: `${100 / GRID_COLS}%`,
+                            height: `${100 / GRID_ROWS}%`,
                           }}
-                          className="w-full h-full flex items-center justify-center origin-bottom"
+                          animate={{
+                            left: `${unit.col * (100 / GRID_COLS)}%`,
+                            top: `${unit.row * (100 / GRID_ROWS)}%`,
+                            scale: isSelected ? 1.12 : 1,
+                          }}
+                          transition={{ type: 'spring', stiffness: 150, damping: 18 }}
                         >
-                          <motion.div 
-                            className={`w-[90%] h-[90%] rounded-xl bg-slate-950/90 border-2 shadow-xl flex flex-col items-center justify-center p-0.5 relative z-30 ${
+                          <motion.div
+                            className={`w-full h-full rounded-md bg-slate-950/95 border flex flex-col items-center justify-center relative shadow-md ${
                               isHit
                                 ? 'border-rose-400 shadow-rose-500/40'
-                                : isSelected 
-                                ? 'border-teal-400 ring-1 ring-teal-500/30 shadow-teal-500/10' 
-                                : 'border-slate-800 shadow-black/80'
+                                : isSelected
+                                ? 'border-teal-300 ring-2 ring-teal-400/50 shadow-teal-500/30'
+                                : 'border-emerald-400/70'
                             }`}
-                            animate={{ 
+                            animate={{
                               x: motionState ? motionState.dx : 0,
-                              y: motionState ? motionState.dy : (isSelected ? [-1, 1, -1] : [0, 0.5, 0]),
-                              scale: isLunging ? 1.15 : isHit ? 0.92 : 1
+                              y: motionState ? motionState.dy : 0,
+                              scale: isLunging ? 1.18 : isHit ? 0.9 : 1,
                             }}
                             transition={
                               motionState
                                 ? { duration: 0.16, ease: 'easeOut' }
-                                : { duration: isSelected ? 1.2 : 2.5, repeat: Infinity, ease: 'easeInOut' }
+                                : { duration: 0.2 }
                             }
                           >
-                            {/* Hit impact crimson flash */}
                             {isHit && (
-                              <div className="absolute inset-0 rounded-xl bg-rose-500/45 pointer-events-none z-40 animate-pulse" />
+                              <div className="absolute inset-0 rounded-md bg-rose-500/45 pointer-events-none z-40" />
                             )}
-
-                            {/* Selected Indicator Ring */}
-                            {isSelected && (
-                              <div className="absolute -inset-1 rounded-xl border border-teal-400/40 animate-ping pointer-events-none" />
-                            )}
-
-                            {/* Buff indicators rings */}
-                            {hasShield && (
-                              <div className="absolute -inset-1 rounded-xl border border-teal-500/80 animate-pulse pointer-events-none bg-teal-500/5" />
-                            )}
-                            {isDouble && (
-                              <div className="absolute -inset-1 rounded-xl border border-amber-500/80 animate-pulse pointer-events-none bg-amber-500/5" />
-                            )}
-
-                            <span className="text-xl md:text-2xl mt-0.5">{unit.icon}</span>
-                            <span className="text-[7.5px] font-serif font-black text-slate-100 block leading-tight truncate text-center w-full px-1 mt-0.5">{unit.name.substring(2)}</span>
-
-                            {/* hp bar overlay */}
-                            <div className="w-[85%] bg-slate-900 h-1 rounded mt-0.5 overflow-hidden">
-                              <div 
-                                className="bg-emerald-500 h-full rounded transition-all duration-300" 
+                            <span className="text-sm sm:text-base leading-none">{unit.icon}</span>
+                            <div className="w-[84%] bg-slate-900 h-1 rounded-full mt-0.5 overflow-hidden">
+                              <div
+                                className="bg-emerald-400 h-full transition-all duration-300"
                                 style={{ width: `${(unit.hp / unit.maxHp) * 100}%` }}
                               />
                             </div>
-
-                            {/* Buff Badge */}
-                            {hasShield && (
-                              <span className="absolute -top-1 -right-1 bg-teal-950 border border-teal-500 text-teal-400 font-mono text-[5.5px] px-0.5 rounded leading-none scale-90">🛡️ 结盾</span>
-                            )}
-                            {isDouble && (
-                              <span className="absolute -top-1 -right-1 bg-amber-950 border border-amber-500 text-amber-400 font-mono text-[5.5px] px-0.5 rounded leading-none scale-90">⚔️ 双袭</span>
+                            {(hasShield || isDouble) && (
+                              <span className="absolute -top-1.5 -right-1.5 text-[9px] leading-none bg-slate-950 rounded px-0.5 border border-teal-500/60">
+                                {hasShield ? '🛡️' : '⚡'}
+                              </span>
                             )}
                           </motion.div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
 
-                {/* Defenders (Enemy units) (Rendered upright via billboard transformation) */}
-                <div className="absolute inset-0 z-30 pointer-events-none" style={{ transformStyle: 'preserve-3d' }}>
-                  {enemyUnits.filter(e => !e.isDead).map(enemy => {
-                    const isBurning = enemy.activeBuffs.some(b => b.type === 'burning');
-                    const motionState = unitMotions[enemy.id];
-                    const isHit = motionState?.mode === 'hit';
-                    const isLunging = motionState?.mode === 'lunge';
+                  {/* ENEMY UNITS LAYER */}
+                  <div className="absolute inset-0 z-30 pointer-events-none">
+                    {enemyUnits.filter(e => !e.isDead).map(enemy => {
+                      const isBurning = enemy.activeBuffs.some(b => b.type === 'burning');
+                      const motionState = unitMotions[enemy.id];
+                      const isHit = motionState?.mode === 'hit';
+                      const isLunging = motionState?.mode === 'lunge';
 
-                    return (
-                      <motion.div
-                        key={enemy.id}
-                        className="absolute p-0.5 flex items-center justify-center transition-all duration-300 pointer-events-auto"
-                        style={{
-                          width: `${100 / GRID_COLS}%`,
-                          height: `${100 / GRID_ROWS}%`,
-                          transformStyle: 'preserve-3d',
-                        }}
-                        animate={{ 
-                          left: `${enemy.col * (100 / GRID_COLS)}%`, 
-                          top: `${enemy.row * (100 / GRID_ROWS)}%`
-                        }}
-                        transition={{ type: "spring", stiffness: 130, damping: 18 }}
-                      >
-                        <div
+                      return (
+                        <motion.div
+                          key={enemy.id}
+                          className="absolute p-[1px] flex items-center justify-center"
                           style={{
-                            transform: 'rotateZ(45deg) rotateX(-60deg)',
-                            transformOrigin: '50% 100%',
-                            transformStyle: 'preserve-3d'
+                            width: `${100 / GRID_COLS}%`,
+                            height: `${100 / GRID_ROWS}%`,
                           }}
-                          className="w-full h-full flex items-center justify-center origin-bottom"
+                          animate={{
+                            left: `${enemy.col * (100 / GRID_COLS)}%`,
+                            top: `${enemy.row * (100 / GRID_ROWS)}%`,
+                          }}
+                          transition={{ type: 'spring', stiffness: 150, damping: 18 }}
                         >
-                          <motion.div 
-                            className={`w-[90%] h-[90%] rounded-xl bg-slate-950/90 border-2 shadow-xl flex flex-col items-center justify-center p-0.5 relative z-35 ${
+                          <motion.div
+                            className={`w-full h-full rounded-md border flex flex-col items-center justify-center relative shadow-md ${
                               isHit
-                                ? 'border-amber-400 shadow-rose-500/40'
-                                : enemy.type === 'gate' 
-                                ? 'border-rose-900 shadow-rose-950/20 bg-rose-950/20' 
-                                : 'border-red-900 shadow-red-950/20'
+                                ? 'border-amber-300 bg-rose-950/95'
+                                : enemy.type === 'gate'
+                                ? 'border-amber-400/90 bg-rose-950/90'
+                                : 'border-rose-500/80 bg-slate-950/95'
                             }`}
-                            style={{ outline: isBurning ? '1px solid #f97316' : 'none' }}
-                            animate={{ 
+                            animate={{
                               x: motionState ? motionState.dx : 0,
-                              y: motionState ? motionState.dy : (isBurning ? [-0.5, 0.5, -0.5] : [0, 0.6, 0]),
-                              scale: isLunging ? 1.14 : isHit ? 0.91 : 1
+                              y: motionState ? motionState.dy : 0,
+                              scale: isLunging ? 1.16 : isHit ? 0.9 : 1,
                             }}
                             transition={
                               motionState
                                 ? { duration: 0.16, ease: 'easeOut' }
-                                : { duration: isBurning ? 0.8 : 3, repeat: Infinity, ease: 'easeInOut' }
+                                : { duration: 0.2 }
                             }
                           >
-                            {/* Hit impact crimson flash */}
                             {isHit && (
-                              <div className="absolute inset-0 rounded-xl bg-rose-500/50 pointer-events-none z-40 animate-pulse" />
+                              <div className="absolute inset-0 rounded-md bg-amber-400/35 pointer-events-none z-40" />
                             )}
-
-                            {/* Fire aura */}
-                            {isBurning && (
-                              <div className="absolute -inset-1 rounded-xl border border-orange-500/50 animate-pulse bg-orange-500/5" />
-                            )}
-
-                            <span className="text-xl md:text-2xl mt-0.5">{enemy.icon}</span>
-                            <span className="text-[7.5px] font-serif font-black text-rose-300 block leading-tight truncate text-center w-full px-1 mt-0.5">
-                              {enemy.type === 'gate' ? '城门闸阁' : enemy.name.split(' ').slice(-1)[0]}
-                            </span>
-
-                            {/* hp bar */}
-                            <div className="w-[85%] bg-slate-900 h-1 rounded mt-0.5 overflow-hidden">
-                              <div 
-                                className="bg-rose-500 h-full rounded transition-all duration-300" 
+                            <span className="text-sm sm:text-base leading-none">{enemy.icon}</span>
+                            <div className="w-[84%] bg-slate-900 h-1 rounded-full mt-0.5 overflow-hidden">
+                              <div
+                                className="bg-rose-500 h-full transition-all duration-300"
                                 style={{ width: `${(enemy.hp / enemy.maxHp) * 100}%` }}
                               />
                             </div>
-
-                            {/* Health value label */}
-                            <span className="text-[6.5px] font-mono text-slate-500 mt-0.5 block leading-none">
-                              {enemy.hp}/{enemy.maxHp}
-                            </span>
-
                             {isBurning && (
-                              <span className="absolute -top-1 -right-1 bg-orange-950 border border-orange-500 text-orange-400 font-mono text-[6.5px] px-1 rounded scale-90 animate-bounce">🔥 烧</span>
+                              <span className="absolute -top-1.5 -right-1.5 text-[9px] leading-none bg-orange-950 rounded px-0.5 border border-orange-400">
+                                🔥
+                              </span>
                             )}
                           </motion.div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
 
-                {/* TACTICAL PLAYER INTERACTIVE SELECTION COVER LAYER */}
-                <div className="absolute inset-0 z-40 grid gap-0" style={{ gridTemplateRows: `repeat(${GRID_ROWS}, minmax(0, 1fr))` }}>
-                  {[...Array(GRID_ROWS)].map((_, rIdx) => (
-                    <div key={rIdx} className="grid h-full gap-0" style={{ gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))` }}>
-                      {[...Array(GRID_COLS)].map((_, cIdx) => {
-                        // Retrieve cell values
-                        const pUnit = playerUnits.find(u => !u.isDead && u.row === rIdx && u.col === cIdx);
-                        const eUnit = enemyUnits.find(u => !u.isDead && u.row === rIdx && u.col === cIdx);
-                        const isMoveTarget = showMoveTargets.some(t => t.row === rIdx && t.col === cIdx);
-                        const isAttackTarget = showAttackTargets.some(t => t.row === rIdx && t.col === cIdx);
+                  {/* INTERACTIVE 20x20 GRID CELLS LAYER */}
+                  <div
+                    className="absolute inset-0 z-40 grid gap-0"
+                    style={{ gridTemplateRows: `repeat(${GRID_ROWS}, minmax(0, 1fr))` }}
+                    onMouseLeave={() => setHoveredCell(null)}
+                  >
+                    {[...Array(GRID_ROWS)].map((_, rIdx) => (
+                      <div
+                        key={rIdx}
+                        className="grid h-full gap-0"
+                        style={{ gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))` }}
+                      >
+                        {[...Array(GRID_COLS)].map((_, cIdx) => {
+                          const pUnit = playerUnits.find(u => !u.isDead && u.row === rIdx && u.col === cIdx);
+                          const eUnit = enemyUnits.find(u => !u.isDead && u.row === rIdx && u.col === cIdx);
+                          const isMoveTarget = showMoveTargets.some(t => t.row === rIdx && t.col === cIdx);
+                          const isAttackTarget = showAttackTargets.some(t => t.row === rIdx && t.col === cIdx);
+                          const isHovered = hoveredCell?.row === rIdx && hoveredCell?.col === cIdx;
 
-                        return (
-                          <div
-                            key={cIdx}
-                            onClick={() => {
-                              if (isMoveTarget) {
-                                handleMoveTo(rIdx, cIdx);
-                              } else if (isAttackTarget && eUnit) {
-                                handleAttack(eUnit);
-                              } else if (pUnit) {
-                                handleUnitClick(pUnit);
+                          return (
+                            <div
+                              key={cIdx}
+                              onMouseEnter={() => setHoveredCell({ row: rIdx, col: cIdx })}
+                              onClick={() => {
+                                if (isMoveTarget) {
+                                  handleMoveTo(rIdx, cIdx);
+                                } else if (isAttackTarget && eUnit) {
+                                  handleAttack(eUnit);
+                                } else if (pUnit) {
+                                  handleUnitClick(pUnit);
+                                }
+                              }}
+                              title={
+                                pUnit
+                                  ? `${pUnit.name} (${pUnit.hp}/${pUnit.maxHp})`
+                                  : eUnit
+                                  ? `${eUnit.name} (${eUnit.hp}/${eUnit.maxHp})`
+                                  : `${String.fromCharCode(65 + rIdx)}${cIdx + 1}`
                               }
-                            }}
-                            className={`w-full h-full relative cursor-pointer flex flex-col justify-between p-1 transition-all border border-slate-800/35 ${
-                              isMoveTarget 
-                                ? 'bg-teal-500/15 hover:bg-teal-500/30 ring-2 ring-teal-500/30' 
-                                : isAttackTarget 
-                                  ? 'bg-rose-500/20 hover:bg-rose-500/35 ring-2 ring-rose-500/40' 
-                                  : pUnit 
-                                    ? 'hover:bg-slate-800/20' 
-                                    : 'hover:bg-slate-900/10'
-                            }`}
-                          >
-                            {/* Coordinates */}
-                            <div className="flex justify-between pointer-events-none text-[6.5px] font-mono text-slate-700">
-                              <span>{String.fromCharCode(65 + rIdx)}{cIdx + 1}</span>
-                            </div>
-
-                            {/* Interactive Runic Rings / Visual Overlays */}
-                            <div className="flex-1 flex items-center justify-center pointer-events-none">
-                              {isMoveTarget && (
-                                <motion.div 
-                                  className="w-10 h-10 rounded-full border border-dashed border-teal-500/60 flex items-center justify-center bg-teal-500/5"
-                                  animate={{ scale: [0.9, 1.1, 0.9], rotate: 360 }}
-                                  transition={{ duration: 3.5, repeat: Infinity, ease: "linear" }}
-                                >
-                                  <div className="w-2.5 h-2.5 rounded-full bg-teal-500/45" />
-                                </motion.div>
+                              className={`w-full h-full relative flex items-center justify-center transition-colors border border-slate-800/20 ${
+                                isMoveTarget || isAttackTarget || pUnit
+                                  ? 'cursor-pointer'
+                                  : 'cursor-default'
+                              } ${
+                                isMoveTarget
+                                  ? 'bg-teal-500/20 hover:bg-teal-400/35 ring-1 ring-inset ring-teal-400/60'
+                                  : isAttackTarget
+                                  ? 'bg-rose-500/25 hover:bg-rose-500/45 ring-1 ring-inset ring-rose-400/80'
+                                  : isHovered
+                                  ? 'bg-amber-400/10 ring-1 ring-inset ring-amber-400/45'
+                                  : ''
+                              }`}
+                            >
+                              {isMoveTarget && !pUnit && (
+                                <span className="w-2 h-2 rounded-full bg-teal-300/80 shadow-[0_0_6px_rgba(45,212,191,0.8)] pointer-events-none" />
                               )}
-
                               {isAttackTarget && (
-                                <motion.div 
-                                  className="w-12 h-12 rounded-full border border-red-500/60 flex items-center justify-center bg-rose-500/5"
-                                  animate={{ scale: [1, 1.15, 1] }}
-                                  transition={{ duration: 1.2, repeat: Infinity }}
-                                >
-                                  <div className="w-3.5 h-3.5 rounded-full bg-rose-500/50" />
-                                </motion.div>
+                                <motion.span
+                                  className="w-4 h-4 rounded-full border-2 border-rose-400 pointer-events-none"
+                                  animate={{ scale: [0.85, 1.15, 0.85] }}
+                                  transition={{ duration: 1, repeat: Infinity }}
+                                />
                               )}
                             </div>
-
-                            {/* Cell tag text hints */}
-                            <div className="text-[6.5px] font-mono text-center select-none pointer-events-none leading-none">
-                              {isMoveTarget && <span className="text-teal-400 font-bold bg-teal-950/90 px-0.5 rounded">可移防</span>}
-                              {isAttackTarget && <span className="text-rose-450 font-bold bg-rose-950/90 px-0.5 rounded">击之</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
+
+              {/* Bottom Live Tactical Readout & Legend Strip */}
+              {(() => {
+                const activeCell = hoveredCell;
+                const inspectedPlayer = activeCell
+                  ? playerUnits.find(u => !u.isDead && u.row === activeCell.row && u.col === activeCell.col)
+                  : playerUnits.find(u => !u.isDead && u.id === selectedUnitId);
+                const inspectedEnemy = activeCell
+                  ? enemyUnits.find(e => !e.isDead && e.row === activeCell.row && e.col === activeCell.col)
+                  : undefined;
+                const coord = activeCell
+                  ? `${String.fromCharCode(65 + activeCell.row)}${activeCell.col + 1}`
+                  : inspectedPlayer
+                  ? `${String.fromCharCode(65 + inspectedPlayer.row)}${inspectedPlayer.col + 1}`
+                  : null;
+                const zoneCol = activeCell?.col ?? inspectedPlayer?.col;
+                const zoneLabel =
+                  zoneCol === undefined
+                    ? ''
+                    : zoneCol <= 3
+                    ? '后军本营'
+                    : zoneCol <= 11
+                    ? '平原战线'
+                    : zoneCol <= 18
+                    ? '护城河堑'
+                    : '城防城墙';
+
+                return (
+                  <div className="shrink-0 px-3 py-2 bg-slate-950/95 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[10.5px] font-mono z-20">
+                    <div className="flex items-center gap-2 text-slate-300 min-w-0">
+                      {inspectedPlayer ? (
+                        <>
+                          <span className="text-emerald-400 font-bold">我军</span>
+                          <span className="text-slate-100 font-serif font-bold">{inspectedPlayer.icon} {inspectedPlayer.name}</span>
+                          <span className="text-slate-500">·</span>
+                          <span className="text-emerald-300 tabular-nums">HP {inspectedPlayer.hp}/{inspectedPlayer.maxHp}</span>
+                          <span className="text-slate-500">·</span>
+                          <span className="text-amber-300 tabular-nums">攻 {inspectedPlayer.atk} / 防 {inspectedPlayer.def}</span>
+                          {coord && <span className="text-slate-500">[{coord} · {zoneLabel}]</span>}
+                        </>
+                      ) : inspectedEnemy ? (
+                        <>
+                          <span className="text-rose-400 font-bold">敌军</span>
+                          <span className="text-slate-100 font-serif font-bold">{inspectedEnemy.icon} {inspectedEnemy.name}</span>
+                          <span className="text-slate-500">·</span>
+                          <span className="text-rose-300 tabular-nums">HP {inspectedEnemy.hp}/{inspectedEnemy.maxHp}</span>
+                          <span className="text-slate-500">·</span>
+                          <span className="text-amber-300 tabular-nums">攻 {inspectedEnemy.atk} / 防 {inspectedEnemy.def}</span>
+                          {coord && <span className="text-slate-500">[{coord} · {zoneLabel}]</span>}
+                        </>
+                      ) : coord ? (
+                        <>
+                          <span className="text-slate-400">战格 {coord}</span>
+                          <span className="text-slate-600">·</span>
+                          <span className="text-slate-300">{zoneLabel}</span>
+                          <span className="text-slate-600">·</span>
+                          <span className="text-slate-500">点击我军部队即可调度或攻击</span>
+                        </>
+                      ) : (
+                        <span className="text-slate-400">
+                          点击我军部队查看移动与攻击范围 · 护城河桥位于中路第 11 行
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3 text-[10px] text-slate-400 shrink-0">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-xs bg-emerald-400 inline-block" /> 我军
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-xs bg-rose-500 inline-block" /> 敌军
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-teal-300 inline-block" /> 可移防
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full border border-rose-400 inline-block" /> 可击之
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
             </motion.div>
 
             {/* End Turn bar control panel for user */}

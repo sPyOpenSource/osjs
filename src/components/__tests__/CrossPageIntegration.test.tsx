@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
 import InternalAffairs from '../InternalAffairs';
 import DuelArena from '../DuelArena';
+import TacticalMap, { getNearbyTargetCities } from '../TacticalMap';
+import { SCENARIOS } from '../../data';
 import { Officer } from '../../types';
 
 function makeOfficer(id: string, name: string, overrides: Partial<Officer> = {}): Officer {
@@ -175,5 +177,66 @@ describe('DuelArena Left Camp Faction Filter', () => {
     assert.ok(leftSelectMatch[0].includes('当前所属阵营暂无可出战武将'));
     assert.ok(!leftSelectMatch[0].includes('value="liubei"'));
     assert.ok(!leftSelectMatch[0].includes('value="caocao"'));
+  });
+});
+
+describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {
+  test('restricts select-exp-origin to owned cities and select-exp-target to nearby cities', () => {
+    const chibiScenario = SCENARIOS.find(s => s.id === 'chibi') ?? SCENARIOS[1];
+    const html = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+      />,
+    );
+    const originMatch = html.match(/<select[^>]*id="select-exp-origin"[\s\S]*?<\/select>/);
+    const targetMatch = html.match(/<select[^>]*id="select-exp-target"[\s\S]*?<\/select>/);
+    assert.ok(originMatch, 'expected select-exp-origin');
+    assert.ok(targetMatch, 'expected select-exp-target');
+
+    const originSelect = originMatch[0];
+    const targetSelect = targetMatch[0];
+
+    // In 208 AD (chibi), Shu controls only Jingzhou
+    assert.ok(originSelect.includes('value="jingzhou"'), 'expected Shu-owned city jingzhou in origin select');
+    assert.ok(!originSelect.includes('value="xuchang"'), 'expected Wei-owned city xuchang excluded from origin select');
+    assert.ok(!originSelect.includes('value="jianye"'), 'expected Wu-owned city jianye excluded from origin select');
+
+    // Target select shows only cities nearby jingzhou (excludes self and distant cities)
+    assert.ok(!targetSelect.includes('value="jingzhou"'), 'expected origin city jingzhou excluded from target select');
+    assert.ok(targetSelect.includes('value="xuchang"'), 'expected nearby city xuchang in target select');
+    assert.ok(targetSelect.includes('value="hanzhong"'), 'expected nearby city hanzhong in target select');
+    assert.ok(targetSelect.includes('value="jianye"'), 'expected nearby city jianye in target select');
+    assert.ok(!targetSelect.includes('value="beiping"'), 'expected distant city beiping excluded from target select');
+    assert.ok(!targetSelect.includes('value="rome"'), 'expected distant city rome excluded from target select');
+    assert.ok(!targetSelect.includes('value="yamatai"'), 'expected distant city yamatai excluded from target select');
+  });
+
+  test('renders empty options for both origin and target when playerFactionId controls no cities', () => {
+    const coalitionScenario = SCENARIOS[0];
+    const html = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={coalitionScenario}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+      />,
+    );
+    const originMatch = html.match(/<select[^>]*id="select-exp-origin"[\s\S]*?<\/select>/);
+    const targetMatch = html.match(/<select[^>]*id="select-exp-target"[\s\S]*?<\/select>/);
+    assert.ok(originMatch, 'expected select-exp-origin');
+    assert.ok(targetMatch, 'expected select-exp-target');
+    assert.ok(originMatch[0].includes('当前所属势力暂无城池'));
+    assert.ok(!originMatch[0].includes('value="xuchang"'));
+    assert.ok(targetMatch[0].includes('请先选择起源城池'));
+    assert.ok(!targetMatch[0].includes('value="xuchang"'));
+  });
+
+  test('falls back to closest 3 cities for frontier cities beyond radius', () => {
+    const yamataiTargets = getNearbyTargetCities('yamatai').map(c => c.id);
+    assert.equal(yamataiTargets.length, 3);
+    assert.deepEqual(yamataiTargets, ['xiangping', 'xiapi', 'beiping']);
   });
 });

@@ -159,7 +159,7 @@ export default function HistoricalDisastersPanel({
       <div className="disaster-section">
         <div className="disaster-section-head">
           <h3>
-            <Flame size={17} /> 历史重大灾害名录（含 COVID-19 · 海啸 · 大地震）
+            <Flame size={17} /> 历史重大灾害名录（含 流感 · 海啸 · 大地震）
           </h3>
           <div className="disaster-filter-pills" role="group" aria-label="灾害类型筛选">
             <Button

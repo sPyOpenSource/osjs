@@ -1279,6 +1279,11 @@ export default function App() {
       {/* Main Workspace Grid Router (Roster / Creator / Relationships Simulator) */}
       <main className="game-workspace">
 
+        {/* Left Section (Column span 8): Primary action and selection board */}
+        <section className="game-primary">
+
+          <GameNavigation activeTab={activeTab} onSelect={(tab) => { if (soundEnabled) playClickSound(); setActiveTab(tab); }} year={gameYear} month={gameMonth} xun={gameXun} seasonId={currentSeason.id} weatherId={weatherId} playing={isAutoTime} onToggleTime={() => setIsAutoTime(!isAutoTime)} speed={timeSpeed} onSpeed={setTimeSpeed} onStep={handleAdvanceXun} onMonth={handleAdvanceMonth} />
+
         {/* Right Section (Column span 4): Selected Officer Core and Strategy Advisor Council */}
         <details className="game-disclosure game-advisor"><summary><AvatarRenderer style={selectedOfficer.avatarStyle} size={32} /><span>{selectedOfficer.name} · 军师建议</span></summary><section className="flex flex-col gap-6 pt-4">
           
@@ -1375,11 +1380,6 @@ export default function App() {
           </div>
 
         </section></details>
-
-        {/* Left Section (Column span 8): Primary action and selection board */}
-        <section className="game-primary">
-
-          <GameNavigation activeTab={activeTab} onSelect={(tab) => { if (soundEnabled) playClickSound(); setActiveTab(tab); }} year={gameYear} month={gameMonth} xun={gameXun} seasonId={currentSeason.id} weatherId={weatherId} playing={isAutoTime} onToggleTime={() => setIsAutoTime(!isAutoTime)} speed={timeSpeed} onSpeed={setTimeSpeed} onStep={handleAdvanceXun} onMonth={handleAdvanceMonth} />
 
           {/* Tab 1: Officer Roster */}
           {activeTab === 'roster' && (

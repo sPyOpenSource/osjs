@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Officer } from '../types';
 import AvatarRenderer from './AvatarRenderer';
 import { applySeasonalOfficerModifiers, SEASONS, SeasonId } from '../utils/seasons';
@@ -16,6 +16,8 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface DuelArenaProps {
   officers: Officer[];
+  playerFactionId?: string;
+  playerFactionName?: string;
   soundEnabled: boolean;
   seasonId?: SeasonId;
   onClose?: () => void;
@@ -33,8 +35,15 @@ interface DuelistState {
   shieldValue: number;
 }
 
-export default function DuelArena({ officers, soundEnabled, seasonId = 'spring', playClashSound, playDrumSound, onClose }: DuelArenaProps) {
+export default function DuelArena({ officers, playerFactionId, playerFactionName, soundEnabled, seasonId = 'spring', playClashSound, playDrumSound, onClose }: DuelArenaProps) {
   const activeSeason = SEASONS[seasonId];
+  const myFactionOfficers = useMemo(
+    () =>
+      playerFactionId
+        ? officers.filter(o => o.factionId === playerFactionId)
+        : officers,
+    [officers, playerFactionId],
+  );
   // Combat selection states
   const [selectedLeftId, setSelectedLeftId] = useState<string>('');
   const [selectedRightId, setSelectedRightId] = useState<string>('');
@@ -165,20 +174,35 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
     setTimeout(() => setStageShake('none'), intensity === 'heavy' ? 540 : 440);
   };
 
-  // Default initial selections
-  useEffect(() => {
-    if (officers.length >= 2) {
-      // Look for Guan Yu and Lu Bu if possible as default epic duel
-      const guanYu = officers.find(o => o.name.includes('关羽'));
-      const luBu = officers.find(o => o.name.includes('吕布'));
-      
-      setSelectedLeftId(guanYu ? guanYu.id : officers[0].id);
-      setSelectedRightId(luBu ? luBu.id : officers[1].id);
-    } else if (officers.length === 1) {
-      setSelectedLeftId(officers[0].id);
-      setSelectedRightId(officers[0].id);
+  const effectiveLeftId = useMemo(() => {
+    if (selectedLeftId && myFactionOfficers.some(o => o.id === selectedLeftId)) {
+      return selectedLeftId;
     }
-  }, [officers]);
+    if (myFactionOfficers.length === 0) return '';
+    const guanYu = myFactionOfficers.find(o => o.name.includes('关羽'));
+    return guanYu ? guanYu.id : myFactionOfficers[0].id;
+  }, [selectedLeftId, myFactionOfficers]);
+
+  const effectiveRightId = useMemo(() => {
+    if (selectedRightId && officers.some(o => o.id === selectedRightId)) {
+      return selectedRightId;
+    }
+    if (officers.length >= 2) {
+      const luBu = officers.find(o => o.name.includes('吕布'));
+      return luBu ? luBu.id : officers[1].id;
+    }
+    return officers.length === 1 ? officers[0].id : '';
+  }, [selectedRightId, officers]);
+
+  // Default initial selections (Left camp restricted to player's faction)
+  useEffect(() => {
+    if (effectiveLeftId !== selectedLeftId) {
+      setSelectedLeftId(effectiveLeftId);
+    }
+    if (effectiveRightId !== selectedRightId) {
+      setSelectedRightId(effectiveRightId);
+    }
+  }, [effectiveLeftId, effectiveRightId, selectedLeftId, selectedRightId]);
 
   // Scroll duel logs automatically
   useEffect(() => {
@@ -210,7 +234,7 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
   ];
 
   const loadMatchup = (leftName: string, rightName: string) => {
-    const left = officers.find(o => o.name.includes(leftName));
+    const left = myFactionOfficers.find(o => o.name.includes(leftName)) ?? myFactionOfficers[0];
     const right = officers.find(o => o.name.includes(rightName));
     if (left) setSelectedLeftId(left.id);
     if (right) setSelectedRightId(right.id);
@@ -257,11 +281,10 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
 
   // Combat loop initialization
   const startDuel = () => {
-    const rawLeftOfficer = officers.find(o => o.id === selectedLeftId);
-    const rawRightOfficer = officers.find(o => o.id === selectedRightId);
+    const rawLeftOfficer = myFactionOfficers.find(o => o.id === effectiveLeftId);
+    const rawRightOfficer = officers.find(o => o.id === effectiveRightId);
 
     if (!rawLeftOfficer || !rawRightOfficer) {
-      alert('请确保选定左右两军武将名册再登台竞技！');
       return;
     }
 
@@ -689,22 +712,40 @@ export default function DuelArena({ officers, soundEnabled, seasonId = 'spring',
           
           {/* Left Selection (Span 5) */}
           <div className="lg:col-span-5 bg-slate-900/40 p-5 rounded-2xl border border-slate-900 flex flex-col gap-4">
-            <label className="text-xs font-mono text-slate-400 uppercase tracking-widest block">【阵前主将 - 左单挑营】</label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-xs font-mono text-slate-400 uppercase tracking-widest block">
+                【阵前主将 - 左单挑营{playerFactionName ? ` · ${playerFactionName}` : ''}】
+              </label>
+              {playerFactionId && (
+                <span className="text-[11px] font-mono text-slate-500">
+                  麾下 {myFactionOfficers.length} 位
+                </span>
+              )}
+            </div>
             <select
               id="select-left-duelist"
-              value={selectedLeftId}
+              value={effectiveLeftId}
+              disabled={myFactionOfficers.length === 0}
               onChange={(e) => setSelectedLeftId(e.target.value)}
-              className="w-full bg-slate-950 text-slate-200 text-xs rounded-xl p-3 border border-slate-800 focus:outline-none focus:border-amber-500 cursor-pointer"
+              className="w-full bg-slate-950 text-slate-200 text-xs rounded-xl p-3 border border-slate-800 focus:outline-none focus:border-amber-500 cursor-pointer disabled:opacity-50"
             >
-              {officers.map(off => (
-                <option key={off.id} value={off.id}>{off.name} (武力: {off.stats.force} | 统帅: {off.stats.leadership})</option>
-              ))}
+              {myFactionOfficers.length === 0 ? (
+                <option value="">当前所属阵营暂无可出战武将</option>
+              ) : (
+                myFactionOfficers.map(off => (
+                  <option key={off.id} value={off.id}>{off.name} (武力: {off.stats.force} | 统帅: {off.stats.leadership})</option>
+                ))
+              )}
             </select>
 
             {/* Quick Preview of Left Officer */}
-            {officers.find(o => o.id === selectedLeftId) && (
+            {myFactionOfficers.length === 0 ? (
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-900 text-center text-xs font-mono text-slate-500">
+                当前所属阵营暂无可出战武将。
+              </div>
+            ) : myFactionOfficers.find(o => o.id === effectiveLeftId) && (
               (() => {
-                const off = applySeasonalOfficerModifiers(officers.find(o => o.id === selectedLeftId)!, seasonId);
+                const off = applySeasonalOfficerModifiers(myFactionOfficers.find(o => o.id === effectiveLeftId)!, seasonId);
                 return (
                   <div className="flex gap-4 bg-slate-950 p-4 rounded-xl border border-slate-900">
                     <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-800 shrink-0">

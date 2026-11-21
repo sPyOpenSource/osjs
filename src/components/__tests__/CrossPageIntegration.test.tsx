@@ -2,6 +2,7 @@ import { describe, it as test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
 import InternalAffairs from '../InternalAffairs';
+import DuelArena from '../DuelArena';
 import { Officer } from '../../types';
 
 function makeOfficer(id: string, name: string, overrides: Partial<Officer> = {}): Officer {
@@ -128,5 +129,51 @@ describe('Cross-Page Integration (InternalAffairs canonical props)', () => {
       },
     });
     assert.ok(html.includes('关羽'), 'expected guanyu name in markup');
+  });
+});
+
+describe('DuelArena Left Camp Faction Filter', () => {
+  test('limits left duelist select to playerFactionId while keeping right duelist open to all officers', () => {
+    const html = renderToStaticMarkup(
+      <DuelArena
+        officers={officers}
+        playerFactionId="shu"
+        playerFactionName="蜀汉"
+        soundEnabled={false}
+        playClashSound={noop}
+        playDrumSound={noop}
+      />,
+    );
+    const leftSelectMatch = html.match(/<select[^>]*id="select-left-duelist"[\s\S]*?<\/select>/);
+    const rightSelectMatch = html.match(/<select[^>]*id="select-right-duelist"[\s\S]*?<\/select>/);
+    assert.ok(leftSelectMatch, 'expected select-left-duelist');
+    assert.ok(rightSelectMatch, 'expected select-right-duelist');
+
+    const leftSelect = leftSelectMatch[0];
+    const rightSelect = rightSelectMatch[0];
+
+    assert.ok(leftSelect.includes('value="liubei"'), 'expected own-faction officer liubei in left select');
+    assert.ok(leftSelect.includes('value="guanyu"'), 'expected own-faction officer guanyu in left select');
+    assert.ok(!leftSelect.includes('value="caocao"'), 'expected rival officer caocao excluded from left select');
+    assert.ok(rightSelect.includes('value="caocao"'), 'expected rival officer caocao still available in right select');
+    assert.ok(html.includes('麾下 3 位'), 'expected own-faction officer count badge in left camp');
+  });
+
+  test('renders empty state in left duelist camp when playerFactionId has no officers', () => {
+    const html = renderToStaticMarkup(
+      <DuelArena
+        officers={officers}
+        playerFactionId="wu"
+        playerFactionName="东吴"
+        soundEnabled={false}
+        playClashSound={noop}
+        playDrumSound={noop}
+      />,
+    );
+    const leftSelectMatch = html.match(/<select[^>]*id="select-left-duelist"[\s\S]*?<\/select>/);
+    assert.ok(leftSelectMatch, 'expected select-left-duelist');
+    assert.ok(leftSelectMatch[0].includes('当前所属阵营暂无可出战武将'));
+    assert.ok(!leftSelectMatch[0].includes('value="liubei"'));
+    assert.ok(!leftSelectMatch[0].includes('value="caocao"'));
   });
 });

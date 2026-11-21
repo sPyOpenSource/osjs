@@ -1919,16 +1919,24 @@ export default function App() {
           )}
 
           {/* Tab 5: 1v1 Duel Arena */}
-          {activeTab === 'duel' && (
-            <DuelArena 
-              officers={officers}
-              soundEnabled={soundEnabled}
-              seasonId={currentSeason.id}
-              playClashSound={playClashSound}
-              playDrumSound={playDrumSound}
-              onClose={() => setActiveTab('map')}
-            />
-          )}
+          {activeTab === 'duel' && (() => {
+            const myFactionId =
+              officers.find(o => o.id === protagonistId)?.factionId ??
+              playerFactions[0];
+            const myFactionName = FACTIONS.find(f => f.id === myFactionId)?.name;
+            return (
+              <DuelArena 
+                officers={officers}
+                playerFactionId={myFactionId}
+                playerFactionName={myFactionName}
+                soundEnabled={soundEnabled}
+                seasonId={currentSeason.id}
+                playClashSound={playClashSound}
+                playDrumSound={playDrumSound}
+                onClose={() => setActiveTab('map')}
+              />
+            );
+          })()}
 
           {/* Tab 6: Internal Affairs (内政经略) */}
           <div className={activeTab === 'affairs' ? 'block' : 'hidden'}>

@@ -1543,7 +1543,6 @@ export default function TacticalMap({
     <div className="space-y-6">
       
       <div className="map-command-bar">
-        <h2><Compass size={18} />{selectedScenario.title}</h2>
         <details className="game-disclosure"><summary>电脑玩家与重置</summary><div className="game-settings-body">
           <Button id="btn-ai-autoplay" onClick={toggleAutoPlay} aria-pressed={autoPlay}>{autoPlay ? '停止 AI 托管' : 'AI 托管'}</Button>
           <Button id="btn-rivals" onClick={toggleRivals} aria-pressed={rivalsOn}>{rivalsOn ? '停止电脑对手' : '电脑对手'}</Button>

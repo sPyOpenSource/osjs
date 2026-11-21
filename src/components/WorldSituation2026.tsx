@@ -82,7 +82,7 @@ export default function WorldSituation2026({
   );
 
   return (
-    <section className="world2026-panel" aria-label="2026 全球局势">
+    <section className="world2026-panel" aria-label="全球局势">
       <header className="trade-heading">
         <div>
           <h2>

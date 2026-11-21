@@ -1553,7 +1553,7 @@ export default function TacticalMap({
         <Button id="tab-global-trade" aria-pressed={mapTab === 'global-trade'} onClick={() => { setTradeFaction(originControllerId); setMapTab('global-trade'); }}><Coins size={15} />贸易与债务</Button>
         {selectedScenario.year === 2026 && (
           <Button id="tab-map-world-2026" aria-pressed={mapTab === 'world-2026'} onClick={() => setMapTab('world-2026')}>
-            <Globe size={15} />2026 全球局势{pending2026Events.length > 0 ? ` (${pending2026Events.length})` : ''}
+            <Globe size={15} />全球局势{pending2026Events.length > 0 ? ` (${pending2026Events.length})` : ''}
           </Button>
         )}
         <Button id="tab-map-disasters" aria-pressed={mapTab === 'disasters'} onClick={() => setMapTab('disasters')}><AlertTriangle size={15} />天灾史变{unresolvedActiveDisasters.length > 0 ? ` (${unresolvedActiveDisasters.length})` : ''}</Button>
@@ -2312,12 +2312,12 @@ export default function TacticalMap({
                       {/* Expedition Markers badges (ORIG/TARG indicators) */}
                       {isOrig && (
                         <span className="absolute -top-7 px-1.5 py-0.5 bg-emerald-500 text-slate-950 font-mono text-[8px] font-black rounded-md border border-emerald-400 z-10 whitespace-nowrap shadow-md">
-                          ORIG 起
+                          起
                         </span>
                       )}
                       {isTarg && (
                         <span className="absolute -top-7 px-1.5 py-0.5 bg-rose-500 text-slate-100 font-mono text-[8px] font-black rounded-md border border-rose-400 z-10 whitespace-nowrap shadow-md">
-                          TARG 迄
+                          迄
                         </span>
                       )}
 

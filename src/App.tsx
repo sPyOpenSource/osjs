@@ -1278,10 +1278,43 @@ export default function App() {
 
       {/* Main Workspace Grid Router (Roster / Creator / Relationships Simulator) */}
       <main className="game-workspace">
-        
-        {/* Left Section (Column span 8): Primary action and selection board */}
-        <section className="game-primary">
-        {/* Core Grand Advisory Chamber */}
+
+        {/* Right Section (Column span 4): Selected Officer Core and Strategy Advisor Council */}
+        <details className="game-disclosure game-advisor"><summary><AvatarRenderer style={selectedOfficer.avatarStyle} size={32} /><span>{selectedOfficer.name} · 军师建议</span></summary><section className="flex flex-col gap-6 pt-4">
+          
+          {/* Selected Officer Spotlight focus */}
+          <div className="bg-slate-950 p-5 rounded-2xl border border-slate-900">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-slate-400 block mb-4">当前聚焦群雄真容</span>
+            
+            <div className="flex items-center gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-900">
+              <AvatarRenderer style={selectedOfficer.avatarStyle} size={84} />
+              
+              <div>
+                <h3 className="font-serif text-lg font-bold text-slate-100 leading-snug">
+                  {selectedOfficer.name}
+                </h3>
+                {selectedOfficer.styleName && (
+                  <span className="text-xs text-slate-400 font-mono">&#12298;{selectedOfficer.styleName}&#12299;</span>
+                )}
+                
+                <p className="text-[11px] text-slate-400 mt-1">
+                  活跃于 <strong className="text-amber-500 font-mono font-semibold">{selectedScenario.year} 年【{selectedScenario.title}】</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick FAQ info block */}
+          <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-900 text-xs text-slate-400 space-y-1.5 leading-relaxed font-mono">
+            <div className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1">
+              <HelpCircle size={12} className="text-amber-500" />
+              <span>三国志 辅助器军机要策 FAQ</span>
+            </div>
+            <p className="text-[11px]">✦ 五维属性加权：【统帅】极大地主导兵力规模上限与阵前基础城防抵抗；【智力】能看破大雾陷阱并识破诸葛亮之流的离间诡计；【武力】则对个人白刃伤害与阵前斩首胜率有极其重要的抵抗。</p>
+            <p className="text-[11px]">✦ 人脉羁绊：武将间若处于“金兰结义”或“金玉良缘”等至交情谊，两军在沙盘天盘中产生战技合力共鸣的连击概率会飙涨。</p>
+          </div>
+          
+          {/* Core Grand Advisory Chamber */}
           <div className="bg-slate-950 rounded-2xl border border-slate-900 overflow-hidden flex flex-col">
             
             {/* Advisor Cover Image header with beautiful deep gradient styling */}
@@ -1325,7 +1358,7 @@ export default function App() {
                   </div>
                 )}
               </div>
-              
+
               {/* Strategy Invoke Button */}
               <button
                 id="btn-evaluate-strategy-brief"
@@ -1340,6 +1373,11 @@ export default function App() {
             </div>
 
           </div>
+
+        </section></details>
+
+        {/* Left Section (Column span 8): Primary action and selection board */}
+        <section className="game-primary">
 
           <GameNavigation activeTab={activeTab} onSelect={(tab) => { if (soundEnabled) playClickSound(); setActiveTab(tab); }} year={gameYear} month={gameMonth} xun={gameXun} seasonId={currentSeason.id} weatherId={weatherId} playing={isAutoTime} onToggleTime={() => setIsAutoTime(!isAutoTime)} speed={timeSpeed} onSpeed={setTimeSpeed} onStep={handleAdvanceXun} onMonth={handleAdvanceMonth} />
 
@@ -2036,43 +2074,6 @@ export default function App() {
           </div>
 
         </section>
-
-        {/* Right Section (Column span 4): Selected Officer Core and Strategy Advisor Council */}
-        <details className="game-disclosure game-advisor"><summary><AvatarRenderer style={selectedOfficer.avatarStyle} size={32} /><span>{selectedOfficer.name} · 军师建议</span></summary><section className="flex flex-col gap-6 pt-4">
-          
-          {/* Selected Officer Spotlight focus */}
-          <div className="bg-slate-950 p-5 rounded-2xl border border-slate-900">
-            <span className="text-xs font-mono font-bold uppercase tracking-widest text-slate-400 block mb-4">当前聚焦群雄真容</span>
-            
-            <div className="flex items-center gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-900">
-              <AvatarRenderer style={selectedOfficer.avatarStyle} size={84} />
-              
-              <div>
-                <h3 className="font-serif text-lg font-bold text-slate-100 leading-snug">
-                  {selectedOfficer.name}
-                </h3>
-                {selectedOfficer.styleName && (
-                  <span className="text-xs text-slate-400 font-mono">&#12298;{selectedOfficer.styleName}&#12299;</span>
-                )}
-                
-                <p className="text-[11px] text-slate-400 mt-1">
-                  活跃于 <strong className="text-amber-500 font-mono font-semibold">{selectedScenario.year} 年【{selectedScenario.title}】</strong>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick FAQ info block */}
-          <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-900 text-xs text-slate-400 space-y-1.5 leading-relaxed font-mono">
-            <div className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1">
-              <HelpCircle size={12} className="text-amber-500" />
-              <span>三国志 辅助器军机要策 FAQ</span>
-            </div>
-            <p className="text-[11px]">✦ 五维属性加权：【统帅】极大地主导兵力规模上限与阵前基础城防抵抗；【智力】能看破大雾陷阱并识破诸葛亮之流的离间诡计；【武力】则对个人白刃伤害与阵前斩首胜率有极其重要的抵抗。</p>
-            <p className="text-[11px]">✦ 人脉羁绊：武将间若处于“金兰结义”或“金玉良缘”等至交情谊，两军在沙盘天盘中产生战技合力共鸣的连击概率会飙涨。</p>
-          </div>
-
-        </section></details>
 
       </main>
       

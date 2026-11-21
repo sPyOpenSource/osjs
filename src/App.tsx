@@ -1281,7 +1281,52 @@ export default function App() {
         
         {/* Left Section (Column span 8): Primary action and selection board */}
         <section className="game-primary">
-          {/* Strategy Invoke Button */}
+        {/* Core Grand Advisory Chamber */}
+          <div className="bg-slate-950 rounded-2xl border border-slate-900 overflow-hidden flex flex-col">
+            
+            {/* Advisor Cover Image header with beautiful deep gradient styling */}
+            <div className="p-5 bg-gradient-to-r from-emerald-950 to-indigo-950 border-b border-slate-900 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full border border-teal-500/30 flex items-center justify-center bg-teal-950 overflow-hidden">
+                  <span className="text-base">🪶</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-serif font-black uppercase text-teal-300 tracking-wider">中军帐军机处</h3>
+                  <p className="text-[10px] text-slate-400 font-mono">卧龙孔明大军师专属 AI</p>
+                </div>
+              </div>
+
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" title="War Council Ready"></span>
+            </div>
+
+            <div className="p-5 flex-1 flex flex-col justify-between gap-5 min-h-[350px]">
+              
+              {/* Dynamic briefing output */}
+              <div className="flex-1 bg-slate-950/80 rounded-xl p-4 border border-slate-900 max-h-[450px] overflow-y-auto">
+                {isConsultingAdvisor ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+                    <RefreshCw size={24} className="text-amber-400 animate-spin" />
+                    <div>
+                      <p className="text-xs text-slate-300 font-mono font-medium">诸葛孔明正夜观星象、调兵遣将中...</p>
+                      <p className="text-[10px] text-slate-500 mt-1 italic font-sans">&quot;为将者，当知天文，识地理，晓阴阳，明八卦，知兵势。&quot;</p>
+                    </div>
+                  </div>
+                ) : advisorBrief ? (
+                  <div className="prose prose-invert prose-xs">
+                    {renderAdviceMarkdown(advisorBrief)}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-slate-500">
+                    <MessageCircle size={32} className="text-slate-705 mb-2.5 text-slate-700" />
+                    <p className="text-xs font-medium text-slate-400">中军帐军机处目前一片肃静。</p>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      请点击下方【请大军师为当前名将亲授锦囊】。军师将针对 {selectedOfficer.name} 及其在 【{selectedScenario.title}】 时期的宿命局势，为您研判推演宏图战略。
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              {/* Strategy Invoke Button */}
               <button
                 id="btn-evaluate-strategy-brief"
                 onClick={handleConsultWarCouncil}
@@ -1291,7 +1336,11 @@ export default function App() {
                 <Compass size={14} className={isConsultingAdvisor ? 'animate-spin' : ''} />
                 {isConsultingAdvisor ? '锦囊研判修纂中...' : `请大军师为 ${selectedOfficer.name} 亲授妙计`}
               </button>
-              
+
+            </div>
+
+          </div>
+
           <GameNavigation activeTab={activeTab} onSelect={(tab) => { if (soundEnabled) playClickSound(); setActiveTab(tab); }} year={gameYear} month={gameMonth} xun={gameXun} seasonId={currentSeason.id} weatherId={weatherId} playing={isAutoTime} onToggleTime={() => setIsAutoTime(!isAutoTime)} speed={timeSpeed} onSpeed={setTimeSpeed} onStep={handleAdvanceXun} onMonth={handleAdvanceMonth} />
 
           {/* Tab 1: Officer Roster */}
@@ -2011,55 +2060,6 @@ export default function App() {
                 </p>
               </div>
             </div>
-          </div>
-
-          {/* Core Grand Advisory Chamber */}
-          <div className="bg-slate-950 rounded-2xl border border-slate-900 overflow-hidden flex flex-col">
-            
-            {/* Advisor Cover Image header with beautiful deep gradient styling */}
-            <div className="p-5 bg-gradient-to-r from-emerald-950 to-indigo-950 border-b border-slate-900 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-full border border-teal-500/30 flex items-center justify-center bg-teal-950 overflow-hidden">
-                  <span className="text-base">🪶</span>
-                </div>
-                <div>
-                  <h3 className="text-sm font-serif font-black uppercase text-teal-300 tracking-wider">中军帐军机处</h3>
-                  <p className="text-[10px] text-slate-400 font-mono">卧龙孔明大军师专属 AI</p>
-                </div>
-              </div>
-
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" title="War Council Ready"></span>
-            </div>
-
-            <div className="p-5 flex-1 flex flex-col justify-between gap-5 min-h-[350px]">
-              
-              {/* Dynamic briefing output */}
-              <div className="flex-1 bg-slate-950/80 rounded-xl p-4 border border-slate-900 max-h-[450px] overflow-y-auto">
-                {isConsultingAdvisor ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-                    <RefreshCw size={24} className="text-amber-400 animate-spin" />
-                    <div>
-                      <p className="text-xs text-slate-300 font-mono font-medium">诸葛孔明正夜观星象、调兵遣将中...</p>
-                      <p className="text-[10px] text-slate-500 mt-1 italic font-sans">&quot;为将者，当知天文，识地理，晓阴阳，明八卦，知兵势。&quot;</p>
-                    </div>
-                  </div>
-                ) : advisorBrief ? (
-                  <div className="prose prose-invert prose-xs">
-                    {renderAdviceMarkdown(advisorBrief)}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-slate-500">
-                    <MessageCircle size={32} className="text-slate-705 mb-2.5 text-slate-700" />
-                    <p className="text-xs font-medium text-slate-400">中军帐军机处目前一片肃静。</p>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                      请点击下方【请大军师为当前名将亲授锦囊】。军师将针对 {selectedOfficer.name} 及其在 【{selectedScenario.title}】 时期的宿命局势，为您研判推演宏图战略。
-                    </p>
-                  </div>
-                )}
-              </div>
-
-            </div>
-
           </div>
 
           {/* Quick FAQ info block */}

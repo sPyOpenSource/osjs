@@ -7,10 +7,42 @@ import { motion, AnimatePresence } from 'motion/react';
 import { playDrumSound, playClashSound } from '../utils/audio';
 import WarMode from './WarMode';
 import GlobalTrade from './GlobalTrade';
+import HistoricalDisastersPanel from './HistoricalDisastersPanel';
+import WorldSituation2026 from './WorldSituation2026';
 import Button from './Button';
 import { executeTrade } from '../utils/trade';
 import { createCountryDebts, changeCountryDebt } from '../utils/debt';
+import { DiplomacyState, hasTradePact } from '../utils/diplomacy';
+import {
+  applySeasonalOfficerModifiers,
+  getSeasonFromMonth,
+  getSeasonalTacticalPreview,
+  SEASONS,
+  SeasonId,
+} from '../utils/seasons';
+import {
+  advanceWorld,
+  campaignTick,
+  createWorldState,
+  EVENTS_2026,
+  respondToEvent,
+  WorldState,
+  worldTradePolicy,
+} from '../utils/geopolitics';
+import {
+  advanceDisasters,
+  applyDisasterEvent,
+  createInitialDisasterState,
+  disasterCampaignTick,
+  DisasterState,
+  getActiveDisasterRecords,
+  getDisasterTradePolicy,
+  HistoricalDisasterEvent,
+  respondToDisaster,
+} from '../utils/disasters';
 import { 
+  AlertTriangle,
+  Globe,
   Shield, 
   Swords, 
   Brain, 
@@ -210,6 +242,41 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
         jianye: 'wu',
         jiaozhi: 'wu'
       };
+    case 'present': // 2026 AD multipolar world order
+      return {
+        ...baseRonin,
+        // 欧洲与地中海
+        rome: 'europe',
+        carthage: 'france',
+        pella: 'germany',
+        alexandria: 'netherlands',
+        // 中东与黑海/欧亚草原
+        antioch: 'france',
+        ctesiphon: 'persia',
+        samarkand: 'persia',
+        pontic_steppe: 'russia',
+        longcheng: 'russia',
+        xianbei: 'russia',
+        // 印太与美利坚前沿盟友体系
+        purushapura: 'america',
+        xiangping: 'america',
+        yamatai: 'america',
+        // 丝路与东亚独立枢纽
+        pataliputra: 'ronin',
+        shule: 'ronin',
+        dunhuang: 'ronin',
+        beiping: 'ronin',
+        ye: 'ronin',
+        changan: 'ronin',
+        luoyang: 'ronin',
+        xuchang: 'ronin',
+        xiapi: 'ronin',
+        hanzhong: 'ronin',
+        chengdu: 'ronin',
+        jingzhou: 'ronin',
+        jianye: 'ronin',
+        jiaozhi: 'ronin'
+      };
     default:
       return baseRonin;
   }
@@ -359,6 +426,12 @@ interface TacticalMapProps {
   onCompleteQuestObjective?: (questId: string, objectiveId: string) => void;
   currentCityId?: string;
   onSetCurrentCity?: (cityName: string) => void;
+  playerGold?: number;
+  onGoldChange?: React.Dispatch<React.SetStateAction<number>>;
+  diplomacyState?: DiplomacyState;
+  seasonId?: SeasonId;
+  weatherId?: WeatherId;
+  onWeatherChange?: (weather: WeatherId) => void;
 }
 
 export default function TacticalMap({ 
@@ -378,13 +451,29 @@ export default function TacticalMap({
   questStates: initialQuestStates,
   onCompleteQuestObjective,
   currentCityId,
-  onSetCurrentCity
+  onSetCurrentCity,
+  playerGold: controlledPlayerGold,
+  onGoldChange,
+  diplomacyState,
+  seasonId: controlledSeasonId,
+  weatherId: controlledWeatherId,
+  onWeatherChange
 }: TacticalMapProps) {
-  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade'>('svg-map');
+  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'world-2026'>('svg-map');
   const [tradeFaction, setTradeFaction] = useState('ronin');
   const [tradeLogs, setTradeLogs] = useState<string[]>([]);
+  const [disasterState, setDisasterState] = useState<DisasterState>(() => createInitialDisasterState());
+  const [worldState, setWorldState] = useState<WorldState>(() => createWorldState(FACTIONS));
   const [countryDebts, setCountryDebts] = useState<Record<string, number>>(() => createCountryDebts(FACTIONS));
-  const [weatherId, setWeatherId] = useState<WeatherId>('sunny');
+  const [localWeatherId, setLocalWeatherId] = useState<WeatherId>('sunny');
+  const weatherId = controlledWeatherId ?? localWeatherId;
+  const setWeatherId = (nextWeather: WeatherId) => {
+    if (onWeatherChange) {
+      onWeatherChange(nextWeather);
+    } else {
+      setLocalWeatherId(nextWeather);
+    }
+  };
   const [selectedTheater, setSelectedTheater] = useState<AsiaTheater>('all');
   const [show190Border, setShow190Border] = useState(true);
   const [showTradeRoutes, setShowTradeRoutes] = useState(true);
@@ -426,7 +515,9 @@ export default function TacticalMap({
     return stats;
   });
 
-  const [playerGold, setPlayerGold] = useState<number>(1500);
+  const [localPlayerGold, setLocalPlayerGold] = useState<number>(1500);
+  const playerGold = controlledPlayerGold !== undefined ? controlledPlayerGold : localPlayerGold;
+  const setPlayerGold = onGoldChange ?? setLocalPlayerGold;
   const [playerInventory, setPlayerInventory] = useState<string[]>([]);
   const [interiorLogs, setInteriorLogs] = useState<string[]>(['你已勒马顿足，进入华夏古都，巡察九郡风物。']);
   const [localQuestStates, setLocalQuestStates] = useState<QuestState[]>(INITIAL_QUEST_STATES);
@@ -476,8 +567,12 @@ export default function TacticalMap({
   ];
 
   // Expedition Form state
-  const [expeditionOriginId, setExpeditionOriginId] = useState<string>('chengdu');
-  const [expeditionTargetId, setExpeditionTargetId] = useState<string>('hanzhong');
+  const [expeditionOriginId, setExpeditionOriginId] = useState<string>(() =>
+    selectedScenario.id === 'present' ? 'rome' : selectedScenario.id === 'coalition' ? 'ye' : 'chengdu'
+  );
+  const [expeditionTargetId, setExpeditionTargetId] = useState<string>(() =>
+    selectedScenario.id === 'present' ? 'pontic_steppe' : selectedScenario.id === 'coalition' ? 'beiping' : 'hanzhong'
+  );
   const [selectedGeneralId, setSelectedGeneralId] = useState<string>('');
   
   // Expedition execution states
@@ -486,22 +581,153 @@ export default function TacticalMap({
   const [expeditionStep, setExpeditionStep] = useState<number>(-1); // -1: idle, 0: prep, 1: march, 2: fight/merger, 3: result
   const [expeditionSuccessRate, setExpeditionSuccessRate] = useState<number>(100);
 
+  const lastDisasterTickKeyRef = useRef<string>('');
+  const lastWorldTickKeyRef = useRef<string>('');
+
   // Sync ownership when scenario shifts
   useEffect(() => {
     setCityOwnership(getScenarioDefaultOwnership(selectedScenario.id));
     // Default cities reset
-    if (selectedScenario.id === 'coalition') {
+    if (selectedScenario.id === 'present') {
+      setExpeditionOriginId('rome');
+      setExpeditionTargetId('pontic_steppe');
+    } else if (selectedScenario.id === 'coalition') {
       setExpeditionOriginId('ye');
       setExpeditionTargetId('beiping');
     } else {
       setExpeditionOriginId('chengdu');
       setExpeditionTargetId('hanzhong');
     }
-    // Reset expedition states
+    if (selectedScenario.year !== 2026) {
+      setMapTab(prev => (prev === 'world-2026' ? 'svg-map' : prev));
+    }
+    // Reset expedition, disaster, & 2026 world states
     setIsExpeditionRunning(false);
     setExpeditionLogs([]);
     setExpeditionStep(-1);
+    setDisasterState(createInitialDisasterState());
+    setWorldState(createWorldState(FACTIONS));
+    lastDisasterTickKeyRef.current = '';
+    lastWorldTickKeyRef.current = '';
   }, [selectedScenario]);
+
+  const effectiveYear = gameYear ?? selectedScenario.year;
+  const effectiveMonth = gameMonth ?? 1;
+  const effectiveXun = gameXun ?? 1;
+  const activeSeasonId = controlledSeasonId ?? getSeasonFromMonth(effectiveMonth).id;
+  const activeSeason = SEASONS[activeSeasonId];
+  const disasterTimestamp = `${effectiveYear}年 ${effectiveMonth}月 ${['上旬', '中旬', '下旬'][Math.max(0, Math.min(2, effectiveXun - 1))]}`;
+  const currentDisasterTick = disasterCampaignTick(selectedScenario.year, effectiveYear, effectiveMonth, effectiveXun);
+  const activeDisasters = getActiveDisasterRecords(disasterState, currentDisasterTick);
+  const unresolvedActiveDisasters = activeDisasters.filter(a => !a.record.resolvedChoiceId);
+  const disasterTradePolicy = getDisasterTradePolicy(disasterState, currentDisasterTick);
+
+  const currentWorldTick = campaignTick(effectiveYear, effectiveMonth, effectiveXun);
+  const pending2026Events = selectedScenario.year === 2026
+    ? EVENTS_2026.filter(e => worldState.occurred.includes(e.id) && !(e.id in worldState.responses))
+    : [];
+
+  useEffect(() => {
+    const tickKey = `${selectedScenario.year}:${effectiveYear}:${effectiveMonth}:${effectiveXun}`;
+    if (lastWorldTickKeyRef.current === tickKey) return;
+    lastWorldTickKeyRef.current = tickKey;
+
+    if (selectedScenario.year !== 2026) return;
+    const nextWorld = advanceWorld(worldState, selectedScenario.year, currentWorldTick);
+    if (nextWorld !== worldState) {
+      const newlyOccurred = nextWorld.occurred.filter(id => !worldState.occurred.includes(id));
+      setWorldState(nextWorld);
+      if (newlyOccurred.length > 0) {
+        setInteriorLogs(logs => [
+          ...newlyOccurred.map(id => {
+            const ev = EVENTS_2026.find(e => e.id === id);
+            return `🌐 【2026 全球局势】${ev?.title || id}：${ev?.description || ''}`;
+          }),
+          ...logs,
+        ].slice(0, 40));
+      }
+    }
+  }, [selectedScenario.year, effectiveYear, effectiveMonth, effectiveXun, currentWorldTick, worldState]);
+
+  const handleRespondWorldEvent = (eventId: string, choiceIndex: number) => {
+    const ev = EVENTS_2026.find(e => e.id === eventId);
+    const choice = ev?.choices[choiceIndex];
+    const next = respondToEvent(worldState, eventId, choiceIndex);
+    if (next === worldState) return;
+    setWorldState(next);
+    if (ev && choice) {
+      setInteriorLogs(prev => [`🌐 【2026 外交抉择】${ev.title} → 采纳「${choice.label}」（${choice.summary}）`, ...prev].slice(0, 40));
+    }
+  };
+
+  const getTradeWorldPolicy = (sourceFactionId: string, partnerFactionId: string) => {
+    if (selectedScenario.year !== 2026) {
+      return { multiplier: 1, blocked: false, relation: 0, stability: 70 };
+    }
+    return worldTradePolicy(worldState, sourceFactionId, partnerFactionId, currentWorldTick);
+  };
+
+  useEffect(() => {
+    const tickKey = `${selectedScenario.year}:${effectiveYear}:${effectiveMonth}:${effectiveXun}`;
+    if (lastDisasterTickKeyRef.current === tickKey) return;
+    lastDisasterTickKeyRef.current = tickKey;
+
+    const advanced = advanceDisasters({
+      state: disasterState,
+      scenarioYear: selectedScenario.year,
+      year: effectiveYear,
+      month: effectiveMonth,
+      xun: effectiveXun,
+      cities: CITIES,
+      cityStats,
+    });
+
+    if (advanced.newlyTriggered.length > 0) {
+      setDisasterState(advanced.state);
+      setCityStats(advanced.cityStats);
+      if (advanced.weatherOverride) {
+        setWeatherId(advanced.weatherOverride);
+      }
+      setInteriorLogs(logs => [
+        ...advanced.newlyTriggered.map(e => `⚠️ 【历史天灾突发】${e.title}：${e.description}`),
+        ...logs,
+      ].slice(0, 40));
+    }
+  }, [selectedScenario.year, effectiveYear, effectiveMonth, effectiveXun, disasterState, cityStats]);
+
+  const handleManualTriggerDisaster = (event: HistoricalDisasterEvent) => {
+    const res = applyDisasterEvent({
+      state: disasterState,
+      event,
+      cities: CITIES,
+      cityStats,
+      tick: Math.max(0, currentDisasterTick),
+      timestampLabel: disasterTimestamp,
+    });
+    if (!res.applied) return;
+    setDisasterState(res.state);
+    setCityStats(res.cityStats);
+    if (res.weatherOverride) {
+      setWeatherId(res.weatherOverride);
+    }
+    setInteriorLogs(prev => [`⚠️ 【历史天灾演练】${event.title}（${res.record?.affectedCityNames.join('、')}）`, ...prev].slice(0, 40));
+  };
+
+  const handleRespondToDisaster = (eventId: string, choiceId: string) => {
+    const res = respondToDisaster({
+      state: disasterState,
+      eventId,
+      choiceId,
+      cityStats,
+      gold: playerGold,
+      timestampLabel: disasterTimestamp,
+    });
+    if (!res.ok) return res.error;
+    setDisasterState(res.state);
+    setCityStats(res.cityStats);
+    setPlayerGold(res.gold);
+    setInteriorLogs(prev => [res.state.logs[0], ...prev].slice(0, 40));
+  };
 
   const selectedCity = currentCityId
     ? CITIES.find(c => c.name === currentCityId) || CITIES.find(c => c.id === 'luoyang') || CITIES[0]
@@ -531,8 +757,13 @@ export default function TacticalMap({
     const sourceStores = cityStats[sourceId];
     const partnerStores = cityStats[partnerId];
     if (!source || !partner || !sourceStores || !partnerStores) return '商路不可用。';
+    const tradePactDiscount = Boolean(
+      diplomacyState && hasTradePact(diplomacyState, tradeFaction, cityOwnership[partnerId])
+    );
+    const worldPolicy = getTradeWorldPolicy(tradeFaction, cityOwnership[partnerId]);
+    const combinedFreightMultiplier = Math.round(disasterTradePolicy.freightMultiplier * worldPolicy.multiplier * 100) / 100;
     const result = executeTrade({ source, partner, sourceStores, partnerStores, quantity, side,
-      sourceOwner: cityOwnership[sourceId], partnerOwner: cityOwnership[partnerId], playerFaction: tradeFaction, gold: playerGold });
+      sourceOwner: cityOwnership[sourceId], partnerOwner: cityOwnership[partnerId], playerFaction: tradeFaction, gold: playerGold, tradePactDiscount, freightMultiplier: combinedFreightMultiplier, tradeBlocked: worldPolicy.blocked });
     if (!result.ok) return result.error;
     setPlayerGold(result.gold);
     setCityStats(prev => ({ ...prev,
@@ -982,7 +1213,10 @@ export default function TacticalMap({
     const targetControllerId = cityOwnership[targId] || 'ronin';
     const targetFaction = FACTIONS.find(f => f.id === targetControllerId) || FACTIONS[FACTIONS.length - 1];
     
-    const commandingGeneral = officers.find(o => o.id === genId);
+    const rawCommandingGeneral = officers.find(o => o.id === genId);
+    const commandingGeneral = rawCommandingGeneral
+      ? applySeasonalOfficerModifiers(rawCommandingGeneral, activeSeasonId)
+      : undefined;
     const genName = commandingGeneral ? commandingGeneral.name : '自立豪杰 (大将)';
     const genLdr = commandingGeneral ? commandingGeneral.stats.leadership : 75;
     const genFor = commandingGeneral ? commandingGeneral.stats.force : 75;
@@ -1000,16 +1234,17 @@ export default function TacticalMap({
     let rate = 100;
 
     const currentWeather = WEATHERS.find(w => w.id === weatherId) || WEATHERS[0];
-    const movementRatio = currentWeather.movementSpeedRatio;
-    // Scale step timeouts based on weather movement speed (lower movement => longer march time)
-    const timeScale = Math.max(0.7, Math.min(2.0, 1 / movementRatio));
+    const seasonalPreview = getSeasonalTacticalPreview(activeSeasonId, currentWeather.movementSpeedRatio);
+    const movementRatio = seasonalPreview.combinedMovementRatio;
+    // Scale step timeouts based on weather + seasonal movement speed (lower movement => longer march time)
+    const timeScale = Math.max(0.7, Math.min(2.2, 1 / movementRatio));
     const step1Delay = Math.round(1000 * timeScale);
     const step2Delay = Math.round(2800 * timeScale);
     const step3Delay = Math.round(4600 * timeScale);
     const step4Delay = Math.round(6200 * timeScale);
 
     if (isSiege) {
-      // Base Power calculated by attributes
+      // Base Power calculated by seasonal modified attributes
       let power = (genLdr * 0.4 + genInt * 0.3 + genFor * 0.3);
       
       // Integrate Climate & Intelligence Stratagem modifiers
@@ -1049,6 +1284,12 @@ export default function TacticalMap({
         if (genLdr >= 85) power += 18;
       }
 
+      // Apply seasonal combat power, siege, and defense modifiers
+      power = Math.max(
+        15,
+        power + seasonalPreview.powerModifier + seasonalPreview.siegeBonus - seasonalPreview.defenseBonus
+      );
+
       const defenseDifficulty = targetControllerId === 'ronin' ? 55 : 82;
       rate = Math.min(Math.max(Math.round((power / (power + defenseDifficulty)) * 100), 8), 96);
       
@@ -1071,6 +1312,8 @@ export default function TacticalMap({
       } else if (weatherId === 'snow' && genLdr < 78) {
         rate = Math.max(6, rate - 15);
       }
+
+      rate = Math.min(96, Math.max(6, rate + Math.round(seasonalPreview.moraleBonus * 0.4)));
       
       setExpeditionSuccessRate(rate);
       const roll = Math.random() * 100;
@@ -1089,7 +1332,9 @@ export default function TacticalMap({
       dense_fog: '🌁 弥天浓雾障目，十步莫辨人马',
       snow: '❄️ 朔雪寒风如刀，千山冰封'
     };
-    setExpeditionLogs([`【中军帐点兵】 （${weatherSlogans[weatherId] || '☀️'}） 领军大将 [${genName}] (统帅 ${genLdr} | 智力 ${genInt}) 校阅精锐，誓师直逼 [${targetCity.name}]！`]);
+    setExpeditionLogs([
+      `【中军帐点兵】 （${activeSeason.icon} ${activeSeason.name} · ${weatherSlogans[weatherId] || '☀️'}） 领军大将 [${genName}] (统帅 ${genLdr} | 智力 ${genInt} | 武力 ${genFor}) 校阅精锐（节令机动 ${Math.round(movementRatio * 100)}%），誓师直逼 [${targetCity.name}]！`
+    ]);
     
     // 1. Stage 0: 大军启程 (Scaled with movement speed)
     setTimeout(() => {
@@ -1285,6 +1530,8 @@ export default function TacticalMap({
     setIsExpeditionRunning(false);
     setMapZoom(1);
     setZoomOrigin({ x: 50, y: 50 });
+    setWorldState(createWorldState(FACTIONS));
+    lastWorldTickKeyRef.current = '';
   };
 
   return (
@@ -1304,13 +1551,61 @@ export default function TacticalMap({
         <Button id="tab-map-city-view" aria-pressed={mapTab === 'city-view'} onClick={() => setMapTab('city-view')}><Home size={15} />{selectedCity.name}</Button>
         <Button id="tab-map-cities" aria-pressed={mapTab === 'cities-all'} onClick={() => setMapTab('cities-all')}><Layers size={15} />城池</Button>
         <Button id="tab-global-trade" aria-pressed={mapTab === 'global-trade'} onClick={() => { setTradeFaction(originControllerId); setMapTab('global-trade'); }}><Coins size={15} />贸易与债务</Button>
+        {selectedScenario.year === 2026 && (
+          <Button id="tab-map-world-2026" aria-pressed={mapTab === 'world-2026'} onClick={() => setMapTab('world-2026')}>
+            <Globe size={15} />2026 全球局势{pending2026Events.length > 0 ? ` (${pending2026Events.length})` : ''}
+          </Button>
+        )}
+        <Button id="tab-map-disasters" aria-pressed={mapTab === 'disasters'} onClick={() => setMapTab('disasters')}><AlertTriangle size={15} />天灾史变{unresolvedActiveDisasters.length > 0 ? ` (${unresolvedActiveDisasters.length})` : ''}</Button>
         <Button id="tab-map-war-mode" aria-pressed={mapTab === 'war-mode'} onClick={() => setMapTab('war-mode')}><Sword size={15} />会战</Button>
       </nav>
 
-      {mapTab === 'global-trade' ? (
+      {selectedScenario.year === 2026 && pending2026Events.length > 0 && mapTab !== 'world-2026' && (
+        <div className="world2026-alert-banner" role="status">
+          <span>
+            <Globe size={15} /> <strong>2026 地缘动态：</strong>
+            {pending2026Events[0].title}（待决策方案）
+          </span>
+          <Button id="btn-jump-world2026" onClick={() => setMapTab('world-2026')}>前往局势推演</Button>
+        </div>
+      )}
+
+      {unresolvedActiveDisasters.length > 0 && mapTab !== 'disasters' && (
+        <div className="disaster-alert-banner" role="status">
+          <span>
+            <AlertTriangle size={15} /> <strong>突发历史灾疫：</strong>
+            {unresolvedActiveDisasters[0].event.title}（波及 {unresolvedActiveDisasters[0].record.affectedCityNames.join('、')}）
+          </span>
+          <Button id="btn-jump-disasters" onClick={() => setMapTab('disasters')}>前往应急救灾</Button>
+        </div>
+      )}
+
+      {mapTab === 'world-2026' && selectedScenario.year === 2026 ? (
+        <WorldSituation2026
+          worldState={worldState}
+          factions={FACTIONS}
+          currentTick={currentWorldTick}
+          timestampLabel={disasterTimestamp}
+          onRespondEvent={handleRespondWorldEvent}
+        />
+      ) : mapTab === 'disasters' ? (
+        <HistoricalDisastersPanel
+          disasterState={disasterState}
+          currentTick={currentDisasterTick}
+          scenarioYear={selectedScenario.year}
+          gold={playerGold}
+          timestampLabel={disasterTimestamp}
+          onTriggerDisaster={handleManualTriggerDisaster}
+          onRespondDisaster={handleRespondToDisaster}
+        />
+      ) : mapTab === 'global-trade' ? (
         <GlobalTrade cities={CITIES} ownership={cityOwnership} stores={cityStats} factions={FACTIONS}
           playerFaction={tradeFaction} gold={playerGold} logs={tradeLogs} onTrade={handleGlobalTrade}
-          debts={countryDebts} onChangeDebt={handleCountryDebt} />
+          debts={countryDebts} diplomacyState={diplomacyState}
+          disasterFreightMultiplier={disasterTradePolicy.freightMultiplier}
+          activeDisasterLabels={disasterTradePolicy.activeLabels}
+          getWorldTradePolicy={partnerFactionId => getTradeWorldPolicy(tradeFaction, partnerFactionId)}
+          onChangeDebt={handleCountryDebt} />
       ) : mapTab === 'svg-map' ? (
         <div className="space-y-4">
           
@@ -1328,6 +1623,13 @@ export default function TacticalMap({
 
             {/* Quick Weather Switching Pills Bar */}
             <div className="flex flex-wrap items-center gap-1.5 bg-slate-950/70 p-2 rounded-xl border border-slate-900/80">
+              <span
+                className="text-[10px] font-mono font-bold px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-amber-300 flex items-center gap-1"
+                title={activeSeason.tacticalSummary}
+              >
+                <span>{activeSeason.icon}</span>
+                <span>{activeSeason.name}</span>
+              </span>
               <span className="text-[10px] font-mono text-slate-400 font-bold px-1.5 flex items-center gap-1">
                 <Compass size={11} className="text-amber-500" /> 天候兵势:
               </span>
@@ -2659,7 +2961,8 @@ export default function TacticalMap({
                 </svg>
 
                 {/* Ambient dynamic compass / weather widget floated in blueprint */}
-                <div className="absolute top-2.5 right-2.5 bg-slate-950/80 backdrop-blur border border-slate-900 rounded-lg p-1.5 flex gap-1 items-center z-10 select-none shadow">
+                <div className="absolute top-2.5 right-2.5 bg-slate-950/80 backdrop-blur border border-slate-900 rounded-lg p-1.5 flex gap-1.5 items-center z-10 select-none shadow">
+                  <span className="text-[10px] font-mono text-amber-300">{activeSeason.icon} {activeSeason.name}</span>
                   <span className="text-xs">{WEATHERS.find(w => w.id === weatherId)?.icon}</span>
                   <span className="text-[10px] font-serif font-black text-slate-300 pr-1">{WEATHERS.find(w => w.id === weatherId)?.nameCn}气象</span>
                 </div>
@@ -3137,6 +3440,7 @@ export default function TacticalMap({
           attackingOfficer={officers.find(o => o.id === selectedGeneralId) || null}
           defendingOfficer={officers.filter(o => o.factionId === (cityOwnership[expeditionTargetId] || 'ronin'))[0] || null}
           weatherId={weatherId}
+          seasonId={activeSeasonId}
           soundEnabled={soundEnabled}
           onBattleComplete={handleBattleComplete}
           onClose={() => setMapTab('svg-map')}
@@ -3567,42 +3871,50 @@ export default function TacticalMap({
             {/* Weather Troop Movement & Intelligence Stratagem Assessment Card */}
             {(() => {
               const currWeather = WEATHERS.find(w => w.id === weatherId) || WEATHERS[0];
-              const selectedGen = officers.find(o => o.id === selectedGeneralId);
+              const rawSelectedGen = officers.find(o => o.id === selectedGeneralId);
+              const selectedGen = rawSelectedGen ? applySeasonalOfficerModifiers(rawSelectedGen, activeSeasonId) : undefined;
+              const seasonalPreview = getSeasonalTacticalPreview(activeSeasonId, currWeather.movementSpeedRatio);
+              const combinedPct = Math.round(seasonalPreview.combinedMovementRatio * 100);
               const genInt = selectedGen?.stats.intelligence || 50;
               const genLdr = selectedGen?.stats.leadership || 50;
 
               return (
                 <div className={`p-3 rounded-xl border space-y-2.5 transition-colors ${currWeather.colorClass}`}>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <span className="text-[11px] font-serif font-black flex items-center gap-1.5 text-slate-100">
                       <span>{currWeather.icon}</span>
-                      <span>天候行军与军师谋略测算</span>
+                      <span>节气与天候谋略测算</span>
                     </span>
-                    <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-950/70 border border-slate-800 text-slate-200">
-                      {currWeather.nameCn} ({currWeather.name})
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-950/70 border border-slate-800 text-amber-300">
+                        {activeSeason.icon} {activeSeason.name}
+                      </span>
+                      <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-950/70 border border-slate-800 text-slate-200">
+                        {currWeather.nameCn} ({currWeather.name})
+                      </span>
+                    </div>
                   </div>
 
                   {/* Troop Movement Speed Bar */}
                   <div className="space-y-1">
                     <div className="flex justify-between text-[10px] font-mono">
-                      <span className="text-slate-400">大军机动行军率:</span>
-                      <strong className={currWeather.movementSpeedRatio < 0.6 ? 'text-rose-400' : 'text-emerald-400'}>
-                        {Math.round(currWeather.movementSpeedRatio * 100)}%
+                      <span className="text-slate-400">季节×天候机动率:</span>
+                      <strong className={seasonalPreview.combinedMovementRatio < 0.6 ? 'text-rose-400' : 'text-emerald-400'}>
+                        {combinedPct}%
                       </strong>
                     </div>
                     <div className="w-full bg-slate-950/80 rounded-full h-1.5 overflow-hidden border border-slate-800">
                       <div 
                         className={`h-full rounded-full transition-all duration-500 ${
-                          currWeather.movementSpeedRatio <= 0.45 ? 'bg-rose-500' 
-                          : currWeather.movementSpeedRatio <= 0.6 ? 'bg-amber-500' 
+                          seasonalPreview.combinedMovementRatio <= 0.45 ? 'bg-rose-500' 
+                          : seasonalPreview.combinedMovementRatio <= 0.6 ? 'bg-amber-500' 
                           : 'bg-emerald-400'
                         }`}
-                        style={{ width: `${Math.round(currWeather.movementSpeedRatio * 100)}%` }}
+                        style={{ width: `${Math.min(100, combinedPct)}%` }}
                       />
                     </div>
                     <p className="text-[9px] font-sans text-slate-400 leading-tight">
-                      {currWeather.movementPenaltyLabel}
+                      {currWeather.movementPenaltyLabel} · {activeSeason.tacticalSummary}
                     </p>
                   </div>
 
@@ -3611,11 +3923,14 @@ export default function TacticalMap({
                     <div className="flex justify-between items-center text-[10px] font-mono">
                       <span className="text-slate-400 flex items-center gap-1">
                         <Brain size={11} className="text-purple-400" />
-                        主帅谋略克应 ({selectedGen ? `${selectedGen.name} · 智力 ${genInt}` : '未定将帅'})
+                        主帅谋略克应 ({selectedGen ? `${selectedGen.name} · 智力 ${genInt} · 统帅 ${genLdr}` : '未定将帅'})
                       </span>
                       {weatherId === 'heavy_rain' && (
                         <span className="text-[8.5px] font-bold text-rose-400">火攻禁用</span>
                       )}
+                    </div>
+                    <div className="text-[9px] font-mono text-amber-300/85">
+                      {activeSeason.icon} {activeSeason.name}将领修正：{activeSeason.statSummary}
                     </div>
 
                     <div className="text-[9.5px] font-sans leading-relaxed">

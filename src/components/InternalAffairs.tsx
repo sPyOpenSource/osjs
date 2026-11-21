@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Officer, InternalTaskType, InternalTaskConfig, TaskAssignment, CityAffairsState } from '../types';
 import AvatarRenderer from './AvatarRenderer';
 import { motion, AnimatePresence } from 'motion/react';
+import { applySeasonalOfficerModifiers, getSeasonFromMonth } from '../utils/seasons';
 import { 
   Building2, 
   Wheat, 
@@ -241,10 +242,13 @@ export default function InternalAffairs({
   // Notification Banner
   const [lastEventNotice, setLastEventNotice] = useState<string | null>(null);
 
-  // Selected officer object
+  const currentSeason = useMemo(() => getSeasonFromMonth(currentMonth), [currentMonth]);
+
+  // Selected officer object (with seasonal stat modifiers applied)
   const currentOfficer = useMemo(() => {
-    return officers.find(o => o.id === effectiveSelectedOfficerId) || officers[0];
-  }, [officers, effectiveSelectedOfficerId]);
+    const base = officers.find(o => o.id === effectiveSelectedOfficerId) || officers[0];
+    return base ? applySeasonalOfficerModifiers(base, currentSeason.id) : base;
+  }, [officers, effectiveSelectedOfficerId, currentSeason.id]);
 
   // Current task config
   const currentTaskConfig = useMemo(() => {
@@ -266,6 +270,8 @@ export default function InternalAffairs({
     }
 
     const { politics: pol, leadership: ldr, force: frc, intelligence: itl, charisma: chr } = currentOfficer.stats;
+    const agriMult = currentSeason.tacticalModifiers.agricultureYieldMultiplier;
+    const comMult = currentSeason.tacticalModifiers.commerceYieldMultiplier;
 
     let progressPerXun = 0;
     let outputYield = 0;
@@ -279,17 +285,17 @@ export default function InternalAffairs({
         progressPerXun = Math.floor(pol * 0.60 + ldr * 0.40);
         outputYield = Math.floor(pol * 0.70 + ldr * 0.50);
         outputLabel = `城防耐久 +${outputYield}`;
-        formulaStep1 = `⌊${pol}(POL) × 0.60 + ${ldr}(LDR) × 0.40⌋ = ${progressPerXun} 进度/旬`;
+        formulaStep1 = `⌊${pol}(POL) × 0.60 + ${ldr}(LDR) × 0.40⌋ = ${progressPerXun} 进度/旬 (${currentSeason.icon}${currentSeason.name})`;
         formulaStep2 = `⌊${pol}(POL) × 0.70 + ${ldr}(LDR) × 0.50⌋ = +${outputYield} 城防坚城增益`;
         break;
       }
       case 'agriculture': {
-        // POL 70% + CHR 20% + LDR 10%
+        // POL 70% + CHR 20% + LDR 10% + Seasonal harvest multiplier
         progressPerXun = Math.floor(pol * 0.70 + chr * 0.20 + ldr * 0.10);
-        outputYield = Math.floor(pol * 16 + chr * 6);
+        outputYield = Math.floor((pol * 16 + chr * 6) * agriMult);
         outputLabel = `军粮储备 +${outputYield.toLocaleString()} 石`;
         formulaStep1 = `⌊${pol}(POL) × 0.70 + ${chr}(CHR) × 0.20 + ${ldr}(LDR) × 0.10⌋ = ${progressPerXun} 进度/旬`;
-        formulaStep2 = `⌊${pol}(POL) × 16 + ${chr}(CHR) × 6⌋ = +${outputYield} 石军粮收成`;
+        formulaStep2 = `⌊(${pol} × 16 + ${chr} × 6) × ${agriMult.toFixed(2)}(${currentSeason.name})⌋ = +${outputYield} 石军粮收成`;
         break;
       }
       case 'drill': {
@@ -299,7 +305,7 @@ export default function InternalAffairs({
         const moraleGain = Math.floor(ldr * 0.25 + frc * 0.25);
         outputYield = trainingGain;
         outputLabel = `训练度 +${trainingGain}，士气 +${moraleGain}`;
-        formulaStep1 = `⌊${ldr}(LDR) × 0.60 + ${frc}(FOR) × 0.40⌋ = ${progressPerXun} 进度/旬`;
+        formulaStep1 = `⌊${ldr}(LDR) × 0.60 + ${frc}(FOR) × 0.40⌋ = ${progressPerXun} 进度/旬 (${currentSeason.icon}${currentSeason.name})`;
         formulaStep2 = `训练度: ⌊${ldr}×0.4 + ${frc}×0.2⌋=+${trainingGain} | 士气: ⌊${ldr}×0.25 + ${frc}×0.25⌋=+${moraleGain}`;
         break;
       }
@@ -310,17 +316,17 @@ export default function InternalAffairs({
         const sentimentGain = Math.floor(chr * 0.40);
         outputYield = orderGain;
         outputLabel = `治安 +${orderGain}，民心爱戴 +${sentimentGain}`;
-        formulaStep1 = `⌊${frc}(FOR) × 0.50 + ${ldr}(LDR) × 0.30 + ${chr}(CHR) × 0.20⌋ = ${progressPerXun} 进度/旬`;
+        formulaStep1 = `⌊${frc}(FOR) × 0.50 + ${ldr}(LDR) × 0.30 + ${chr}(CHR) × 0.20⌋ = ${progressPerXun} 进度/旬 (${currentSeason.icon}${currentSeason.name})`;
         formulaStep2 = `治安: ⌊${frc}×0.3 + ${ldr}×0.2⌋=+${orderGain} | 民心: ⌊${chr}×0.4⌋=+${sentimentGain}`;
         break;
       }
       case 'commerce': {
-        // POL 50% + INT 50%
+        // POL 50% + INT 50% + Seasonal commerce multiplier
         progressPerXun = Math.floor(pol * 0.50 + itl * 0.50);
-        outputYield = Math.floor(pol * 12 + itl * 8);
+        outputYield = Math.floor((pol * 12 + itl * 8) * comMult);
         outputLabel = `府库赋税 +${outputYield.toLocaleString()} 两`;
         formulaStep1 = `⌊${pol}(POL) × 0.50 + ${itl}(INT) × 0.50⌋ = ${progressPerXun} 进度/旬`;
-        formulaStep2 = `⌊${pol}(POL) × 12 + ${itl}(INT) × 8⌋ = +${outputYield} 两白银商税`;
+        formulaStep2 = `⌊(${pol} × 12 + ${itl} × 8) × ${comMult.toFixed(2)}(${currentSeason.name})⌋ = +${outputYield} 两白银商税`;
         break;
       }
     }
@@ -347,11 +353,12 @@ export default function InternalAffairs({
       rating,
       ratingBadge
     };
-  }, [currentOfficer, activeTaskType]);
+  }, [currentOfficer, activeTaskType, currentSeason]);
 
-  // Ranking of all officers for the selected task
+  // Ranking of all officers for the selected task (using seasonal effective stats)
   const topRecommendedOfficers = useMemo(() => {
-    return [...officers].map(off => {
+    return [...officers].map(baseOff => {
+      const off = applySeasonalOfficerModifiers(baseOff, currentSeason.id);
       const { politics: pol, leadership: ldr, force: frc, intelligence: itl, charisma: chr } = off.stats;
       let score = 0;
       if (activeTaskType === 'fortify') score = pol * 0.60 + ldr * 0.40;
@@ -359,9 +366,9 @@ export default function InternalAffairs({
       else if (activeTaskType === 'drill') score = ldr * 0.60 + frc * 0.40;
       else if (activeTaskType === 'patrol') score = frc * 0.50 + ldr * 0.30 + chr * 0.20;
       else if (activeTaskType === 'commerce') score = pol * 0.50 + itl * 0.50;
-      return { officer: off, score: Math.round(score) };
+      return { officer: baseOff, score: Math.round(score) };
     }).sort((a, b) => b.score - a.score);
-  }, [officers, activeTaskType]);
+  }, [officers, activeTaskType, currentSeason.id]);
 
   // Assign current officer to current task
   const handleAssignTask = () => {
@@ -425,8 +432,9 @@ export default function InternalAffairs({
 
   // Advance single task
   const handleAdvanceSingleTask = (assignment: TaskAssignment) => {
-    const officer = officers.find(o => o.id === assignment.officerId);
-    if (!officer) return;
+    const baseOfficer = officers.find(o => o.id === assignment.officerId);
+    if (!baseOfficer) return;
+    const officer = applySeasonalOfficerModifiers(baseOfficer, currentSeason.id);
 
     const { politics: pol, leadership: ldr, force: frc, intelligence: itl, charisma: chr } = officer.stats;
     let progressDelta = 0;
@@ -472,8 +480,11 @@ export default function InternalAffairs({
   };
 
   // Apply task completion outcome to City State
-  const applyTaskOutcome = (officer: Officer, taskType: InternalTaskType, isHarvest: boolean) => {
+  const applyTaskOutcome = (officerInput: Officer, taskType: InternalTaskType, isHarvest: boolean) => {
+    const officer = applySeasonalOfficerModifiers(officerInput, currentSeason.id);
     const { politics: pol, leadership: ldr, force: frc, intelligence: itl, charisma: chr } = officer.stats;
+    const agriMult = currentSeason.tacticalModifiers.agricultureYieldMultiplier;
+    const comMult = currentSeason.tacticalModifiers.commerceYieldMultiplier;
     
     // Check for critical success (暴击神工)
     const isCritical = Math.random() < 0.25;
@@ -494,12 +505,12 @@ export default function InternalAffairs({
           break;
         }
         case 'agriculture': {
-          const grainGain = Math.floor((pol * 16 + chr * 6) * multiplier);
+          const grainGain = Math.floor((pol * 16 + chr * 6) * multiplier * agriMult);
           const agriGain = Math.floor((pol * 0.40) * multiplier);
           next.grain += grainGain;
           next.agriculture = Math.min(300, next.agriculture + agriGain);
           logType = 'grain';
-          logText = `${officer.name} 亲临阡陌${isCritical ? '【甘霖大丰收】' : ''}，屯田丰沛，仓廪军粮 +${grainGain.toLocaleString()} 石，农耕开发度 +${agriGain}！`;
+          logText = `${officer.name} 亲临阡陌${isCritical ? '【甘霖大丰收】' : ''}（${currentSeason.icon}${currentSeason.name}），仓廪军粮 +${grainGain.toLocaleString()} 石，农耕开发度 +${agriGain}！`;
           break;
         }
         case 'drill': {
@@ -519,11 +530,11 @@ export default function InternalAffairs({
           break;
         }
         case 'commerce': {
-          const goldGain = Math.floor((pol * 12 + itl * 8) * multiplier);
+          const goldGain = Math.floor((pol * 12 + itl * 8) * multiplier * comMult);
           next.gold += goldGain;
           next.commerce = Math.min(300, next.commerce + Math.floor(pol * 0.35));
           logType = 'gold';
-          logText = `${officer.name} 互市通商${isCritical ? '【巨贾云集】' : ''}，榷税大丰，府库库银 +${goldGain.toLocaleString()} 两白银！`;
+          logText = `${officer.name} 互市通商${isCritical ? '【巨贾云集】' : ''}（${currentSeason.icon}${currentSeason.name}），榷税大丰，府库库银 +${goldGain.toLocaleString()} 两白银！`;
           break;
         }
       }
@@ -568,10 +579,12 @@ export default function InternalAffairs({
     const isMonthAdvance = lastTickRef.current.month !== gameMonth || lastTickRef.current.year !== gameYear;
     lastTickRef.current = { year: gameYear, month: gameMonth, xun: gameXun };
 
+    const tickSeason = getSeasonFromMonth(gameMonth);
     setAssignments(prev => {
       return prev.map(assignment => {
-        const officer = officers.find(o => o.id === assignment.officerId);
-        if (!officer) return assignment;
+        const baseOfficer = officers.find(o => o.id === assignment.officerId);
+        if (!baseOfficer) return assignment;
+        const officer = applySeasonalOfficerModifiers(baseOfficer, tickSeason.id);
 
         const { politics: pol, leadership: ldr, force: frc, intelligence: itl, charisma: chr } = officer.stats;
         let baseYield = 0;
@@ -706,8 +719,8 @@ export default function InternalAffairs({
                     <span className="text-xs font-serif font-black text-amber-300">
                       公元 {currentYear} 年 · {currentMonth} 月
                     </span>
-                    <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-amber-950/40 border border-amber-900/50 text-amber-400 font-serif">
-                      {currentMonth >= 1 && currentMonth <= 3 ? '🌸 春季' : currentMonth >= 4 && currentMonth <= 6 ? '☀️ 夏季' : currentMonth >= 7 && currentMonth <= 9 ? '🍂 秋季' : '❄️ 冬季'}
+                    <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-amber-950/40 border border-amber-900/50 text-amber-400 font-serif" title={currentSeason.statSummary}>
+                      {currentSeason.icon} {currentSeason.name}
                     </span>
                   </div>
                   <div className="text-[9.5px] font-mono text-slate-400 flex items-center gap-1.5 mt-0.5">

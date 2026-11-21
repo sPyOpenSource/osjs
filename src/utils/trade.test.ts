@@ -47,4 +47,8 @@ describe('global grain trade', () => {
     const near = { ...input.partner, x: 65, y: 60 };
     assert.ok(quoteTrade(input.source, near, input.partnerStores, 500, 'buy').fee < quoteTrade(input.source, input.partner, input.partnerStores, 500, 'buy').fee);
   });
+  test('rejects trade when embargo tradeBlocked is true', () => {
+    const result = executeTrade({ ...input, tradeBlocked: true });
+    assert.equal(result.ok, false);
+  });
 });

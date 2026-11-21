@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Officer } from '../types';
 import AvatarRenderer from './AvatarRenderer';
+import { applySeasonalOfficerModifiers, SEASONS, SeasonId } from '../utils/seasons';
 import { Swords, Shield, Zap, Sparkles, Trophy, RotateCcw, Swords as SwordIcon, Heart, Play, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface DuelArenaProps {
   officers: Officer[];
   soundEnabled: boolean;
+  seasonId?: SeasonId;
   onClose?: () => void;
   playClashSound: () => void;
   playDrumSound: () => void;
@@ -146,7 +148,8 @@ const playSynthSound = (type: 'slash' | 'heavy' | 'parry' | 'ultimate' | 'dodge'
   }
 };
 
-export default function DuelArena({ officers, soundEnabled, playClashSound, playDrumSound, onClose }: DuelArenaProps) {
+export default function DuelArena({ officers, soundEnabled, seasonId = 'spring', playClashSound, playDrumSound, onClose }: DuelArenaProps) {
+  const activeSeason = SEASONS[seasonId];
   // Combat selection states
   const [selectedLeftId, setSelectedLeftId] = useState<string>('');
   const [selectedRightId, setSelectedRightId] = useState<string>('');
@@ -297,19 +300,22 @@ export default function DuelArena({ officers, soundEnabled, playClashSound, play
 
   // Combat loop initialization
   const startDuel = () => {
-    const leftOfficer = officers.find(o => o.id === selectedLeftId);
-    const rightOfficer = officers.find(o => o.id === selectedRightId);
+    const rawLeftOfficer = officers.find(o => o.id === selectedLeftId);
+    const rawRightOfficer = officers.find(o => o.id === selectedRightId);
 
-    if (!leftOfficer || !rightOfficer) {
+    if (!rawLeftOfficer || !rawRightOfficer) {
       alert('请确保选定左右两军武将名册再登台竞技！');
       return;
     }
+
+    const leftOfficer = applySeasonalOfficerModifiers(rawLeftOfficer, seasonId);
+    const rightOfficer = applySeasonalOfficerModifiers(rawRightOfficer, seasonId);
 
     if (soundEnabled) {
       playDrumSound();
     }
 
-    // Set Initial Duelist state with HP relative to Force, up to 350
+    // Set Initial Duelist state with HP relative to Force, up to 370
     const leftMax = 150 + leftOfficer.stats.force * 2.2;
     const rightMax = 150 + rightOfficer.stats.force * 2.2;
 
@@ -343,7 +349,7 @@ export default function DuelArena({ officers, soundEnabled, playClashSound, play
     setCurrentTurn(leftOfficer.stats.force >= rightOfficer.stats.force ? 'left' : 'right');
     setWinnerSide(null);
     setBattleLogs([
-      `📢 阵前擂鼓！演武单挑战火燃起！`,
+      `📢 阵前擂鼓！${activeSeason.icon} ${activeSeason.name}演武单挑战火燃起（${activeSeason.statSummary}）！`,
       `🏁 【${leftOfficer.name}】(武力 ${leftOfficer.stats.force}) 挺枪跃马入主阵左侧。`,
       `🏁 【${rightOfficer.name}】(武力 ${rightOfficer.stats.force}) 横刀跨坐，傲立校场右侧！`,
       `💡 根据武将敏捷与爆发，率先攻袭者为：【${leftOfficer.stats.force >= rightOfficer.stats.force ? leftOfficer.name : rightOfficer.name}】！`
@@ -692,15 +698,20 @@ export default function DuelArena({ officers, soundEnabled, playClashSound, play
             阵前武将单挑不仅彰显三军神威，更能让胜方统率狂揽士气，甚至直接在沙盘上俘虏敌国宿将！
           </p>
         </div>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-slate-100 bg-slate-900 hover:bg-slate-850 cursor-pointer"
-          >
-            返回沙盘
-          </button>
-        )}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-amber-300">
+            {activeSeason.icon} {activeSeason.name} · {activeSeason.statSummary}
+          </span>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-slate-100 bg-slate-900 hover:bg-slate-850 cursor-pointer"
+            >
+              返回沙盘
+            </button>
+          )}
+        </div>
       </div>
 
       {!isFighting ? (
@@ -724,7 +735,7 @@ export default function DuelArena({ officers, soundEnabled, playClashSound, play
             {/* Quick Preview of Left Officer */}
             {officers.find(o => o.id === selectedLeftId) && (
               (() => {
-                const off = officers.find(o => o.id === selectedLeftId)!;
+                const off = applySeasonalOfficerModifiers(officers.find(o => o.id === selectedLeftId)!, seasonId);
                 return (
                   <div className="flex gap-4 bg-slate-950 p-4 rounded-xl border border-slate-900">
                     <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-800 shrink-0">
@@ -738,15 +749,15 @@ export default function DuelArena({ officers, soundEnabled, playClashSound, play
                       <div className="grid grid-cols-3 gap-2 mt-2.5 text-[10px] font-mono">
                         <div className="bg-slate-900 p-1.5 rounded text-center border border-slate-800/60 text-slate-450">
                           <span className="text-slate-500 block">武艺力</span>
-                          <span className="font-bold text-amber-500">{off.stats.force}</span>
+                          <span className="font-bold text-amber-500">{off.stats.force}{off.statDeltas.force !== 0 ? ` (${off.statDeltas.force > 0 ? `+${off.statDeltas.force}` : off.statDeltas.force})` : ''}</span>
                         </div>
                         <div className="bg-slate-900 p-1.5 rounded text-center border border-slate-800/60 text-slate-450">
                           <span className="text-slate-500 block">统帅力</span>
-                          <span className="font-bold text-teal-400">{off.stats.leadership}</span>
+                          <span className="font-bold text-teal-400">{off.stats.leadership}{off.statDeltas.leadership !== 0 ? ` (${off.statDeltas.leadership > 0 ? `+${off.statDeltas.leadership}` : off.statDeltas.leadership})` : ''}</span>
                         </div>
                         <div className="bg-slate-900 p-1.5 rounded text-center border border-slate-800/60 text-slate-450">
                           <span className="text-slate-500 block">极上智</span>
-                          <span className="font-bold text-blue-400">{off.stats.intelligence}</span>
+                          <span className="font-bold text-blue-400">{off.stats.intelligence}{off.statDeltas.intelligence !== 0 ? ` (${off.statDeltas.intelligence > 0 ? `+${off.statDeltas.intelligence}` : off.statDeltas.intelligence})` : ''}</span>
                         </div>
                       </div>
                       <div className="mt-2.5 flex flex-wrap gap-1">
@@ -814,7 +825,7 @@ export default function DuelArena({ officers, soundEnabled, playClashSound, play
             {/* Quick Preview of Right Officer */}
             {officers.find(o => o.id === selectedRightId) && (
               (() => {
-                const off = officers.find(o => o.id === selectedRightId)!;
+                const off = applySeasonalOfficerModifiers(officers.find(o => o.id === selectedRightId)!, seasonId);
                 return (
                   <div className="flex gap-4 bg-slate-950 p-4 rounded-xl border border-slate-900">
                     <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-800 shrink-0">
@@ -828,15 +839,15 @@ export default function DuelArena({ officers, soundEnabled, playClashSound, play
                       <div className="grid grid-cols-3 gap-2 mt-2.5 text-[10px] font-mono">
                         <div className="bg-slate-900 p-1.5 rounded text-center border border-slate-800/60 text-slate-450">
                           <span className="text-slate-500 block">武艺力</span>
-                          <span className="font-bold text-amber-500">{off.stats.force}</span>
+                          <span className="font-bold text-amber-500">{off.stats.force}{off.statDeltas.force !== 0 ? ` (${off.statDeltas.force > 0 ? `+${off.statDeltas.force}` : off.statDeltas.force})` : ''}</span>
                         </div>
                         <div className="bg-slate-900 p-1.5 rounded text-center border border-slate-800/60 text-slate-450">
                           <span className="text-slate-500 block">统帅力</span>
-                          <span className="font-bold text-teal-400">{off.stats.leadership}</span>
+                          <span className="font-bold text-teal-400">{off.stats.leadership}{off.statDeltas.leadership !== 0 ? ` (${off.statDeltas.leadership > 0 ? `+${off.statDeltas.leadership}` : off.statDeltas.leadership})` : ''}</span>
                         </div>
                         <div className="bg-slate-900 p-1.5 rounded text-center border border-slate-800/60 text-slate-450">
                           <span className="text-slate-500 block">极上智</span>
-                          <span className="font-bold text-blue-400">{off.stats.intelligence}</span>
+                          <span className="font-bold text-blue-400">{off.stats.intelligence}{off.statDeltas.intelligence !== 0 ? ` (${off.statDeltas.intelligence > 0 ? `+${off.statDeltas.intelligence}` : off.statDeltas.intelligence})` : ''}</span>
                         </div>
                       </div>
                       <div className="mt-2.5 flex flex-wrap gap-1">

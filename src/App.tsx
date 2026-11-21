@@ -14,6 +14,21 @@ import Button from './components/Button';
 import DuelArena from './components/DuelArena';
 import InternalAffairs from './components/InternalAffairs';
 import PartyConsole from './components/PartyConsole';
+import DiplomacyPanel from './components/DiplomacyPanel';
+import RelationshipTree from './components/RelationshipTree';
+import {
+  createInitialDiplomacyState,
+  executeEnvoyMission,
+  cancelDiplomaticPact,
+  DiplomacyState,
+  DiplomaticMissionType,
+} from './utils/diplomacy';
+import {
+  getSeasonFromMonth,
+  getSeasonalWeatherForTick,
+  applySeasonalOfficerModifiers,
+  SeasonalWeatherId,
+} from './utils/seasons';
 import { playClashSound, playDrumSound, playHarvestSound } from './utils/audio';
 import { 
   Shield, 
@@ -60,7 +75,9 @@ export default function App() {
   const [officers, setOfficers] = useState<Officer[]>(FAMOUS_OFFICERS);
   const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
   const [selectedScenario, setSelectedScenario] = useState<CampaignScenario>(SCENARIOS[0]);
-  const [activeTab, setActiveTab] = useState<'roster' | 'creator' | 'bonds' | 'map' | 'duel' | 'affairs'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'creator' | 'bonds' | 'map' | 'duel' | 'affairs' | 'diplomacy'>('roster');
+  const [playerGold, setPlayerGold] = useState<number>(1500);
+  const [diplomacyState, setDiplomacyState] = useState<DiplomacyState>(() => createInitialDiplomacyState(FACTIONS));
 
   // Global Background Time State
   const [gameYear, setGameYear] = useState<number>(() => SCENARIOS[0].year);
@@ -69,15 +86,32 @@ export default function App() {
   const [isAutoTime, setIsAutoTime] = useState<boolean>(true); // auto increase the time in the background
   const [timeSpeed, setTimeSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
 
+  const currentSeason = getSeasonFromMonth(gameMonth);
+  const [weatherId, setWeatherId] = useState<SeasonalWeatherId>(() =>
+    getSeasonalWeatherForTick(getSeasonFromMonth(1).id, SCENARIOS[0].year, 1, 1)
+  );
+  const lastWeatherTickRef = useRef<string>(`${SCENARIOS[0].year}:1:1`);
+
   useEffect(() => {
+    const startMonth = selectedScenario.id === 'chibi' ? 5 : 1;
     setGameYear(selectedScenario.year);
-    setGameMonth(selectedScenario.id === 'chibi' ? 5 : 1);
+    setGameMonth(startMonth);
     setGameXun(1);
+    setWeatherId(getSeasonalWeatherForTick(getSeasonFromMonth(startMonth).id, selectedScenario.year, startMonth, 1));
+    lastWeatherTickRef.current = `${selectedScenario.year}:${startMonth}:1`;
     setPlayerFactions(selectedScenario.featuredFactions);
     const candidates = getCandidateOfficers(FAMOUS_OFFICERS, selectedScenario.featuredFactions, selectedScenario.featuredFactions);
     const next = candidates.find(candidate => candidate.id === protagonistId)?.id ?? candidates[0]?.id;
     if (next !== protagonistId) setProtagonistId(next);
   }, [selectedScenario, protagonistId]);
+
+  // Periodically update weather based on the current season as the game loop advances
+  useEffect(() => {
+    const tickKey = `${gameYear}:${gameMonth}:${gameXun}`;
+    if (lastWeatherTickRef.current === tickKey) return;
+    lastWeatherTickRef.current = tickKey;
+    setWeatherId(getSeasonalWeatherForTick(getSeasonFromMonth(gameMonth).id, gameYear, gameMonth, gameXun));
+  }, [gameYear, gameMonth, gameXun]);
 
   // Keep the party and per-character RPG state in sync with the protagonist.
   // Return the same reference when nothing changed so React can bail out.
@@ -254,6 +288,54 @@ export default function App() {
     }, intervalMs);
     return () => clearInterval(timer);
   }, [isAutoTime, timeSpeed]);
+
+  const timestampLabel = `${gameYear}年 ${gameMonth}月 ${['上旬', '中旬', '下旬'][gameXun - 1]}`;
+
+  const handleExecuteDiplomacyMission = useCallback((input: {
+    playerFaction: string;
+    targetFaction: string;
+    missionType: DiplomaticMissionType;
+    envoy?: Officer | null;
+    giftAmount?: number;
+  }) => {
+    const seasonalEnvoy = input.envoy ? applySeasonalOfficerModifiers(input.envoy, currentSeason.id) : input.envoy;
+    const result = executeEnvoyMission({
+      state: diplomacyState,
+      factions: FACTIONS,
+      playerFaction: input.playerFaction,
+      targetFaction: input.targetFaction,
+      missionType: input.missionType,
+      envoy: seasonalEnvoy,
+      gold: playerGold,
+      giftAmount: input.giftAmount,
+      timestampLabel,
+    });
+    if (!result.ok) {
+      return { ok: false, error: result.error };
+    }
+    setDiplomacyState(result.state);
+    setPlayerGold(result.gold);
+    if (soundEnabled) {
+      if (result.entry?.accepted) playHarvestSound();
+      else playDrumSound();
+    }
+    return { ok: true, entry: result.entry };
+  }, [diplomacyState, playerGold, timestampLabel, soundEnabled, currentSeason.id]);
+
+  const handleCancelDiplomaticPact = useCallback((input: {
+    playerFaction: string;
+    targetFaction: string;
+    pactType: 'trade_pact' | 'alliance';
+  }) => {
+    setDiplomacyState(prev => cancelDiplomaticPact({
+      state: prev,
+      factions: FACTIONS,
+      playerFaction: input.playerFaction,
+      targetFaction: input.targetFaction,
+      pactType: input.pactType,
+      timestampLabel,
+    }));
+  }, [timestampLabel]);
   
   // Roster Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -1051,7 +1133,7 @@ export default function App() {
         {/* Left Section (Column span 8): Primary action and selection board */}
         <section className="game-primary">
           
-          <GameNavigation activeTab={activeTab} onSelect={setActiveTab} year={gameYear} month={gameMonth} xun={gameXun} playing={isAutoTime} onToggleTime={() => setIsAutoTime(!isAutoTime)} speed={timeSpeed} onSpeed={setTimeSpeed} onStep={handleAdvanceXun} onMonth={handleAdvanceMonth} />
+          <GameNavigation activeTab={activeTab} onSelect={setActiveTab} year={gameYear} month={gameMonth} xun={gameXun} seasonId={currentSeason.id} weatherId={weatherId} playing={isAutoTime} onToggleTime={() => setIsAutoTime(!isAutoTime)} speed={timeSpeed} onSpeed={setTimeSpeed} onStep={handleAdvanceXun} onMonth={handleAdvanceMonth} />
 
           {/* Tab 1: Officer Roster */}
           {activeTab === 'roster' && (
@@ -1176,6 +1258,7 @@ export default function App() {
                       <OfficerCard
                         key={off.id}
                         officer={off}
+                        seasonId={currentSeason.id}
                         onEdit={(updated) => {
                           setOfficers(prev => prev.map(o => o.id === updated.id ? updated : o));
                           setSelectedOfficerId(updated.id);
@@ -1606,63 +1689,17 @@ export default function App() {
                 </form>
               </div>
 
-              {/* Active list representation of bounds */}
+              {/* Interactive Relationship Tree & Network */}
               <div className="bg-slate-950 border border-slate-900 rounded-2xl p-6">
-                <span className="text-xs font-mono text-slate-450 block tracking-widest uppercase mb-4 text-slate-400">当前历史天盘演武的名将情仇网络</span>
-                
-                {relationships.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {relationships.map((rel, idx) => {
-                      const off1 = officers.find(o => o.id === rel.fromOfficerId);
-                      const off2 = officers.find(o => o.id === rel.toOfficerId);
-                      
-                      if (!off1 || !off2) return null;
-
-                      return (
-                        <div key={idx} className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col justify-between gap-3">
-                          <div className="flex justify-between items-center gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-serif text-slate-200 text-sm">{off1.name}</span>
-                              <span className="text-[10px] text-slate-500 font-mono">({off1.stats.force} 武力)</span>
-                            </div>
-                            
-                            <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] font-mono">
-                              {rel.type === 'Sworn Brother' ? '金兰结义' : rel.type === 'Rival' ? '生平宿敌' : rel.type === 'Spouse' ? '金玉良缘' : rel.type === 'Lord' ? '主臣效忠' : rel.type === 'Confidant' ? '莫逆红颜' : '至信之交'}
-                            </span>
-
-                            <div className="flex items-center gap-2">
-                              <span className="font-serif text-slate-200 text-sm">{off2.name}</span>
-                              <span className="text-[10px] text-slate-500 font-mono">({off2.stats.force} 武力)</span>
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-center bg-slate-950/40 p-1 rounded-lg border border-slate-950">
-                            {/* Simulation buttons */}
-                            <button
-                              id={`btn-duel-sim-${idx}`}
-                              onClick={() => runBattleDuelSim(off1, off2)}
-                              className="text-[10px] text-sky-400 hover:text-sky-305 text-sky-300 font-semibold px-2 py-1 flex items-center gap-1 active:scale-95 transition cursor-pointer"
-                            >
-                              ⚔️ 挥军阵前单挑
-                            </button>
-
-                            <button
-                              id={`btn-sever-bond-${idx}`}
-                              onClick={() => handleBreakRelationship(off1.id, off2.id)}
-                              className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold px-2 py-1 active:scale-95 transition cursor-pointer"
-                            >
-                              斩断羁绊情仇
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-xs text-slate-500">
-                    天盘羁绊中枢目前尚未连结任何人际纽带名录。快在上方熔炉缔结吧！
-                  </div>
-                )}
+                <RelationshipTree
+                  officers={officers}
+                  factions={FACTIONS}
+                  relationships={relationships}
+                  selectedOfficerId={selectedOfficerId}
+                  onSelectOfficer={(off) => setSelectedOfficerId(off.id)}
+                  onDuelPair={runBattleDuelSim}
+                  onBreakRelationship={handleBreakRelationship}
+                />
               </div>
 
               {/* Battle result box if active */}
@@ -1708,14 +1745,35 @@ export default function App() {
               quests={ALL_QUESTS}
               questStates={questStates}
               onCompleteQuestObjective={completeQuestObjective}
+              playerGold={playerGold}
+              onGoldChange={setPlayerGold}
+              diplomacyState={diplomacyState}
+              seasonId={currentSeason.id}
+              weatherId={weatherId}
+              onWeatherChange={setWeatherId}
             />
           </div>
+
+          {/* Tab 4B: Diplomacy & Envoy Missions */}
+          {activeTab === 'diplomacy' && (
+            <DiplomacyPanel
+              factions={FACTIONS}
+              officers={officers}
+              playerFactions={playerFactions}
+              diplomacyState={diplomacyState}
+              gold={playerGold}
+              timestampLabel={timestampLabel}
+              onExecuteMission={handleExecuteDiplomacyMission}
+              onCancelPact={handleCancelDiplomaticPact}
+            />
+          )}
 
           {/* Tab 5: 1v1 Duel Arena */}
           {activeTab === 'duel' && (
             <DuelArena 
               officers={officers}
               soundEnabled={soundEnabled}
+              seasonId={currentSeason.id}
               playClashSound={playClashSound}
               playDrumSound={playDrumSound}
               onClose={() => setActiveTab('map')}

@@ -3,6 +3,7 @@ import { Officer, Faction } from '../types';
 import AvatarRenderer from './AvatarRenderer';
 import { FACTIONS } from '../data';
 import { getRating } from '../utils/rating';
+import { applySeasonalOfficerModifiers, SEASONS, SeasonId } from '../utils/seasons';
 import { Shield, Swords, Brain, Scroll, Sparkles, User, Sword, Compass, BookOpen, Trash2, Award, Crown } from 'lucide-react';
 
 // Helper to calculate official rank/promotion details based on peak metrics
@@ -118,6 +119,7 @@ export function getPromotionInfo(stats: Officer['stats'], level: number = 0, isG
 interface OfficerCardProps {
   key?: React.Key;
   officer: Officer;
+  seasonId?: SeasonId;
   onEdit?: (officer: Officer) => void;
   onDelete?: (id: string) => void;
   onSelectForStrategy?: (officer: Officer) => void;
@@ -127,6 +129,7 @@ interface OfficerCardProps {
 
 export default function OfficerCard({
   officer,
+  seasonId,
   onEdit,
   onDelete,
   onSelectForStrategy,
@@ -281,44 +284,65 @@ export default function OfficerCard({
         </div>
 
         {/* ROTK Classic Stats Panel */}
-        <div className="mt-5 space-y-3">
-          <h4 className="text-xs font-mono tracking-widest text-slate-400 uppercase">属性五维</h4>
-          <div className="grid grid-cols-1 gap-2.5">
-            {[
-              { label: '统帅', key: 'leadership', icon: Shield, color: 'from-emerald-500 to-teal-400', val: officer.stats.leadership },
-              { label: '武力', key: 'force', icon: Swords, color: 'from-rose-500 to-red-400', val: officer.stats.force },
-              { label: '智力', key: 'intelligence', icon: Brain, color: 'from-blue-500 to-sky-400', val: officer.stats.intelligence },
-              { label: '政治', key: 'politics', icon: Scroll, color: 'from-amber-600 to-yellow-500', val: officer.stats.politics },
-              { label: '魅力', key: 'charisma', icon: Sparkles, color: 'from-purple-500 to-pink-500', val: officer.stats.charisma }
-            ].map(stat => {
-              const rating = getRating(stat.val);
-              return (
-                <div key={stat.key} className="bg-slate-950/50 rounded-lg p-2 border border-slate-800/40 flex items-center justify-between gap-3 text-sm">
-                  <div className="flex items-center gap-2 w-28">
-                    <stat.icon size={14} className="text-slate-500" />
-                    <span className="text-slate-300 text-xs font-mono">{stat.label}</span>
-                  </div>
+        {(() => {
+          const activeSeason = seasonId ? SEASONS[seasonId] : undefined;
+          const seasonal = seasonId ? applySeasonalOfficerModifiers(officer, seasonId) : undefined;
+          const effectiveStats = seasonal ? seasonal.stats : officer.stats;
+          const deltas = seasonal?.statDeltas;
 
-                  <div className="flex-1">
-                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full bg-gradient-to-r ${stat.color} transition-all duration-500`} 
-                        style={{ width: `${stat.val}%` }}
-                      ></div>
+          return (
+            <div className="mt-5 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h4 className="text-xs font-mono tracking-widest text-slate-400 uppercase">属性五维</h4>
+                {activeSeason && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950/70 border border-slate-800 text-amber-300">
+                    {activeSeason.icon} {activeSeason.name}加成：{activeSeason.statSummary}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-2.5">
+                {[
+                  { label: '统帅', key: 'leadership', icon: Shield, color: 'from-emerald-500 to-teal-400', val: effectiveStats.leadership, delta: deltas?.leadership ?? 0 },
+                  { label: '武力', key: 'force', icon: Swords, color: 'from-rose-500 to-red-400', val: effectiveStats.force, delta: deltas?.force ?? 0 },
+                  { label: '智力', key: 'intelligence', icon: Brain, color: 'from-blue-500 to-sky-400', val: effectiveStats.intelligence, delta: deltas?.intelligence ?? 0 },
+                  { label: '政治', key: 'politics', icon: Scroll, color: 'from-amber-600 to-yellow-500', val: effectiveStats.politics, delta: deltas?.politics ?? 0 },
+                  { label: '魅力', key: 'charisma', icon: Sparkles, color: 'from-purple-500 to-pink-500', val: effectiveStats.charisma, delta: deltas?.charisma ?? 0 }
+                ].map(stat => {
+                  const rating = getRating(stat.val);
+                  return (
+                    <div key={stat.key} className="bg-slate-950/50 rounded-lg p-2 border border-slate-800/40 flex items-center justify-between gap-3 text-sm">
+                      <div className="flex items-center gap-2 w-28">
+                        <stat.icon size={14} className="text-slate-500" />
+                        <span className="text-slate-300 text-xs font-mono">{stat.label}</span>
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full bg-gradient-to-r ${stat.color} transition-all duration-500`} 
+                            style={{ width: `${stat.val}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 justify-end min-w-[4.75rem]">
+                        <span className="font-mono text-slate-200 font-bold">{stat.val}</span>
+                        {stat.delta !== 0 && (
+                          <span className={`text-[10px] font-mono ${stat.delta > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {stat.delta > 0 ? `+${stat.delta}` : stat.delta}
+                          </span>
+                        )}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${rating.color} font-mono w-5 h-5 flex items-center justify-center`}>
+                          {rating.letter}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2.5 w-14 justify-end">
-                    <span className="font-mono text-slate-200 font-bold">{stat.val}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${rating.color} font-mono w-5 h-5 flex items-center justify-center`}>
-                      {rating.letter}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Traits & Skills */}
         <div className="mt-5 pt-4 border-t border-slate-800/40 space-y-3">

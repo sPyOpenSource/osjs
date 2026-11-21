@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeftRight, Coins, Globe, Wheat } from 'lucide-react';
 import { Faction } from '../types';
 import { TradeCity, TradeStores, quoteTrade } from '../utils/trade';
+import { DiplomacyState, hasTradePact } from '../utils/diplomacy';
 import Button from './Button';
 import CountryDebt from './CountryDebt';
 
@@ -14,11 +15,15 @@ interface Props {
   gold: number;
   logs: string[];
   debts: Record<string, number>;
+  diplomacyState?: DiplomacyState;
+  disasterFreightMultiplier?: number;
+  activeDisasterLabels?: string[];
+  getWorldTradePolicy?: (partnerFactionId: string) => { multiplier: number; blocked: boolean; relation: number; stability: number };
   onChangeDebt: (amount: number, action: 'borrow' | 'repay') => string | undefined;
   onTrade: (sourceId: string, partnerId: string, quantity: number, side: 'buy' | 'sell') => string | undefined;
 }
 
-export default function GlobalTrade({ cities, ownership, stores, factions, playerFaction, gold, logs, onTrade, debts, onChangeDebt }: Props) {
+export default function GlobalTrade({ cities, ownership, stores, factions, playerFaction, gold, logs, onTrade, debts, diplomacyState, disasterFreightMultiplier = 1, activeDisasterLabels = [], getWorldTradePolicy, onChangeDebt }: Props) {
   const homeCities = cities.filter(city => ownership[city.id] === playerFaction);
   const partners = cities.filter(city => ownership[city.id] !== playerFaction);
   const [sourceId, setSourceId] = useState(homeCities[0]?.id || '');
@@ -31,8 +36,15 @@ export default function GlobalTrade({ cities, ownership, stores, factions, playe
   const sourceStores = source ? stores[source.id] : undefined;
   const partnerStores = partner ? stores[partner.id] : undefined;
   const validQuantity = Number.isSafeInteger(quantity) && quantity > 0 && quantity <= 10000;
-  const quote = source && partner && partnerStores && validQuantity ? quoteTrade(source, partner, partnerStores, quantity, side) : undefined;
+  const partnerOwner = partner ? ownership[partner.id] : '';
+  const partnerHasPact = Boolean(diplomacyState && partnerOwner && hasTradePact(diplomacyState, playerFaction, partnerOwner));
+  const worldPolicy = partnerOwner && getWorldTradePolicy
+    ? getWorldTradePolicy(partnerOwner)
+    : { multiplier: 1, blocked: false, relation: 0, stability: 70 };
+  const effectiveFreightMultiplier = Math.round(disasterFreightMultiplier * worldPolicy.multiplier * 100) / 100;
+  const quote = source && partner && partnerStores && validQuantity ? quoteTrade(source, partner, partnerStores, quantity, side, partnerHasPact, effectiveFreightMultiplier) : undefined;
   const unavailable = !source || !partner || !quote || !sourceStores || !partnerStores
+    || worldPolicy.blocked
     || (side === 'buy' ? gold < quote.total || partnerStores.grain < quantity : sourceStores.grain < quantity);
   const factionName = (id: string) => factions.find(f => f.id === id)?.name || '在野';
 
@@ -64,11 +76,24 @@ export default function GlobalTrade({ cities, ownership, stores, factions, playe
           <div><dt>本城余粮</dt><dd data-testid="trade-source-grain">{sourceStores?.grain.toLocaleString() || '0'} 石</dd></div>
           <div><dt>商埠余粮</dt><dd data-testid="trade-partner-grain">{partnerStores?.grain.toLocaleString() || '0'} 石</dd></div>
           <div><dt>每石金价</dt><dd>{quote?.unitPrice || '—'} 金</dd></div>
-          <div><dt>商路运费</dt><dd>{quote?.fee ?? '—'} 金</dd></div>
+          <div><dt>商路运费{partnerHasPact ? ' (通商条约 -25%)' : ''}{disasterFreightMultiplier > 1 ? ` (灾疫 ${Math.round(disasterFreightMultiplier * 100)}%)` : ''}{worldPolicy.multiplier !== 1 ? ` (地缘 ${Math.round(worldPolicy.multiplier * 100)}%)` : ''}</dt><dd>{quote?.fee ?? '—'} 金</dd></div>
           <div className="trade-total"><dt>{side === 'buy' ? '合计支付' : '净得黄金'}</dt><dd data-testid="trade-total">{quote?.total ?? '—'} 金</dd></div>
         </dl>
+        {activeDisasterLabels.length > 0 && (
+          <p className="trade-muted" role="status">当前天灾影响商路：{activeDisasterLabels.join('、')}</p>
+        )}
         {(!homeCities.length || !partners.length) && <p role="status">{!homeCities.length ? '本方暂无城池，无法通商。' : '天下归一，暂无外国商埠。'}</p>}
-        {source && partner && unavailable && <p className="trade-error" role="status">{!validQuantity ? '数量须为 1–10,000 石的整数。' : side === 'buy' && quote && gold < quote.total ? '黄金不足' : '余粮不足'}</p>}
+        {source && partner && unavailable && (
+          <p className="trade-error" role="status">
+            {worldPolicy.blocked
+              ? '受当前2026地缘禁运制裁限制，双边直航通商暂停。'
+              : !validQuantity
+              ? '数量须为 1–10,000 石的整数。'
+              : side === 'buy' && quote && gold < quote.total
+              ? '黄金不足'
+              : '余粮不足'}
+          </p>
+        )}
         {error && <p role="alert" className="trade-error">{error}</p>}
         <Button type="submit" className="trade-confirm" disabled={unavailable}><ArrowLeftRight size={16} /> {side === 'buy' ? '确认购入' : '确认出售'}</Button>
       </form>

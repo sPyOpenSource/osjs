@@ -5,6 +5,7 @@ import {
   Sparkles, Compass, Target, ArrowRight, RefreshCw, ChevronRight, User, ShieldAlert
 } from 'lucide-react';
 import { Officer, Faction } from '../types';
+import { applySeasonalOfficerModifiers, SEASONS, SeasonId } from '../utils/seasons';
 
 interface City {
   id: string;
@@ -24,6 +25,7 @@ interface WarModeProps {
   attackingOfficer: Officer | null;
   defendingOfficer: Officer | null;
   weatherId: 'sunny' | 'rainy' | 'heavy_rain' | 'windy' | 'foggy' | 'dense_fog' | 'snow';
+  seasonId?: SeasonId;
   soundEnabled: boolean;
   onBattleComplete: (winner: 'attacker' | 'defender', goldReward: number, epicRelic?: string, conqueredCityId?: string) => void;
   onClose: () => void;
@@ -86,10 +88,14 @@ export default function WarMode({
   attackingOfficer,
   defendingOfficer,
   weatherId,
+  seasonId = 'spring',
   soundEnabled,
   onBattleComplete,
   onClose
 }: WarModeProps) {
+  const activeSeason = SEASONS[seasonId];
+  const seasonalAttacker = attackingOfficer ? applySeasonalOfficerModifiers(attackingOfficer, seasonId) : null;
+  const seasonalDefender = defendingOfficer ? applySeasonalOfficerModifiers(defendingOfficer, seasonId) : null;
   // Battle state constants
   const GRID_ROWS = 20;
   const GRID_COLS = 20; // 0-3: Player Base, 4-11: Mid-Field, 12-18: Moat Outskirts, 19: Wall & Gate
@@ -200,11 +206,11 @@ export default function WarMode({
 
   // Set up scenario elements & initialize units
   const initBattle = () => {
-    // Generate Stats based on leaders' core attributes
-    const atkLdrMod = attackingOfficer ? Math.floor((attackingOfficer.stats.leadership - 60) / 4) : 5;
-    const atkForMod = attackingOfficer ? Math.floor((attackingOfficer.stats.force - 60) / 4) : 5;
-    const defLdrMod = defendingOfficer ? Math.floor((defendingOfficer.stats.leadership - 60) / 4) : 5;
-    const defPolMod = defendingOfficer ? Math.floor((defendingOfficer.stats.intelligence - 60) / 4) : 5;
+    // Generate Stats based on seasonal-modified leaders' core attributes
+    const atkLdrMod = seasonalAttacker ? Math.floor((seasonalAttacker.stats.leadership - 60) / 4) : 5;
+    const atkForMod = seasonalAttacker ? Math.floor((seasonalAttacker.stats.force - 60) / 4) : 5;
+    const defLdrMod = seasonalDefender ? Math.floor((seasonalDefender.stats.leadership - 60) / 4) : 5;
+    const defPolMod = seasonalDefender ? Math.floor((seasonalDefender.stats.intelligence - 60) / 4) : 5;
 
     // Weathers adjustments
     const weatherBuffsLog = {
@@ -221,6 +227,7 @@ export default function WarMode({
     setBattleLogs([
       `⚔️ 决战开始！攻方：[${attackerFaction.name}] ${attackingOfficer?.name || '无名义军'} 统御大军压境。`,
       `🛡️ 守方：[${defenderFaction.name}] ${defendingOfficer?.name || '守城宿将'} 严阵坚守 [${targetCity.name}] 城关！`,
+      `${activeSeason.icon} 节令天象 [${activeSeason.name}]：${activeSeason.tacticalSummary}（${activeSeason.statSummary}）`,
       weatherBuffsLog,
       `📜 精兵布阵：攻方携冲车誓要夺门，两军关隘前，沙场生死各安天命！`
     ]);
@@ -358,10 +365,10 @@ export default function WarMode({
         icon: '🏰',
         row: 10,
         col: 19,
-        maxHp: 800 + defLdrMod * 12,
-        hp: 800 + defLdrMod * 12,
+        maxHp: 800 + defLdrMod * 12 + activeSeason.tacticalModifiers.defenseBonus * 8,
+        hp: 800 + defLdrMod * 12 + activeSeason.tacticalModifiers.defenseBonus * 8,
         atk: 0,
-        def: 60 + defLdrMod * 3,
+        def: 60 + defLdrMod * 3 + activeSeason.tacticalModifiers.defenseBonus,
         activeBuffs: [],
         isDead: false
       }
@@ -381,7 +388,7 @@ export default function WarMode({
   }, [selectedCityIdFallback()]);
 
   function selectedCityIdFallback() {
-    return targetCity.id + "-" + originCity.id + "-" + weatherId;
+    return targetCity.id + "-" + originCity.id + "-" + weatherId + "-" + seasonId;
   }
 
   // Handle player selection of units
@@ -524,6 +531,7 @@ export default function WarMode({
     
     // Weather and Intelligence tactical skill adjustments
     if (u.type === 'cavalry') {
+      dmg = Math.floor(dmg * activeSeason.tacticalModifiers.cavalryMultiplier);
       if (weatherId === 'sunny') {
         dmg = Math.floor(dmg * 1.25);
         skillText = '⚡ 烈阳破袭：平川飞驰，骁骑突击威力倍增！';
@@ -536,6 +544,10 @@ export default function WarMode({
       } else {
         skillText = '🐎 铁骑突袭破阵！';
       }
+    }
+
+    if (u.type === 'archers') {
+      dmg = Math.floor(dmg * activeSeason.tacticalModifiers.archerMultiplier);
     }
 
     if (u.type === 'infantry') {
@@ -553,22 +565,22 @@ export default function WarMode({
     }
 
     // High Intelligence commander stratagem in heavy rain (Water flooding gate/troops)
-    if (weatherId === 'heavy_rain' && attackingOfficer && attackingOfficer.stats.intelligence >= 80) {
-      const waterBonus = Math.floor(attackingOfficer.stats.intelligence * 0.7);
+    if (weatherId === 'heavy_rain' && seasonalAttacker && seasonalAttacker.stats.intelligence >= 80) {
+      const waterBonus = Math.floor(seasonalAttacker.stats.intelligence * 0.7);
       dmg += waterBonus;
       skillText += ` 🌊【水淹七军】军师借暴雨引波涛破寨 (+${waterBonus}水计伤害)！`;
     }
 
     // High Intelligence commander stratagem in dense fog (Ghost ambush)
-    if (weatherId === 'dense_fog' && attackingOfficer && attackingOfficer.stats.intelligence >= 85) {
-      const fogIntelBonus = Math.floor(attackingOfficer.stats.intelligence * 0.85);
+    if (weatherId === 'dense_fog' && seasonalAttacker && seasonalAttacker.stats.intelligence >= 85) {
+      const fogIntelBonus = Math.floor(seasonalAttacker.stats.intelligence * 0.85);
       dmg += fogIntelBonus;
       skillText += ` 👁️‍🗨️【八阵遁甲】鬼神莫测之伏兵奇袭 (+${fogIntelBonus}智谋暴击)！`;
     }
 
     if (u.type === 'ram' && enemy.type === 'gate') {
-      dmg = Math.floor(220 + Math.random() * 90);
-      skillText = '💥 【冲车攻城】巨柱轰砸城闸，闸门裂隙，石屑飞扬，守卒大惊！';
+      dmg = Math.max(120, Math.floor(220 + Math.random() * 90 + (activeSeason.tacticalModifiers.siegeBonus - activeSeason.tacticalModifiers.defenseBonus) * 4));
+      skillText = `💥 【冲车攻城】巨柱轰砸城闸（${activeSeason.icon}${activeSeason.name}攻城修正），闸门裂隙，石屑飞扬，守卒大惊！`;
     }
 
     // Apply double attack buff if active
@@ -689,7 +701,7 @@ export default function WarMode({
 
       // Fire Arrow at closest or gates
       const target = validTargets.find(t => t.type === 'gate') || validTargets[0];
-      const fireDmg = Math.floor(40 + Math.random() * 30);
+      const fireDmg = Math.floor((40 + Math.random() * 30) * activeSeason.tacticalModifiers.firePowerMultiplier);
 
       // Trigger projectile and floating damage/burning feedback in 2D Space!
       triggerCombatFeedback(
@@ -715,7 +727,7 @@ export default function WarMode({
       }));
 
       setActionPoints(ap => ap - 1);
-      addLog(`🔥 [弩弓营] 火引千钧！箭簇敷油燃火齐射 [${target.name}]，打出 【${fireDmg}】 猛烧痛创！城池上空陷入烈火余晖灼烧！`);
+      addLog(`🔥 [弩弓营] 火引千钧！箭簇敷油燃火齐射 [${target.name}]（${activeSeason.icon}${activeSeason.name}火威×${activeSeason.tacticalModifiers.firePowerMultiplier}），打出 【${fireDmg}】 猛烧痛创！城池上空陷入烈火余晖灼烧！`);
     }
 
     else if (unit.type === 'cavalry') {
@@ -790,8 +802,8 @@ export default function WarMode({
     playSkillSound();
     setTacticUsed(true);
 
-    const ldr = attackingOfficer ? attackingOfficer.stats.leadership : 75;
-    const int = attackingOfficer ? attackingOfficer.stats.intelligence : 75;
+    const ldr = seasonalAttacker ? seasonalAttacker.stats.leadership : 75;
+    const int = seasonalAttacker ? seasonalAttacker.stats.intelligence : 75;
     const rulerName = attackingOfficer ? attackingOfficer.name : '攻城大帅';
 
     // Different tactics depending on ruler / active faction
@@ -1080,18 +1092,23 @@ export default function WarMode({
 
         <div className="flex items-center gap-4">
           <div className="text-right hidden sm:block">
-            <span className="text-[10px] font-mono text-slate-500 block">战局天象</span>
-            <span className="text-xs text-amber-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 font-bold font-serif">
-              {{
-                sunny: '☀️ 晴空万里',
-                rainy: '🌧️ 细雨湿道',
-                heavy_rain: '⛈️ 狂澜暴雨',
-                windy: '💨 朔北狂风',
-                foggy: '🌫️ 晨烟薄雾',
-                dense_fog: '🌁 弥天浓雾',
-                snow: '❄️ 冰雪封疆'
-              }[weatherId] || '☀️ 晴空万里'}
-            </span>
+            <span className="text-[10px] font-mono text-slate-500 block">节令与天象</span>
+            <div className="flex items-center gap-1.5 justify-end">
+              <span className="text-xs text-emerald-300 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 font-bold font-mono" title={activeSeason.tacticalSummary}>
+                {activeSeason.icon} {activeSeason.name}
+              </span>
+              <span className="text-xs text-amber-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 font-bold font-serif">
+                {{
+                  sunny: '☀️ 晴空万里',
+                  rainy: '🌧️ 细雨湿道',
+                  heavy_rain: '⛈️ 狂澜暴雨',
+                  windy: '💨 朔北狂风',
+                  foggy: '🌫️ 晨烟薄雾',
+                  dense_fog: '🌁 弥天浓雾',
+                  snow: '❄️ 冰雪封疆'
+                }[weatherId] || '☀️ 晴空万里'}
+              </span>
+            </div>
           </div>
 
           <button
@@ -1147,19 +1164,19 @@ export default function WarMode({
                 👑 {attackingOfficer?.name || '在野义军大将'}
               </h3>
               
-              {attackingOfficer && (
+              {seasonalAttacker && (
                 <div className="grid grid-cols-3 gap-2 mt-3 font-mono text-[10px] text-center">
                   <div className="p-1 bg-slate-900 rounded border border-slate-850">
                     <span className="text-slate-500 block">统帅</span>
-                    <strong className="text-teal-400">{attackingOfficer.stats.leadership}</strong>
+                    <strong className="text-teal-400">{seasonalAttacker.stats.leadership}</strong>
                   </div>
                   <div className="p-1 bg-slate-900 rounded border border-slate-850">
                     <span className="text-slate-500 block">武力</span>
-                    <strong className="text-amber-400">{attackingOfficer.stats.force}</strong>
+                    <strong className="text-amber-400">{seasonalAttacker.stats.force}</strong>
                   </div>
                   <div className="p-1 bg-slate-900 rounded border border-slate-850">
                     <span className="text-slate-500 block">智谋</span>
-                    <strong className="text-indigo-400">{attackingOfficer.stats.intelligence}</strong>
+                    <strong className="text-indigo-400">{seasonalAttacker.stats.intelligence}</strong>
                   </div>
                 </div>
               )}

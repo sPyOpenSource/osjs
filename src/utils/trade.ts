@@ -10,9 +10,19 @@ export interface TradeStores {
   prosperity: number;
 }
 
-export function quoteTrade(source: TradeCity, partner: TradeCity, market: TradeStores, quantity: number, side: 'buy' | 'sell') {
+export function quoteTrade(
+  source: TradeCity,
+  partner: TradeCity,
+  market: TradeStores,
+  quantity: number,
+  side: 'buy' | 'sell',
+  tradePactDiscount = false,
+  freightMultiplier = 1
+) {
   const unitPrice = Math.max(0.12, Math.round((0.25 - market.prosperity / 1000) * 100) / 100);
-  const fee = Math.ceil(Math.hypot(source.x - partner.x, source.y - partner.y) * quantity / 1000);
+  const rawFee = Math.ceil(Math.hypot(source.x - partner.x, source.y - partner.y) * quantity / 1000);
+  const pactFee = tradePactDiscount ? Math.ceil(rawFee * 0.75) : rawFee;
+  const fee = freightMultiplier !== 1 ? Math.ceil(pactFee * freightMultiplier) : pactFee;
   const goodsValue = Math.ceil(quantity * unitPrice);
   return { unitPrice, fee, total: side === 'buy' ? goodsValue + fee : Math.max(0, goodsValue - fee) };
 }
@@ -20,16 +30,19 @@ export function quoteTrade(source: TradeCity, partner: TradeCity, market: TradeS
 export function executeTrade(input: {
   source: TradeCity; partner: TradeCity; sourceOwner: string; partnerOwner: string;
   playerFaction: string; sourceStores: TradeStores; partnerStores: TradeStores;
-  gold: number; quantity: number; side: 'buy' | 'sell';
+  gold: number; quantity: number; side: 'buy' | 'sell'; tradePactDiscount?: boolean; freightMultiplier?: number; tradeBlocked?: boolean;
 }) {
-  const { source, partner, sourceStores, partnerStores, quantity, side, gold } = input;
+  const { source, partner, sourceStores, partnerStores, quantity, side, gold, tradePactDiscount = false, freightMultiplier = 1, tradeBlocked = false } = input;
+  if (tradeBlocked) {
+    return { ok: false as const, error: '受当前2026地缘禁运制裁限制，双边直航通商暂停。' };
+  }
   if (source.id === partner.id || input.sourceOwner !== input.playerFaction || input.partnerOwner === input.playerFaction) {
     return { ok: false as const, error: '通商城池归属已变，请重新选择。' };
   }
   if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 10000) {
     return { ok: false as const, error: '交易数量须为 1–10,000 石的整数。' };
   }
-  const quote = quoteTrade(source, partner, partnerStores, quantity, side);
+  const quote = quoteTrade(source, partner, partnerStores, quantity, side, tradePactDiscount, freightMultiplier);
   if (side === 'buy' && gold < quote.total) return { ok: false as const, error: '黄金不足，无法购入。' };
   if ((side === 'buy' ? partnerStores.grain : sourceStores.grain) < quantity) {
     return { ok: false as const, error: side === 'buy' ? '商埠余粮不足。' : '本城余粮不足。' };

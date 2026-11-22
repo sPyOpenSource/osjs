@@ -1881,12 +1881,6 @@ export default function TacticalMap({
           {/* SVG Interactive Map */}
           <div className={`${isWideView ? 'w-full' : 'lg:col-span-8'} bg-slate-950 p-4 rounded-2xl border border-slate-900 flex flex-col justify-between relative overflow-hidden min-h-[460px]`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 z-10">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-mono tracking-widest text-slate-400 uppercase flex items-center gap-1">
-                  <Flag size={10} className="text-amber-500 animate-pulse" />
-                  欧亚大舆图
-                </span>
-              </div>
               <div className="flex flex-wrap gap-2">
                 {FACTIONS.filter(f => f.id !== 'ronin').map(f => (
                   <div key={f.id} className="flex items-center gap-1">

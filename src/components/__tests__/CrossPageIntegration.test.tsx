@@ -6,7 +6,10 @@ import DuelArena from '../DuelArena';
 import TacticalMap, { getNearbyTargetCities } from '../TacticalMap';
 import RelationshipTree from '../RelationshipTree';
 import DiplomacyPanel from '../DiplomacyPanel';
+import PeopleMigrationsPanel from '../PeopleMigrationsPanel';
+import Alerts, { evaluateWeatherAndDisasterAlert } from '../Alerts';
 import { createInitialDiplomacyState } from '../../utils/diplomacy';
+import { createInitialMigrationState, MigrationCityRef } from '../../utils/migrations';
 import { FACTIONS, SCENARIOS } from '../../data';
 import { Officer } from '../../types';
 
@@ -346,4 +349,159 @@ describe('DiplomacyPanel Player Faction Filter', () => {
     assert.ok(!senderMatch[0].includes('value="wei"'));
   });
 });
+
+describe('PeopleMigrationsPanel & TacticalMap Migration Controls', () => {
+  const sampleCities: MigrationCityRef[] = [
+    { id: 'chengdu', name: '成都', x: 64, y: 60, region: '巴蜀', theater: 'central' },
+    { id: 'hanzhong', name: '汉中', x: 66, y: 51, region: '秦巴', theater: 'central' },
+    { id: 'luoyang', name: '洛阳', x: 71, y: 43, region: '司隶', theater: 'central' },
+  ];
+
+  test('renders migration tab, map flow toggle, and selected city population stats in TacticalMap', () => {
+    const chibiScenario = SCENARIOS.find(s => s.id === 'chibi') ?? SCENARIOS[1];
+    const html = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+      />,
+    );
+    assert.ok(html.includes('id="tab-map-migrations"'), 'expected #tab-map-migrations button');
+    assert.ok(html.includes('id="toggle-migrations"'), 'expected #toggle-migrations layer checkbox');
+    assert.ok(html.includes('id="selected-city-stats"'), 'expected #selected-city-stats readout');
+    assert.ok(html.includes('户籍人口'), 'expected city population label');
+  });
+
+  test('renders decree form, live quote, wave log, and city livability table in PeopleMigrationsPanel', () => {
+    const initial = createInitialMigrationState();
+    const seededState = {
+      ...initial,
+      totalMigrated: 4200,
+      waves: [
+        {
+          id: 'wave-1',
+          tick: 1,
+          cause: 'disaster_exodus' as const,
+          fromCityId: 'luoyang',
+          fromCityName: '洛阳',
+          toCityId: 'chengdu',
+          toCityName: '成都',
+          count: 4200,
+          timestamp: '208年 1月 中旬',
+          summary: '洛阳因灾荒动荡，4,200名流民迁至成都谋生。',
+        },
+      ],
+    };
+    const html = renderToStaticMarkup(
+      <PeopleMigrationsPanel
+        cities={sampleCities}
+        factions={FACTIONS}
+        officers={officers}
+        cityOwnership={{ chengdu: 'shu', hanzhong: 'shu', luoyang: 'wei' }}
+        cityStats={{
+          chengdu: { prosperity: 86, defense: 82, grain: 2800, population: 145000 },
+          hanzhong: { prosperity: 74, defense: 78, grain: 1900, population: 95000 },
+          luoyang: { prosperity: 60, defense: 75, grain: 1100, population: 112000 },
+        }}
+        activeDisasterCityIds={new Set(['luoyang'])}
+        migrationState={seededState}
+        playerFactionId="shu"
+        gold={1500}
+        timestampLabel="208年 1月 中旬"
+        onExecuteResettlement={() => undefined}
+      />,
+    );
+
+    assert.ok(html.includes('id="select-migration-origin"'), 'expected origin selector');
+    assert.ok(html.includes('id="select-migration-target"'), 'expected target selector');
+    assert.ok(html.includes('id="btn-execute-migration"'), 'expected submit decree button');
+    assert.ok(html.includes('4,200 人'), 'expected wave migrated count');
+    assert.ok(html.includes('灾荒流徙'), 'expected disaster exodus label');
+    assert.ok(html.includes('受灾'), 'expected affected city flag in table');
+    assert.ok(html.includes('145,000'), 'expected city population in ledger table');
+  });
+});
+
+describe('Alerts Overlay Component', () => {
+  test('renders nothing on calm sunny weather outside scheduled disaster windows', () => {
+    const html = renderToStaticMarkup(
+      <Alerts
+        weatherId="sunny"
+        gameMonth={1}
+        gameYear={208}
+        gameXun={1}
+        scenarioYear={208}
+        onViewReliefMeasures={noop}
+      />,
+    );
+    assert.equal(html, '');
+  });
+
+  test('renders bottom toast with View Relief Measures button for extreme weather (heavy_rain flood alert)', () => {
+    const html = renderToStaticMarkup(
+      <Alerts
+        weatherId="heavy_rain"
+        gameMonth={7}
+        gameYear={208}
+        gameXun={1}
+        scenarioYear={208}
+        onViewReliefMeasures={noop}
+      />,
+    );
+    assert.ok(html.includes('id="alerts-overlay"'), 'expected #alerts-overlay container');
+    assert.ok(html.includes('id="btn-view-relief-measures"'), 'expected View Relief Measures CTA button');
+    assert.ok(html.includes('View Relief Measures'), 'expected exact button text View Relief Measures');
+    assert.ok(html.includes('洪涝与暴雨警报'), 'expected flood alert category');
+  });
+
+  test('evaluates winter blizzard/famine alert on snow and scheduled flood/famine months', () => {
+    const winterFamine = evaluateWeatherAndDisasterAlert({
+      weatherId: 'snow',
+      gameMonth: 12,
+      gameYear: 208,
+      gameXun: 2,
+      scenarioYear: 208,
+    });
+    assert.ok(winterFamine);
+    assert.equal(winterFamine.category, 'famine');
+    assert.equal(winterFamine.severity, 'catastrophic');
+
+    const floodSeason = evaluateWeatherAndDisasterAlert({
+      weatherId: 'sunny',
+      gameMonth: 7,
+      gameYear: 208,
+      gameXun: 3,
+      scenarioYear: 208,
+    });
+    assert.ok(floodSeason);
+    assert.equal(floodSeason.category, 'flood');
+  });
+
+  test('prioritizes unresolved activeDisaster details in toast markup', () => {
+    const html = renderToStaticMarkup(
+      <Alerts
+        weatherId="sunny"
+        gameMonth={10}
+        gameYear={208}
+        gameXun={2}
+        scenarioYear={208}
+        activeDisaster={{
+          eventId: 'steppe_blizzard_drought',
+          category: 'drought',
+          severity: 'severe',
+          title: '极寒暴雪与大旱蝗灾并发',
+          description: '粮仓告急，需及时开仓放粮。',
+          affectedCityNames: ['敦煌', '疏勒'],
+        }}
+        onViewReliefMeasures={noop}
+      />,
+    );
+    assert.ok(html.includes('极寒暴雪与大旱蝗灾并发'));
+    assert.ok(html.includes('敦煌、疏勒'));
+    assert.ok(html.includes('View Relief Measures'));
+  });
+});
+
+
 

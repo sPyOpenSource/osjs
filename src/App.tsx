@@ -16,6 +16,7 @@ import InternalAffairs from './components/InternalAffairs';
 import PartyConsole, { RecruitNotice } from './components/PartyConsole';
 import DiplomacyPanel from './components/DiplomacyPanel';
 import RelationshipTree from './components/RelationshipTree';
+import Alerts, { AlertActiveDisaster } from './components/Alerts';
 import {
   createInitialDiplomacyState,
   executeEnvoyMission,
@@ -99,6 +100,19 @@ export default function App() {
   const [advisorOpen, setAdvisorOpen] = useState(true);
   const [playerGold, setPlayerGold] = useState<number>(1500);
   const [diplomacyState, setDiplomacyState] = useState<DiplomacyState>(() => createInitialDiplomacyState(FACTIONS));
+  const [activeAlertDisaster, setActiveAlertDisaster] = useState<AlertActiveDisaster | null>(null);
+  const [requestedMapTab, setRequestedMapTab] = useState<{
+    tab: 'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026';
+    nonce: number;
+  } | undefined>(undefined);
+
+  const handleViewReliefMeasures = useCallback(() => {
+    setActiveTab('map');
+    setRequestedMapTab(prev => ({
+      tab: 'disasters',
+      nonce: (prev?.nonce ?? 0) + 1,
+    }));
+  }, []);
 
   // Unlock browser Web Audio on first user interaction
   useEffect(() => {
@@ -1837,6 +1851,8 @@ export default function App() {
                   weatherId={weatherId}
                   onWeatherChange={setWeatherId}
                   onBattleActiveChange={setInSiegeBattle}
+                  requestedMapTab={requestedMapTab}
+                  onActiveDisasterChange={setActiveAlertDisaster}
                 />
               );
             })()}
@@ -2019,6 +2035,17 @@ export default function App() {
         </div>
 
       </main>
+
+      <Alerts
+        weatherId={weatherId}
+        gameMonth={gameMonth}
+        gameYear={gameYear}
+        gameXun={gameXun}
+        scenarioYear={selectedScenario.year}
+        activeDisaster={activeAlertDisaster}
+        onViewReliefMeasures={handleViewReliefMeasures}
+        visible={!showStartMenu}
+      />
       
     </div>
   );

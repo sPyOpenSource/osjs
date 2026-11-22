@@ -9,7 +9,17 @@ import WarMode from './WarMode';
 import GlobalTrade from './GlobalTrade';
 import HistoricalDisastersPanel from './HistoricalDisastersPanel';
 import WorldSituation2026 from './WorldSituation2026';
+import PeopleMigrationsPanel from './PeopleMigrationsPanel';
+import { AlertActiveDisaster } from './Alerts';
 import Button from './Button';
+import {
+  advanceMigrations,
+  createInitialMigrationState,
+  executeResettlement,
+  MIGRATION_CAUSE_META,
+  MigrationState,
+  triggerWarRefugeeWave,
+} from '../utils/migrations';
 import { executeTrade } from '../utils/trade';
 import { createCountryDebts, changeCountryDebt } from '../utils/debt';
 import { DiplomacyState, hasTradePact } from '../utils/diplomacy';
@@ -452,6 +462,11 @@ interface TacticalMapProps {
   weatherId?: WeatherId;
   onWeatherChange?: (weather: WeatherId) => void;
   onBattleActiveChange?: (active: boolean) => void;
+  requestedMapTab?: {
+    tab: 'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026';
+    nonce: number;
+  };
+  onActiveDisasterChange?: (disaster: AlertActiveDisaster | null) => void;
 }
 
 export default function TacticalMap({ 
@@ -479,15 +494,23 @@ export default function TacticalMap({
   seasonId: controlledSeasonId,
   weatherId: controlledWeatherId,
   onWeatherChange,
-  onBattleActiveChange
+  onBattleActiveChange,
+  requestedMapTab,
+  onActiveDisasterChange
 }: TacticalMapProps) {
-  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'world-2026'>('svg-map');
+  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026'>('svg-map');
+  useEffect(() => {
+    if (requestedMapTab) {
+      setMapTab(requestedMapTab.tab);
+    }
+  }, [requestedMapTab?.nonce, requestedMapTab?.tab]);
   useEffect(() => {
     onBattleActiveChange?.(mapTab === 'war-mode');
   }, [mapTab, onBattleActiveChange]);
   const [tradeFaction, setTradeFaction] = useState('ronin');
   const [tradeLogs, setTradeLogs] = useState<string[]>([]);
   const [disasterState, setDisasterState] = useState<DisasterState>(() => createInitialDisasterState());
+  const [migrationState, setMigrationState] = useState<MigrationState>(() => createInitialMigrationState());
   const [worldState, setWorldState] = useState<WorldState>(() => createWorldState(FACTIONS));
   const [countryDebts, setCountryDebts] = useState<Record<string, number>>(() => createCountryDebts(FACTIONS));
   const [localWeatherId, setLocalWeatherId] = useState<WeatherId>('sunny');
@@ -502,6 +525,7 @@ export default function TacticalMap({
   const [selectedTheater, setSelectedTheater] = useState<AsiaTheater>('all');
   const [show190Border, setShow190Border] = useState(true);
   const [showTradeRoutes, setShowTradeRoutes] = useState(true);
+  const [showMigrations, setShowMigrations] = useState(true);
   const [showTopography, setShowTopography] = useState(true);
   const [isWideView, setIsWideView] = useState(false);
   // Double-click zoom for the tactical map canvas
@@ -608,6 +632,7 @@ export default function TacticalMap({
 
   const lastDisasterTickKeyRef = useRef<string>('');
   const lastWorldTickKeyRef = useRef<string>('');
+  const lastMigrationTickKeyRef = useRef<string>('');
 
   // Sync ownership when scenario shifts
   useEffect(() => {
@@ -626,14 +651,16 @@ export default function TacticalMap({
     if (selectedScenario.year !== 2026) {
       setMapTab(prev => (prev === 'world-2026' ? 'svg-map' : prev));
     }
-    // Reset expedition, disaster, & 2026 world states
+    // Reset expedition, disaster, migration, & 2026 world states
     setIsExpeditionRunning(false);
     setExpeditionLogs([]);
     setExpeditionStep(-1);
     setDisasterState(createInitialDisasterState());
+    setMigrationState(createInitialMigrationState());
     setWorldState(createWorldState(FACTIONS));
     lastDisasterTickKeyRef.current = '';
     lastWorldTickKeyRef.current = '';
+    lastMigrationTickKeyRef.current = '';
   }, [selectedScenario]);
 
   const effectiveYear = gameYear ?? selectedScenario.year;
@@ -645,6 +672,31 @@ export default function TacticalMap({
   const currentDisasterTick = disasterCampaignTick(selectedScenario.year, effectiveYear, effectiveMonth, effectiveXun);
   const activeDisasters = getActiveDisasterRecords(disasterState, currentDisasterTick);
   const unresolvedActiveDisasters = activeDisasters.filter(a => !a.record.resolvedChoiceId);
+  const firstUnresolvedDisaster = unresolvedActiveDisasters[0] ?? null;
+  const firstUnresolvedDisasterKey = firstUnresolvedDisaster
+    ? `${firstUnresolvedDisaster.event.id}:${firstUnresolvedDisaster.record.triggeredTick}`
+    : '';
+
+  useEffect(() => {
+    if (!onActiveDisasterChange) return;
+    if (!firstUnresolvedDisaster) {
+      onActiveDisasterChange(null);
+      return;
+    }
+    onActiveDisasterChange({
+      eventId: firstUnresolvedDisaster.event.id,
+      category: firstUnresolvedDisaster.event.category,
+      severity: firstUnresolvedDisaster.event.severity,
+      title: firstUnresolvedDisaster.event.title,
+      description: firstUnresolvedDisaster.event.description,
+      affectedCityNames: firstUnresolvedDisaster.record.affectedCityNames,
+    });
+  }, [firstUnresolvedDisasterKey, onActiveDisasterChange]);
+
+  const unresolvedDisasterCityIds = useMemo(
+    () => new Set(unresolvedActiveDisasters.flatMap(a => a.record.affectedCityIds)),
+    [unresolvedActiveDisasters],
+  );
   const disasterTradePolicy = getDisasterTradePolicy(disasterState, currentDisasterTick);
 
   const currentWorldTick = campaignTick(effectiveYear, effectiveMonth, effectiveXun);
@@ -752,6 +804,73 @@ export default function TacticalMap({
     setCityStats(res.cityStats);
     setPlayerGold(res.gold);
     setInteriorLogs(prev => [res.state.logs[0], ...prev].slice(0, 40));
+  };
+
+  useEffect(() => {
+    const tickKey = `${selectedScenario.year}:${effectiveYear}:${effectiveMonth}:${effectiveXun}`;
+    if (lastMigrationTickKeyRef.current === tickKey) return;
+    lastMigrationTickKeyRef.current = tickKey;
+
+    const advanced = advanceMigrations({
+      state: migrationState,
+      cities: CITIES,
+      cityStats,
+      cityOwnership,
+      activeDisasterCityIds: unresolvedDisasterCityIds,
+      officers,
+      currentTick: Math.max(0, currentDisasterTick),
+      timestampLabel: disasterTimestamp,
+    });
+
+    if (advanced.state !== migrationState) {
+      setMigrationState(advanced.state);
+      if (advanced.newWaves.length > 0) {
+        setCityStats(advanced.cityStats);
+        setInteriorLogs(logs => [
+          ...advanced.newWaves.map(w => `🚶 【流民迁徙】${w.summary}`),
+          ...logs,
+        ].slice(0, 40));
+      }
+    }
+  }, [
+    selectedScenario.year,
+    effectiveYear,
+    effectiveMonth,
+    effectiveXun,
+    currentDisasterTick,
+    disasterTimestamp,
+    migrationState,
+    cityStats,
+    cityOwnership,
+    unresolvedDisasterCityIds,
+    officers,
+  ]);
+
+  const handleExecuteResettlement = (
+    fromCityId: string,
+    toCityId: string,
+    amount: number,
+  ) => {
+    const res = executeResettlement({
+      state: migrationState,
+      fromCityId,
+      toCityId,
+      amount,
+      cities: CITIES,
+      cityStats,
+      cityOwnership,
+      playerFactionId: ownFactionId,
+      gold: playerGold,
+      currentTick: Math.max(0, currentDisasterTick),
+      timestampLabel: disasterTimestamp,
+    });
+    if (!res.ok) return res.error;
+    setMigrationState(res.state);
+    setCityStats(res.cityStats);
+    setPlayerGold(res.gold);
+    if (res.state.logs[0]) {
+      setInteriorLogs(prev => [res.state.logs[0], ...prev].slice(0, 40));
+    }
   };
 
   const selectedCity = currentCityId
@@ -1522,6 +1641,22 @@ export default function TacticalMap({
             finalLog = `❌ 【功城功亏一篑】: 折戟沉沙！[${targetCity.name}] 守备固若金汤，[${genName}] 攻势被城头礌石挫裂，抱憾退兵。`;
           }
         }
+        const refugee = triggerWarRefugeeWave({
+          state: migrationState,
+          fromCityId: targId,
+          cities: CITIES,
+          cityStats,
+          cityOwnership,
+          activeDisasterCityIds: unresolvedDisasterCityIds,
+          officers,
+          currentTick: Math.max(0, currentDisasterTick),
+          timestampLabel: disasterTimestamp,
+        });
+        if (refugee.wave) {
+          setCityStats(refugee.cityStats);
+          setMigrationState(refugee.state);
+          setInteriorLogs(logs => [`🛡️ 【战乱流徙】${refugee.wave!.summary}`, ...logs].slice(0, 40));
+        }
       } else {
         finalLog = `⭐ 【天师同德】: 战略调派与防线互联完美达成！郡郭城池大胜合流，江山千秋固若金汤。`;
       }
@@ -1592,7 +1727,9 @@ export default function TacticalMap({
     setMapZoom(1);
     setZoomOrigin({ x: 50, y: 50 });
     setWorldState(createWorldState(FACTIONS));
+    setMigrationState(createInitialMigrationState());
     lastWorldTickKeyRef.current = '';
+    lastMigrationTickKeyRef.current = '';
   };
 
   return (
@@ -1609,6 +1746,7 @@ export default function TacticalMap({
             </Button>
           )}
           <Button id="tab-map-disasters" aria-pressed={mapTab === 'disasters'} onClick={() => setMapTab('disasters')}><AlertTriangle size={15} />天灾史变{unresolvedActiveDisasters.length > 0 ? ` (${unresolvedActiveDisasters.length})` : ''}</Button>
+          <Button id="tab-map-migrations" aria-pressed={mapTab === 'migrations'} onClick={() => setMapTab('migrations')}><Users size={15} />人口迁徙{migrationState.waves.length > 0 ? ` (${migrationState.waves.length})` : ''}</Button>
           <Button id="tab-map-war-mode" aria-pressed={mapTab === 'war-mode'} onClick={() => setMapTab('war-mode')}><Sword size={15} />会战</Button>
         </nav>
 
@@ -1658,6 +1796,24 @@ export default function TacticalMap({
           onTriggerDisaster={handleManualTriggerDisaster}
           onRespondDisaster={handleRespondToDisaster}
         />
+      ) : mapTab === 'migrations' ? (
+        <PeopleMigrationsPanel
+          cities={CITIES}
+          factions={FACTIONS}
+          officers={officers}
+          cityOwnership={cityOwnership}
+          cityStats={cityStats}
+          activeDisasterCityIds={unresolvedDisasterCityIds}
+          migrationState={migrationState}
+          playerFactionId={ownFactionId}
+          gold={playerGold}
+          timestampLabel={disasterTimestamp}
+          onExecuteResettlement={handleExecuteResettlement}
+          onFocusCity={cityName => {
+            onSetCurrentCity?.(cityName);
+            setMapTab('city-view');
+          }}
+        />
       ) : mapTab === 'global-trade' ? (
         <GlobalTrade cities={CITIES} ownership={cityOwnership} stores={cityStats} factions={FACTIONS}
           playerFaction={tradeFaction} gold={playerGold} logs={tradeLogs} onTrade={handleGlobalTrade}
@@ -1676,6 +1832,7 @@ export default function TacticalMap({
                 <label>天气<select aria-label="天气" value={weatherId} onChange={event => setWeatherId(event.target.value as typeof weatherId)}>{WEATHERS.map(w => <option key={w.id} value={w.id}>{w.icon} {w.nameCn}</option>)}</select></label>
                 <label className="game-check"><input id="toggle-190-border" type="checkbox" checked={show190Border} onChange={event => setShow190Border(event.target.checked)} />汉境国界</label>
                 <label className="game-check"><input id="toggle-trade-routes" type="checkbox" checked={showTradeRoutes} onChange={event => setShowTradeRoutes(event.target.checked)} />丝路航线</label>
+                <label className="game-check"><input id="toggle-migrations" type="checkbox" checked={showMigrations} onChange={event => setShowMigrations(event.target.checked)} />人口迁徙图</label>
                 <label className="game-check"><input id="toggle-topography" type="checkbox" checked={showTopography} onChange={event => setShowTopography(event.target.checked)} />山川地貌</label>
                 <label className="game-check"><input id="toggle-wide-view" type="checkbox" checked={isWideView} onChange={event => setIsWideView(event.target.checked)} />全景宽屏</label>
               </div></details>
@@ -2328,6 +2485,49 @@ export default function TacticalMap({
                     </g>
                   );
                 })()}
+
+                {/* Live People Migration Arcs Layer */}
+                {showMigrations && migrationState.waves.length > 0 && (
+                  <g id="migration-flows-layer" className="pointer-events-none">
+                    {migrationState.waves.slice(0, 5).map(wave => {
+                      const fromCity = CITIES.find(c => c.id === wave.fromCityId);
+                      const toCity = CITIES.find(c => c.id === wave.toCityId);
+                      if (!fromCity || !toCity) return null;
+                      const x1 = fromCity.x * 10;
+                      const y1 = fromCity.y * 6.2;
+                      const x2 = toCity.x * 10;
+                      const y2 = toCity.y * 6.2;
+                      const ctrlX = (x1 + x2) / 2;
+                      const ctrlY = Math.min(y1, y2) - Math.max(24, Math.hypot(x2 - x1, y2 - y1) * 0.2);
+                      const meta = MIGRATION_CAUSE_META[wave.cause];
+                      return (
+                        <g key={wave.id}>
+                          <path
+                            d={`M ${x1} ${y1} Q ${ctrlX} ${ctrlY} ${x2} ${y2}`}
+                            fill="none"
+                            stroke={meta.color}
+                            strokeWidth="2.2"
+                            strokeDasharray="6 4"
+                            className="animate-dash"
+                            style={{ animation: 'dash 1.8s linear infinite' }}
+                            opacity="0.88"
+                          />
+                          <circle cx={x2} cy={y2} r="4.5" fill={meta.color} opacity="0.8" />
+                          <text
+                            x={ctrlX}
+                            y={Math.max(14, ctrlY + 12)}
+                            textAnchor="middle"
+                            fill={meta.color}
+                            fontSize="7.5"
+                            fontWeight="bold"
+                          >
+                            {meta.shortLabel} +{wave.count.toLocaleString()}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </g>
+                )}
               </svg>
 
               {/* Render All 24 Eurasian Strategic City Nodes */}
@@ -2656,6 +2856,39 @@ export default function TacticalMap({
               <p className="text-xs text-slate-400 leading-relaxed font-sans">
                 {selectedCity.description}
               </p>
+
+              {/* Selected city demographic & stockpile summary */}
+              {cityStats[selectedCity.id] && (
+                <div
+                  id="selected-city-stats"
+                  className="grid grid-cols-4 gap-2 bg-slate-900/60 border border-slate-900 rounded-xl p-2.5 text-center tabular-nums"
+                >
+                  <div>
+                    <span className="text-[10px] font-mono text-slate-400 block">户籍人口</span>
+                    <strong className="text-xs font-mono text-sky-300">
+                      {cityStats[selectedCity.id].population.toLocaleString()}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono text-slate-400 block">仓粮</span>
+                    <strong className="text-xs font-mono text-emerald-300">
+                      {cityStats[selectedCity.id].grain.toLocaleString()}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono text-slate-400 block">繁荣</span>
+                    <strong className="text-xs font-mono text-amber-300">
+                      {cityStats[selectedCity.id].prosperity}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono text-slate-400 block">城防</span>
+                    <strong className="text-xs font-mono text-slate-200">
+                      {cityStats[selectedCity.id].defense}
+                    </strong>
+                  </div>
+                </div>
+              )}
 
               <div className="bg-slate-900/45 border border-slate-900 rounded-xl p-3.5 space-y-2">
                 <div className="flex justify-between items-center text-xs border-b border-slate-900 pb-1.5">

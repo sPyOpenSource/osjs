@@ -1886,9 +1886,6 @@ export default function TacticalMap({
                   <Flag size={10} className="text-amber-500 animate-pulse" />
                   欧亚大舆图
                 </span>
-                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-500 border border-slate-850">
-                  {ASIA_THEATERS.find(t => t.id === selectedTheater)?.title}
-                </span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {FACTIONS.filter(f => f.id !== 'ronin').map(f => (

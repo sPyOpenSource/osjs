@@ -55,9 +55,7 @@ import {
   Map, 
   UserPlus, 
   HelpCircle, 
-  Search, 
   Sliders, 
-  Filter, 
   RefreshCw,
   Award,
   BookOpen,
@@ -1418,113 +1416,6 @@ export default function App() {
                   )}
                 </div>
               </details>
-
-              {/* Filter controls */}
-              <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col gap-3.5">
-                {/* Category selector row */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/50">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {[
-                      { id: 'all', label: '全部豪杰', count: officers.length, icon: '⚔️' },
-                      { id: 'global', label: '世界群雄', count: officers.filter(o => o.isGlobalLeader).length, icon: '🌍' },
-                      { id: 'threekingdoms', label: '华夏三国', count: officers.filter(o => !o.isGlobalLeader && !o.custom).length, icon: '🐉' },
-                      { id: 'custom', label: '自创武将', count: officers.filter(o => o.custom).length, icon: '✨' }
-                    ].map(cat => (
-                      <button
-                        id={`btn-category-${cat.id}`}
-                        key={cat.id}
-                        onClick={() => {
-                          setCategoryFilter(cat.id as any);
-                          if (cat.id === 'global' && factionFilter !== 'all') {
-                            const isGlobalFaction = ['rome', 'macedon', 'persia', 'kushan', 'yamatai', 'carthage', 'steppe', 'france', 'russia', 'wuzhou', 'qing', 'qin', 'tang', 'america', 'germany', 'ming', 'ronin'].includes(factionFilter);
-                            if (!isGlobalFaction) setFactionFilter('all');
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all inline-flex items-center gap-1.5 border cursor-pointer whitespace-nowrap shrink-0 ${
-                          categoryFilter === cat.id
-                            ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/60 shadow-sm'
-                            : 'bg-slate-950/60 text-slate-400 border-slate-800/80 hover:text-slate-200 hover:border-slate-700'
-                        }`}
-                      >
-                        <span>{cat.icon}</span>
-                        <span>{cat.label}</span>
-                        <span className="text-[11px] font-mono opacity-80 tabular-nums">
-                          · {cat.count}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="text-xs text-slate-400 font-mono tabular-nums">
-                      已入册豪杰: <strong className="text-amber-400">{filteredOfficers.length}</strong> / {officers.length} 位
-                    </div>
-                    <Button
-                      id="btn-open-creator-from-roster"
-                      onClick={() => {
-                        if (soundEnabled) playClickSound();
-                        setActiveTab('creator');
-                      }}
-                      className="inline-flex items-center gap-1.5 text-xs whitespace-nowrap shrink-0"
-                    >
-                      <UserPlus size={14} />
-                      <span>自创武将</span>
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Search and Faction Filter row */}
-                <div className="flex flex-col lg:flex-row gap-3 justify-between items-stretch lg:items-center">
-                  <div className="relative w-full lg:w-72 shrink-0">
-                    <Search size={14} className="absolute left-3 top-3 text-slate-500" />
-                    <input
-                      id="search-officers"
-                      type="text"
-                      placeholder="搜姓名、号/字、国家领地、特质..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl pl-9 pr-8 py-2 text-xs focus:outline-none focus:border-slate-700 transition-colors"
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery('')}
-                        className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300 text-xs font-mono cursor-pointer"
-                        title="清空搜索"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex items-start lg:items-center gap-2 flex-wrap">
-                    <span className="text-slate-400 text-xs font-mono shrink-0 flex items-center gap-1 py-1">
-                      <Filter size={12} /> 所属阵营:
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {[
-                        { id: 'all', name: '不限阵营' },
-                        ...FACTIONS
-                      ].map(f => (
-                        <button
-                          id={`btn-faction-filter-${f.id}`}
-                          key={f.id}
-                          onClick={() => setFactionFilter(f.id)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all border shrink-0 flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                            factionFilter === f.id 
-                              ? 'bg-slate-800 text-slate-100 border-amber-500/50 shadow-sm' 
-                              : 'bg-slate-950/40 text-slate-400 border-transparent hover:border-slate-800 hover:text-slate-300'
-                          }`}
-                        >
-                          {'color' in f && (
-                            <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: (f as any).color }}></span>
-                          )}
-                          {f.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 

@@ -558,21 +558,23 @@ describe('ProtagonistProfile & StartMenu Self Information', () => {
     );
 
     assert.ok(html.includes('id="protagonist-profile"'), 'expected #protagonist-profile section');
-    assert.ok(html.includes('主公本人履历'), 'expected dossier kicker');
+    assert.ok(html.includes('data-testid="protagonist-radar-svg"'), 'expected 5-axis SVG radar chart');
+    assert.ok(html.includes('五维属性雷达图'), 'expected radar SVG aria-label');
     assert.ok(html.includes('刘备'), 'expected protagonist name');
     assert.ok(html.includes('字 玄德'), 'expected styleName');
     assert.ok(html.includes('Liu Bei'), 'expected englishName');
     assert.ok(html.includes('左将军'), 'expected promotion title');
-    assert.ok(html.includes('驻地 成都'), 'expected home city');
-    assert.ok(html.includes('出身 幽州涿郡'), 'expected origin');
+    assert.ok(html.includes('成都'), 'expected home city');
+    assert.ok(html.includes('幽州涿郡'), 'expected origin');
     assert.ok(html.includes('雌雄双股剑'), 'expected equipped weapon');
-    assert.ok(html.includes('关羽 (义结金兰)'), 'expected personal bond label');
-    assert.ok(html.includes('汉室宗亲，以信义仁德著称于世'), 'expected biography');
-    assert.ok(html.includes('id="select-self-protagonist"'), 'expected protagonist switcher');
-    assert.ok(html.includes('id="btn-edit-self-profile"'), 'expected edit self profile button');
+    assert.ok(html.includes('武+5 魅+4'), 'expected equipment bonus summary');
+    assert.ok(html.includes('关羽'), 'expected companion portrait tile');
+    assert.ok(html.includes('id="btn-focus-self-advisor"'), 'expected advisor focus button');
+    assert.ok(!html.includes('id="select-self-protagonist"'), 'expected removed protagonist switcher to stay removed');
+    assert.ok(!html.includes('id="btn-edit-self-profile"'), 'expected removed edit button to stay removed');
   });
 
-  test('renders selected protagonist preview card inside StartMenu', () => {
+  test('renders selected protagonist visual preview with radar in StartMenu', () => {
     const html = renderToStaticMarkup(
       <StartMenu
         scenarios={SCENARIOS}
@@ -589,8 +591,8 @@ describe('ProtagonistProfile & StartMenu Self Information', () => {
       html.includes('data-testid="start-protagonist-preview"'),
       'expected protagonist preview card in StartMenu',
     );
-    assert.ok(html.includes('统帅'), 'expected leadership stat in StartMenu preview');
-    assert.ok(html.includes('魅力'), 'expected charisma stat in StartMenu preview');
+    assert.ok(html.includes('五维属性雷达图'), 'expected mini radar chart in StartMenu preview');
+    assert.ok(html.includes('start-mini-bar-track'), 'expected visual stat bars in StartMenu preview');
   });
 });
 

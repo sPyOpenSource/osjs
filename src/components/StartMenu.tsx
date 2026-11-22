@@ -3,6 +3,7 @@ import { CampaignScenario } from '../types';
 import { FAMOUS_OFFICERS, FACTIONS } from '../data';
 import { getCandidateOfficers } from '../utils/party';
 import AvatarRenderer from './AvatarRenderer';
+import { StatRadarSvg } from './ProtagonistProfile';
 import Button from './Button';
 import { Play, Volume2, VolumeX, Music, Users, Building2, UserPlus, Heart } from 'lucide-react';
 
@@ -149,9 +150,17 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
           const chosen = candidateOfficers.find(o => o.id === effectiveProtagonistId);
           if (!chosen) return null;
           const chosenFaction = FACTIONS.find(f => f.id === chosen.factionId);
+          const statBars: Array<[string, number]> = [
+            ['统', chosen.stats.leadership],
+            ['武', chosen.stats.force],
+            ['智', chosen.stats.intelligence],
+            ['政', chosen.stats.politics],
+            ['魅', chosen.stats.charisma],
+          ];
+          const accent = chosenFaction?.color || '#f59e0b';
           return (
             <div className="start-protagonist-preview" data-testid="start-protagonist-preview">
-              <AvatarRenderer style={chosen.avatarStyle} size={58} />
+              <AvatarRenderer style={chosen.avatarStyle} size={68} />
               <div className="start-protagonist-preview-body">
                 <div className="start-protagonist-preview-head">
                   <strong>{chosen.name}</strong>
@@ -161,24 +170,23 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
                     </span>
                   )}
                   {chosenFaction && (
-                    <span style={{ color: chosenFaction.color }}>{chosenFaction.name}</span>
+                    <span style={{ color: accent }}>{chosenFaction.name}</span>
                   )}
-                  {chosen.origin && <span className="trade-muted">· {chosen.origin}</span>}
-                  {chosen.homeCity && <span className="trade-muted">· 驻 {chosen.homeCity}</span>}
+                  {chosen.homeCity && <span className="trade-muted">· {chosen.homeCity}</span>}
                 </div>
-                <div className="start-protagonist-preview-stats">
-                  <span>统帅 {chosen.stats.leadership}</span>
-                  <span>武力 {chosen.stats.force}</span>
-                  <span>智力 {chosen.stats.intelligence}</span>
-                  <span>政治 {chosen.stats.politics}</span>
-                  <span>魅力 {chosen.stats.charisma}</span>
-                  {chosen.traits.length > 0 && (
-                    <span className="trade-muted">· {chosen.traits.slice(0, 3).join(' / ')}</span>
-                  )}
-                </div>
-                {chosen.biography && (
-                  <p className="start-protagonist-preview-bio">{chosen.biography}</p>
+                {chosen.traits.length > 0 && (
+                  <div className="start-protagonist-traits">
+                    {chosen.traits.slice(0, 3).join(' · ')}
+                  </div>
                 )}
+              </div>
+              <div className="start-protagonist-radar" aria-hidden="true">
+                <StatRadarSvg
+                  stats={chosen.stats}
+                  accentColor={accent}
+                  size={74}
+                  compact
+                />
               </div>
             </div>
           );

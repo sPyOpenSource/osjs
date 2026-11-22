@@ -1884,7 +1884,7 @@ export default function TacticalMap({
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10px] font-mono tracking-widest text-slate-400 uppercase flex items-center gap-1">
                   <Flag size={10} className="text-amber-500 animate-pulse" />
-                  Tactical Campaign Sandtable Map of Eurasia (全欧亚大舆图)
+                  欧亚大舆图
                 </span>
                 <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-500 border border-slate-850">
                   {ASIA_THEATERS.find(t => t.id === selectedTheater)?.title}

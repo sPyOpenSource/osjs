@@ -16,6 +16,7 @@ import InternalAffairs from './components/InternalAffairs';
 import PartyConsole, { RecruitNotice } from './components/PartyConsole';
 import DiplomacyPanel from './components/DiplomacyPanel';
 import RelationshipTree from './components/RelationshipTree';
+import ProtagonistProfile from './components/ProtagonistProfile';
 import Alerts, { AlertActiveDisaster } from './components/Alerts';
 import {
   createInitialDiplomacyState,
@@ -1258,7 +1259,19 @@ export default function App() {
             <span className="game-header-meta">
               <span>{selectedScenario.title}</span>
               <span aria-hidden="true">·</span>
-              <span>主公 {officers.find(o => o.id === protagonistId)?.name ?? selectedOfficer.name}</span>
+              <button
+                id="btn-header-self-profile"
+                type="button"
+                onClick={() => {
+                  const self = officers.find(o => o.id === protagonistId) ?? selectedOfficer;
+                  setSelectedOfficerId(self.id);
+                  setActiveTab('roster');
+                }}
+                className="underline decoration-amber-500/40 hover:text-amber-300 cursor-pointer transition-colors"
+                title="查看并完善主公本人档案"
+              >
+                主公 {officers.find(o => o.id === protagonistId)?.name ?? selectedOfficer.name}
+              </button>
               <span aria-hidden="true">·</span>
               <span>库银 {playerGold.toLocaleString()}</span>
               {multiplayerEnabled && (
@@ -1370,24 +1383,59 @@ export default function App() {
         <section className="game-primary">
 
           {/* Tab 1: Officer Roster */}
-          {activeTab === 'roster' && (
-            <div className="flex flex-col gap-5">
-              {/* Unified party console: manage the party (left) and recruit from the pool (right) */}
-              <PartyConsole
-                party={party}
-                characters={rpgCharacters}
-                officers={officers}
-                recruitCandidates={filteredOfficers}
-                availableEquipment={partyEquipmentPool}
-                onRecruit={onRecruit}
-                onDismiss={onDismiss}
-                onSpendSkillPoint={onSpendSkillPoint}
-                onEquip={onEquip}
-                relationships={relationships}
-                diplomacyState={diplomacyState}
-                playerFactionId={activePlayerFactionId}
-                recruitNotice={recruitNotice}
-              />
+          {activeTab === 'roster' && (() => {
+            const selfOfficer =
+              officers.find(o => o.id === protagonistId) ?? officers[0] ?? selectedOfficer;
+            const selfRpg = rpgCharacters[selfOfficer.id] ?? createRpgCharacter(selfOfficer.id);
+            return (
+              <div className="flex flex-col gap-5">
+                <ProtagonistProfile
+                  protagonist={selfOfficer}
+                  officers={officers}
+                  factions={FACTIONS}
+                  rpgCharacter={selfRpg}
+                  party={party}
+                  relationships={relationships}
+                  diplomacyState={diplomacyState}
+                  scenario={selectedScenario}
+                  seasonId={currentSeason.id}
+                  currentCityName={currentCityId}
+                  gold={playerGold}
+                  quests={ALL_QUESTS}
+                  questStates={questStates}
+                  onUpdateSelf={(updated) => {
+                    setOfficers(prev => prev.map(o => (o.id === updated.id ? updated : o)));
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                      ws.send(JSON.stringify({ type: 'add_officer', data: updated }));
+                    }
+                  }}
+                  onSelectProtagonist={(id) => {
+                    setProtagonistId(id);
+                    setSelectedOfficerId(id);
+                  }}
+                  onFocusAdvisor={(off) => {
+                    setSelectedOfficerId(off.id);
+                    setAdvisorOpen(true);
+                  }}
+                  onOpenCreator={() => setActiveTab('creator')}
+                />
+
+                {/* Unified party console: manage the party (left) and recruit from the pool (right) */}
+                <PartyConsole
+                  party={party}
+                  characters={rpgCharacters}
+                  officers={officers}
+                  recruitCandidates={filteredOfficers}
+                  availableEquipment={partyEquipmentPool}
+                  onRecruit={onRecruit}
+                  onDismiss={onDismiss}
+                  onSpendSkillPoint={onSpendSkillPoint}
+                  onEquip={onEquip}
+                  relationships={relationships}
+                  diplomacyState={diplomacyState}
+                  playerFactionId={activePlayerFactionId}
+                  recruitNotice={recruitNotice}
+                />
 
               {/* Officer database: edit, delete, promote, or request an AI biography */}
               <details className="game-disclosure">
@@ -1431,7 +1479,8 @@ export default function App() {
                 </div>
               </details>
             </div>
-          )}
+            );
+          })()}
 
           {/* Tab 2: Custom Officer Creator */}
           {activeTab === 'creator' && (

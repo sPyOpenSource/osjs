@@ -8,8 +8,12 @@ import RelationshipTree from '../RelationshipTree';
 import DiplomacyPanel from '../DiplomacyPanel';
 import PeopleMigrationsPanel from '../PeopleMigrationsPanel';
 import Alerts, { evaluateWeatherAndDisasterAlert } from '../Alerts';
+import ProtagonistProfile from '../ProtagonistProfile';
+import StartMenu from '../StartMenu';
 import { createInitialDiplomacyState } from '../../utils/diplomacy';
 import { createInitialMigrationState, MigrationCityRef } from '../../utils/migrations';
+import { createRpgCharacter } from '../../utils/rpg';
+import { ALL_QUESTS } from '../../data/quests';
 import { FACTIONS, SCENARIOS } from '../../data';
 import { Officer } from '../../types';
 
@@ -502,6 +506,94 @@ describe('Alerts Overlay Component', () => {
     assert.ok(html.includes('View Relief Measures'));
   });
 });
+
+describe('ProtagonistProfile & StartMenu Self Information', () => {
+  test('renders comprehensive personal dossier for the player protagonist', () => {
+    const self = makeOfficer('liubei', '刘备', {
+      styleName: '玄德',
+      englishName: 'Liu Bei',
+      origin: '幽州涿郡',
+      homeCity: '成都',
+      promotionLevel: 2,
+      promotionTitle: '左将军',
+      stats: { leadership: 82, force: 74, intelligence: 79, politics: 86, charisma: 98 },
+      traits: ['仁德', '知人善任'],
+      skills: ['仁者无敌', '激励'],
+      biography: '汉室宗亲，以信义仁德著称于世，志在兴复汉室。',
+    });
+    const rpg = createRpgCharacter('liubei');
+    rpg.level = 4;
+    rpg.xp = 320;
+    rpg.learnedSkills = ['义军鼓舞'];
+    rpg.equipment.weapon = {
+      id: 'shuanggujian',
+      name: '雌雄双股剑',
+      slot: 'weapon',
+      statBonuses: { force: 5, charisma: 4 },
+      skillBonuses: ['双剑合璧'],
+    };
+
+    const html = renderToStaticMarkup(
+      <ProtagonistProfile
+        protagonist={self}
+        officers={[self, makeOfficer('guanyu', '关羽'), makeOfficer('zhangfei', '张飞')]}
+        factions={FACTIONS}
+        rpgCharacter={rpg}
+        party={{ protagonistId: 'liubei', companionIds: ['guanyu'] }}
+        relationships={[
+          { fromOfficerId: 'liubei', toOfficerId: 'guanyu', type: 'Sworn Brother' },
+        ]}
+        diplomacyState={createInitialDiplomacyState(FACTIONS)}
+        scenario={SCENARIOS[1]}
+        seasonId="spring"
+        currentCityName="成都"
+        gold={2400}
+        quests={ALL_QUESTS}
+        questStates={[]}
+        onUpdateSelf={noop}
+        onSelectProtagonist={noop}
+        onFocusAdvisor={noop}
+        onOpenCreator={noop}
+      />,
+    );
+
+    assert.ok(html.includes('id="protagonist-profile"'), 'expected #protagonist-profile section');
+    assert.ok(html.includes('主公本人履历'), 'expected dossier kicker');
+    assert.ok(html.includes('刘备'), 'expected protagonist name');
+    assert.ok(html.includes('字 玄德'), 'expected styleName');
+    assert.ok(html.includes('Liu Bei'), 'expected englishName');
+    assert.ok(html.includes('左将军'), 'expected promotion title');
+    assert.ok(html.includes('驻地 成都'), 'expected home city');
+    assert.ok(html.includes('出身 幽州涿郡'), 'expected origin');
+    assert.ok(html.includes('雌雄双股剑'), 'expected equipped weapon');
+    assert.ok(html.includes('关羽 (义结金兰)'), 'expected personal bond label');
+    assert.ok(html.includes('汉室宗亲，以信义仁德著称于世'), 'expected biography');
+    assert.ok(html.includes('id="select-self-protagonist"'), 'expected protagonist switcher');
+    assert.ok(html.includes('id="btn-edit-self-profile"'), 'expected edit self profile button');
+  });
+
+  test('renders selected protagonist preview card inside StartMenu', () => {
+    const html = renderToStaticMarkup(
+      <StartMenu
+        scenarios={SCENARIOS}
+        selectedScenario={SCENARIOS[1]}
+        onSelectScenario={noop}
+        onEnterApp={noop}
+        soundEnabled={false}
+        onToggleSound={noop}
+        protagonistId="liubei"
+      />,
+    );
+
+    assert.ok(
+      html.includes('data-testid="start-protagonist-preview"'),
+      'expected protagonist preview card in StartMenu',
+    );
+    assert.ok(html.includes('统帅'), 'expected leadership stat in StartMenu preview');
+    assert.ok(html.includes('魅力'), 'expected charisma stat in StartMenu preview');
+  });
+});
+
 
 
 

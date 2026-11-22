@@ -145,6 +145,44 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
             {candidateOfficers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
         </label>
+        {(() => {
+          const chosen = candidateOfficers.find(o => o.id === effectiveProtagonistId);
+          if (!chosen) return null;
+          const chosenFaction = FACTIONS.find(f => f.id === chosen.factionId);
+          return (
+            <div className="start-protagonist-preview" data-testid="start-protagonist-preview">
+              <AvatarRenderer style={chosen.avatarStyle} size={58} />
+              <div className="start-protagonist-preview-body">
+                <div className="start-protagonist-preview-head">
+                  <strong>{chosen.name}</strong>
+                  {chosen.styleName && (
+                    <span className="trade-muted">
+                      {chosen.isGlobalLeader ? '号' : '字'} {chosen.styleName}
+                    </span>
+                  )}
+                  {chosenFaction && (
+                    <span style={{ color: chosenFaction.color }}>{chosenFaction.name}</span>
+                  )}
+                  {chosen.origin && <span className="trade-muted">· {chosen.origin}</span>}
+                  {chosen.homeCity && <span className="trade-muted">· 驻 {chosen.homeCity}</span>}
+                </div>
+                <div className="start-protagonist-preview-stats">
+                  <span>统帅 {chosen.stats.leadership}</span>
+                  <span>武力 {chosen.stats.force}</span>
+                  <span>智力 {chosen.stats.intelligence}</span>
+                  <span>政治 {chosen.stats.politics}</span>
+                  <span>魅力 {chosen.stats.charisma}</span>
+                  {chosen.traits.length > 0 && (
+                    <span className="trade-muted">· {chosen.traits.slice(0, 3).join(' / ')}</span>
+                  )}
+                </div>
+                {chosen.biography && (
+                  <p className="start-protagonist-preview-bio">{chosen.biography}</p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
         <br></br>
         <div className="start-portrait">{FAMOUS_OFFICERS.filter(officer => ['liubei', 'caocao', 'zhugeliang', 'guanyu', 'lubu'].includes(officer.id)).map(officer => <Button key={officer.id} onClick={() => onEnterApp('roster')}><AvatarRenderer style={officer.avatarStyle} size={56} /><span>{officer.name}</span></Button>)}</div>
       </div>

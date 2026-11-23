@@ -39,10 +39,10 @@ export default function GameNavigation(props: Props) {
       <nav className="game-tabs" aria-label="游戏导航">
         {([
           { id: 'map', label: '地图', icon: Map },
-          { id: 'roster', label: '武将', icon: Users },
-          { id: 'affairs', label: '内政', icon: Building2 },
           { id: 'diplomacy', label: '外交', icon: Handshake },
+          { id: 'affairs', label: '内政', icon: Building2 },
           { id: 'bonds', label: '关系', icon: Heart },
+          { id: 'roster', label: '武将', icon: Users },
           { id: 'duel', label: '单挑', icon: Swords },
         ] as const).map(({ id, label, icon: Icon }) => (
           <Button

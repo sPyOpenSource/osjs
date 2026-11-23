@@ -304,6 +304,71 @@ describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {
       assert.ok(moscowNode.includes('俄罗斯') || moscowNode.includes('俄'), 'expected Moscow owned by Russia in present scenario');
     }
   });
+
+  test('renders two opposing factions fighting each other during map war animation', () => {
+    const chibiScenario = SCENARIOS.find(s => s.id === 'chibi') ?? SCENARIOS[1];
+    const clashHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+        initialBattleVisual={{
+          origId: 'jingzhou',
+          targId: 'xuchang',
+          attackerFactionId: 'shu',
+          defenderFactionId: 'wei',
+          attackerFactionName: '蜀汉',
+          defenderFactionName: '曹魏',
+          attackerColor: '#10b981',
+          defenderColor: '#3b82f6',
+          attackerGeneralName: '关羽',
+          defenderGeneralName: '曹操',
+          isSiege: true,
+          siegeWin: true,
+          successRate: 64,
+          step: 3,
+        }}
+      />,
+    );
+
+    assert.ok(clashHtml.includes('id="faction-war-clash-svg"'), 'expected SVG opposing faction formations');
+    assert.ok(clashHtml.includes('id="faction-war-volleys"'), 'expected crossfire arrow/bolt volleys between factions');
+    assert.ok(clashHtml.includes('id="faction-war-hud-overlay"'), 'expected two-faction war HUD overlay');
+    assert.ok(clashHtml.includes('data-testid="war-anim-attacker"'), 'expected attacker faction banner');
+    assert.ok(clashHtml.includes('data-testid="war-anim-defender"'), 'expected defender faction banner');
+    assert.ok(clashHtml.includes('data-testid="war-anim-clash"'), 'expected central clash spark marker');
+    assert.ok(clashHtml.includes('data-testid="war-anim-scoreboard"'), 'expected live faction tug-of-war scoreboard');
+    assert.ok(clashHtml.includes('蜀汉') && clashHtml.includes('曹魏'), 'expected both fighting factions labeled');
+    assert.ok(clashHtml.includes('两军激战'), 'expected active clash phase label');
+
+    const resolvedHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+        initialBattleVisual={{
+          origId: 'jingzhou',
+          targId: 'xuchang',
+          attackerFactionId: 'shu',
+          defenderFactionId: 'wei',
+          attackerFactionName: '蜀汉',
+          defenderFactionName: '曹魏',
+          attackerColor: '#10b981',
+          defenderColor: '#3b82f6',
+          attackerGeneralName: '关羽',
+          defenderGeneralName: '曹操',
+          isSiege: true,
+          siegeWin: true,
+          successRate: 64,
+          step: 4,
+        }}
+      />,
+    );
+    assert.ok(resolvedHtml.includes('蜀汉 破城') || resolvedHtml.includes('蜀 破城'), 'expected victory resolution badge');
+    assert.ok(!resolvedHtml.includes('id="faction-war-volleys"'), 'expected volleys to stop after resolution');
+  });
 });
 
 describe('RelationshipTree Root Officer Faction Filter', () => {

@@ -92,6 +92,22 @@ export interface City {
   tier?: 'city' | 'metropolis';
 }
 
+export interface ExpeditionBattleVisual {
+  origId: string;
+  targId: string;
+  attackerFactionId: string;
+  defenderFactionId: string;
+  attackerFactionName: string;
+  defenderFactionName: string;
+  attackerColor: string;
+  defenderColor: string;
+  attackerGeneralName: string;
+  defenderGeneralName: string;
+  isSiege: boolean;
+  siegeWin: boolean;
+  successRate: number;
+}
+
 export const EURASIA_THEATERS: { id: AsiaTheater; name: string; title: string; desc: string; icon: string }[] = [
   { id: 'all', name: '全欧亚大图', title: '全欧亚全景大舆图 (Whole Eurasia Campaign)', desc: '西起罗马迦太基与不列颠，东抵扶桑东海，北跨欧亚大草原，南连身毒恒河与地中海。', icon: '🌍' },
   { id: 'europe', name: '欧洲地中海', title: '欧洲古典帝国与环地中海 (Europe & Mediterranean)', desc: '罗马帝国元老院、迦太基战象、马其顿佩拉方阵与埃及亚历山大港。', icon: '🏛️' },
@@ -486,6 +502,7 @@ interface TacticalMapProps {
     nonce: number;
   };
   onActiveDisasterChange?: (disaster: AlertActiveDisaster | null) => void;
+  initialBattleVisual?: ExpeditionBattleVisual & { step: number };
 }
 
 export default function TacticalMap({ 
@@ -515,7 +532,8 @@ export default function TacticalMap({
   onWeatherChange,
   onBattleActiveChange,
   requestedMapTab,
-  onActiveDisasterChange
+  onActiveDisasterChange,
+  initialBattleVisual
 }: TacticalMapProps) {
   const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026'>('svg-map');
   useEffect(() => {
@@ -654,8 +672,10 @@ export default function TacticalMap({
   // Expedition execution states
   const [isExpeditionRunning, setIsExpeditionRunning] = useState(false);
   const [expeditionLogs, setExpeditionLogs] = useState<string[]>([]);
-  const [expeditionStep, setExpeditionStep] = useState<number>(-1); // -1: idle, 0: prep, 1: march, 2: fight/merger, 3: result
+  const [expeditionStep, setExpeditionStep] = useState<number>(-1); // -1: idle, 0: prep, 1: march, 2: skirmish, 3: clash, 4: result
   const [expeditionSuccessRate, setExpeditionSuccessRate] = useState<number>(100);
+  const [expeditionBattleVisual, setExpeditionBattleVisual] = useState<ExpeditionBattleVisual | null>(null);
+  const [rivalBattleVisual, setRivalBattleVisual] = useState<(ExpeditionBattleVisual & { step: number }) | null>(null);
 
   const lastDisasterTickKeyRef = useRef<string>('');
   const lastWorldTickKeyRef = useRef<string>('');
@@ -682,6 +702,8 @@ export default function TacticalMap({
     setIsExpeditionRunning(false);
     setExpeditionLogs([]);
     setExpeditionStep(-1);
+    setExpeditionBattleVisual(null);
+    setRivalBattleVisual(null);
     setDisasterState(createInitialDisasterState());
     setMigrationState(createInitialMigrationState());
     setWorldState(createWorldState(FACTIONS));
@@ -1104,15 +1126,53 @@ export default function TacticalMap({
       const def = cityOwnership[best.t.id] || 'ronin';
       const a = power(att) * (0.7 + Math.random() * 0.6);
       const d = (def === 'ronin' ? 35 : power(def)) * (0.7 + Math.random() * 0.6) + (cityStats[best.t.id]?.defense || 0) * 0.1;
-      const an = FACTIONS.find(f => f.id === att)?.name || att;
-      const dn = def === 'ronin' ? '在野' : FACTIONS.find(f => f.id === def)?.name || def;
+      const attFaction = FACTIONS.find(f => f.id === att);
+      const defFaction = FACTIONS.find(f => f.id === def);
+      const an = attFaction?.name || att;
+      const dn = def === 'ronin' ? '在野义军' : defFaction?.name || def;
+      const attGeneral = officers.find(g => g.factionId === att)?.name || an;
+      const defGeneral = officers.find(g => g.factionId === def)?.name || dn;
       const mine = controlledFactions.includes(def) ? '🚨 ' : '';
-      if (a > d) {
-        setCityOwnership(prev => ({ ...prev, [best!.t.id]: att }));
-        setRivalLogs(prev => [`${mine}【${an}】自 ${best!.o.name} 攻陷 ${best!.t.name}（原属${dn}）`, ...prev].slice(0, 8));
-      } else {
-        setRivalLogs(prev => [`${mine}【${an}】进攻 ${best!.t.name} 被${dn}击退`, ...prev].slice(0, 8));
-      }
+      const win = a > d;
+      const targetCityId = best.t.id;
+      const origCityId = best.o.id;
+      const targetCityName = best.t.name;
+      const origCityName = best.o.name;
+
+      setRivalBattleVisual({
+        origId: origCityId,
+        targId: targetCityId,
+        attackerFactionId: att,
+        defenderFactionId: def,
+        attackerFactionName: an,
+        defenderFactionName: dn,
+        attackerColor: attFaction?.color || '#f59e0b',
+        defenderColor: defFaction?.color || '#94a3b8',
+        attackerGeneralName: attGeneral,
+        defenderGeneralName: defGeneral,
+        isSiege: true,
+        siegeWin: win,
+        successRate: Math.min(92, Math.max(12, Math.round((a / Math.max(1, a + d)) * 100))),
+        step: 2,
+      });
+
+      setTimeout(() => {
+        setRivalBattleVisual(prev => (prev ? { ...prev, step: 3 } : null));
+      }, 900);
+
+      setTimeout(() => {
+        if (win) {
+          setCityOwnership(prev => ({ ...prev, [targetCityId]: att }));
+          setRivalLogs(prev => [`${mine}【${an}】自 ${origCityName} 攻陷 ${targetCityName}（原属${dn}）`, ...prev].slice(0, 8));
+        } else {
+          setRivalLogs(prev => [`${mine}【${an}】进攻 ${targetCityName} 被${dn}击退`, ...prev].slice(0, 8));
+        }
+        setRivalBattleVisual(prev => (prev ? { ...prev, step: 4 } : null));
+      }, 2100);
+
+      setTimeout(() => {
+        setRivalBattleVisual(null);
+      }, 3400);
     }, 6000);
     return () => clearTimeout(timer);
   }, [rivalsOn, controlledFactions, cityOwnership, isExpeditionRunning, expeditionStep, officers, cityStats]);
@@ -1528,6 +1588,23 @@ export default function TacticalMap({
       setExpeditionSuccessRate(100);
     }
 
+    const defenderOfficer = officers.find(o => o.factionId === targetControllerId);
+    setExpeditionBattleVisual({
+      origId,
+      targId,
+      attackerFactionId: origOwner,
+      defenderFactionId: targetControllerId,
+      attackerFactionName: originFaction.name,
+      defenderFactionName: targetControllerId === 'ronin' ? '在野守军' : targetFaction.name,
+      attackerColor: origOwner === 'ronin' ? '#fb923c' : originFaction.color,
+      defenderColor: targetControllerId === 'ronin' ? '#94a3b8' : targetFaction.color,
+      attackerGeneralName: commandingGeneral ? commandingGeneral.name : genName,
+      defenderGeneralName: defenderOfficer ? defenderOfficer.name : (targetControllerId === 'ronin' ? '郡守残部' : `${targetFaction.name}守将`),
+      isSiege,
+      siegeWin,
+      successRate: rate,
+    });
+
     // Step-by-Step Simulated Playback timeouts
     const weatherSlogans: Record<string, string> = {
       sunny: '☀️ 晴空丽日下旗帜招展',
@@ -1690,6 +1767,7 @@ export default function TacticalMap({
       setExpeditionLogs(prev => [...prev, finalLog]);
       setTimeout(() => {
         setIsExpeditionRunning(false);
+        setExpeditionBattleVisual(null);
       }, 1500);
     }, step4Delay);
   };
@@ -2158,18 +2236,47 @@ export default function TacticalMap({
                   </g>
                 )}
 
-                {/* Draw animated Campaign Expedition Line on SVG if running */}
-                {isExpeditionRunning && expeditionStep >= 1 && (() => {
-                  const origCity = CITIES.find(c => c.id === expeditionOriginId);
-                  const targCity = CITIES.find(c => c.id === expeditionTargetId);
+                {/* Draw animated Two-Faction War Clash & Campaign March on SVG */}
+                {(() => {
+                  const activeBattle = isExpeditionRunning && expeditionBattleVisual
+                    ? { ...expeditionBattleVisual, step: expeditionStep }
+                    : (rivalBattleVisual ?? initialBattleVisual ?? null);
+                  if (!activeBattle) return null;
+
+                  const origCity = CITIES.find(c => c.id === activeBattle.origId);
+                  const targCity = CITIES.find(c => c.id === activeBattle.targId);
                   if (!origCity || !targCity) return null;
-                  
+
                   const x1 = origCity.x * 10;
                   const y1 = origCity.y * 6.2;
                   const x2 = targCity.x * 10;
                   const y2 = targCity.y * 6.2;
-                  const midX = (x1 + x2) / 2;
-                  const midY = (y1 + y2) / 2 - 12;
+                  const dx = x2 - x1;
+                  const dy = y2 - y1;
+                  const dist = Math.hypot(dx, dy) || 1;
+                  const ux = dx / dist;
+                  const uy = dy / dist;
+                  const px = -uy;
+                  const py = ux;
+                  const angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
+
+                  // Place clash point slightly ahead of target city so both factions face off visibly
+                  const clashRatio = activeBattle.isSiege
+                    ? (dist > 95 ? Math.min(0.76, (dist - 36) / dist) : 0.56)
+                    : 0.72;
+                  const cx = x1 + dx * clashRatio;
+                  const cy = y1 + dy * clashRatio;
+                  const gap = Math.min(20, Math.max(11, dist * 0.14));
+                  const ax = cx - ux * gap;
+                  const ay = cy - uy * gap;
+                  const bx = cx + ux * gap;
+                  const by = cy + uy * gap;
+
+                  const step = activeBattle.step;
+                  const isClashing = activeBattle.isSiege && (step === 2 || step === 3);
+                  const isResolved = step >= 4;
+                  const atkColor = activeBattle.attackerColor;
+                  const defColor = activeBattle.defenderColor;
 
                   const marchAnimDuration = weatherId === 'heavy_rain' ? '3.2s'
                     : weatherId === 'dense_fog' ? '2.4s'
@@ -2177,79 +2284,250 @@ export default function TacticalMap({
                     : weatherId === 'rainy' ? '1.8s'
                     : weatherId === 'windy' ? '1.4s' : '1.0s';
 
-                  const marchWeatherTag = weatherId === 'heavy_rain' ? '⛈️ 暴雨深沼: 行军迟滞 (-55%)'
-                    : weatherId === 'dense_fog' ? '🌁 弥天大雾: 鸣锣开道 (-50%)'
-                    : weatherId === 'snow' ? '❄️ 严寒深雪: 封道难行 (-60%)'
-                    : weatherId === 'rainy' ? '🌧️ 微雨湿泥: 辎重稍缓 (-20%)'
-                    : weatherId === 'windy' ? '💨 逆风当面: 箭偏旗翻 (-15%)'
-                    : '☀️ 晴空坦途: 飞驰行军 (100%)';
-
-                  const lineColor = weatherId === 'heavy_rain' ? '#38bdf8'
-                    : weatherId === 'dense_fog' ? '#a5b4fc'
-                    : originControllerId !== 'ronin' ? (FACTIONS.find(f => f.id === originControllerId)?.color || '#eab308') : '#fb923c';
-
                   return (
                     <g id="expedition-march-path">
-                      {/* Glow background line */}
-                      <line 
+                      {/* Attacker advance trajectory */}
+                      <line
                         x1={x1}
                         y1={y1}
-                        x2={x2}
-                        y2={y2}
-                        stroke={lineColor}
+                        x2={activeBattle.isSiege ? ax : x2}
+                        y2={activeBattle.isSiege ? ay : y2}
+                        stroke={atkColor}
                         strokeWidth="6"
-                        strokeOpacity="0.3"
+                        strokeOpacity="0.22"
                         strokeLinecap="round"
                       />
-                      {/* Glowing Arrow Path connecting any two Eurasian cities */}
-                      <line 
+                      <line
                         x1={x1}
                         y1={y1}
-                        x2={x2}
-                        y2={y2}
-                        stroke={lineColor}
-                        strokeWidth="3.5"
-                        strokeDasharray={weatherId === 'heavy_rain' ? '4 8' : weatherId === 'dense_fog' ? '6 6' : '8 6'}
+                        x2={activeBattle.isSiege ? ax : x2}
+                        y2={activeBattle.isSiege ? ay : y2}
+                        stroke={atkColor}
+                        strokeWidth="3"
+                        strokeDasharray={weatherId === 'heavy_rain' ? '4 8' : weatherId === 'dense_fog' ? '6 6' : '8 5'}
                         className="animate-dash"
                         style={{
                           strokeDashoffset: 100,
-                          animation: `dash ${marchAnimDuration} linear infinite`
+                          animation: `dash ${marchAnimDuration} linear infinite`,
                         }}
                       />
-                      {/* March Weather condition indicator badge */}
-                      <g transform={`translate(${midX}, ${midY})`} className="pointer-events-none select-none">
-                        <rect 
-                          x="-68" 
-                          y="-10" 
-                          width="136" 
-                          height="20" 
-                          rx="6" 
-                          fill="#020617ee" 
-                          stroke={lineColor} 
-                          strokeWidth="1" 
-                        />
-                        <text 
-                          x="0" 
-                          y="3.5" 
-                          textAnchor="middle" 
-                          fill="#ffffff" 
-                          fontSize="7.5" 
-                          fontWeight="bold" 
-                          fontFamily="sans-serif"
-                        >
-                          {marchWeatherTag}
-                        </text>
-                      </g>
-                      {/* Arrow Pointing Target */}
-                      <circle 
+
+                      {/* Defender sortie line from target city to clash front */}
+                      {activeBattle.isSiege && (
+                        <>
+                          <line
+                            x1={x2}
+                            y1={y2}
+                            x2={bx}
+                            y2={by}
+                            stroke={defColor}
+                            strokeWidth="5"
+                            strokeOpacity="0.22"
+                            strokeLinecap="round"
+                          />
+                          <line
+                            x1={x2}
+                            y1={y2}
+                            x2={bx}
+                            y2={by}
+                            stroke={defColor}
+                            strokeWidth="2.5"
+                            strokeDasharray="6 4"
+                            className="animate-dash"
+                            style={{
+                              strokeDashoffset: 80,
+                              animation: 'dash 0.9s linear infinite',
+                            }}
+                          />
+                        </>
+                      )}
+
+                      {/* Origin & target mobilization halos */}
+                      <circle
+                        cx={x1}
+                        cy={y1}
+                        r="14"
+                        fill="none"
+                        stroke={atkColor}
+                        strokeWidth="1.8"
+                        strokeOpacity="0.65"
+                        className="animate-ping"
+                      />
+                      <circle
                         cx={x2}
                         cy={y2}
-                        r="12"
-                        fill="none"
-                        stroke={lineColor}
+                        r={isResolved && activeBattle.siegeWin ? '20' : '14'}
+                        fill={isResolved && activeBattle.siegeWin ? atkColor : 'none'}
+                        fillOpacity={isResolved && activeBattle.siegeWin ? '0.18' : '0'}
+                        stroke={isResolved && activeBattle.siegeWin ? atkColor : defColor}
                         strokeWidth="2"
                         className="animate-ping"
                       />
+
+                      {/* Two opposing faction battle formations fighting each other */}
+                      {activeBattle.isSiege && step >= 1 && (
+                        <g id="faction-war-clash-svg">
+                          {/* Attacker 3-unit spearhead wedge lunging toward defender */}
+                          <motion.g
+                            animate={
+                              isClashing
+                                ? {
+                                    x: [0, ux * 11, -ux * 3, ux * 9, 0],
+                                    y: [0, uy * 11, -uy * 3, uy * 9, 0],
+                                  }
+                                : isResolved && activeBattle.siegeWin
+                                  ? { x: x2 - ax, y: y2 - ay, scale: 1.15 }
+                                  : isResolved && !activeBattle.siegeWin
+                                    ? { x: -ux * 22, y: -uy * 22, opacity: 0.45 }
+                                    : { x: 0, y: 0 }
+                            }
+                            transition={
+                              isClashing
+                                ? { duration: 0.72, repeat: Infinity, ease: 'easeInOut' }
+                                : { duration: 0.55, ease: 'easeOut' }
+                            }
+                          >
+                            {[-1, 0, 1].map(wing => {
+                              const wx = ax + px * wing * 9 - ux * Math.abs(wing) * 5;
+                              const wy = ay + py * wing * 9 - uy * Math.abs(wing) * 5;
+                              return (
+                                <g key={`atk-unit-${wing}`} transform={`translate(${wx}, ${wy}) rotate(${angleDeg})`}>
+                                  <circle r="7.5" fill={atkColor} fillOpacity="0.25" />
+                                  <polygon
+                                    points="9,0 -6,-5.5 -3,0 -6,5.5"
+                                    fill={atkColor}
+                                    stroke="#ffffff"
+                                    strokeWidth="1.1"
+                                  />
+                                </g>
+                              );
+                            })}
+                          </motion.g>
+
+                          {/* Defender 3-unit shield/counter-charge formation striking back */}
+                          <motion.g
+                            animate={
+                              isClashing
+                                ? {
+                                    x: [0, -ux * 10, ux * 3, -ux * 8, 0],
+                                    y: [0, -uy * 10, uy * 3, -uy * 8, 0],
+                                  }
+                                : isResolved && activeBattle.siegeWin
+                                  ? { x: ux * 14, y: uy * 14, opacity: 0.3 }
+                                  : isResolved && !activeBattle.siegeWin
+                                    ? { x: -ux * 6, y: -uy * 6, scale: 1.18 }
+                                    : { x: 0, y: 0 }
+                            }
+                            transition={
+                              isClashing
+                                ? { duration: 0.72, repeat: Infinity, ease: 'easeInOut', delay: 0.14 }
+                                : { duration: 0.55, ease: 'easeOut' }
+                            }
+                          >
+                            {[-1, 0, 1].map(wing => {
+                              const wx = bx + px * wing * 9 + ux * Math.abs(wing) * 5;
+                              const wy = by + py * wing * 9 + uy * Math.abs(wing) * 5;
+                              return (
+                                <g key={`def-unit-${wing}`} transform={`translate(${wx}, ${wy}) rotate(${angleDeg + 180})`}>
+                                  <circle r="7.5" fill={defColor} fillOpacity="0.25" />
+                                  <polygon
+                                    points="8,0 -5,-6 -5,6"
+                                    fill={defColor}
+                                    stroke="#ffffff"
+                                    strokeWidth="1.1"
+                                  />
+                                </g>
+                              );
+                            })}
+                          </motion.g>
+
+                          {/* Crossfire arrow & fire volleys flying back and forth between factions */}
+                          {isClashing && (
+                            <g id="faction-war-volleys">
+                              {[-6, 0, 6].map((offset, idx) => (
+                                <React.Fragment key={`volley-${idx}`}>
+                                  {/* Attacker -> Defender volley */}
+                                  <motion.line
+                                    x1={ax + px * offset}
+                                    y1={ay + py * offset}
+                                    x2={ax + px * offset + ux * 10}
+                                    y2={ay + py * offset + uy * 10}
+                                    stroke={weatherId === 'windy' ? '#fb923c' : '#fde047'}
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    animate={{
+                                      x1: [ax + px * offset, bx + px * offset],
+                                      y1: [ay + py * offset, by + py * offset],
+                                      x2: [ax + px * offset + ux * 8, bx + px * offset + ux * 8],
+                                      y2: [ay + py * offset + uy * 8, by + py * offset + uy * 8],
+                                      opacity: [0.2, 1, 0],
+                                    }}
+                                    transition={{
+                                      duration: 0.52,
+                                      repeat: Infinity,
+                                      delay: idx * 0.16,
+                                      ease: 'linear',
+                                    }}
+                                  />
+                                  {/* Defender -> Attacker counter-volley */}
+                                  <motion.line
+                                    x1={bx - px * offset}
+                                    y1={by - py * offset}
+                                    x2={bx - px * offset - ux * 10}
+                                    y2={by - py * offset - uy * 10}
+                                    stroke={defColor}
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    animate={{
+                                      x1: [bx - px * offset, ax - px * offset],
+                                      y1: [by - py * offset, ay - py * offset],
+                                      x2: [bx - px * offset - ux * 8, ax - px * offset - ux * 8],
+                                      y2: [by - py * offset - uy * 8, ay - py * offset - uy * 8],
+                                      opacity: [0.2, 1, 0],
+                                    }}
+                                    transition={{
+                                      duration: 0.56,
+                                      repeat: Infinity,
+                                      delay: idx * 0.18 + 0.08,
+                                      ease: 'linear',
+                                    }}
+                                  />
+                                </React.Fragment>
+                              ))}
+
+                              {/* Center Clash Shockwave & Crossed Slash Sparks */}
+                              <motion.circle
+                                cx={cx}
+                                cy={cy}
+                                r="5"
+                                fill="none"
+                                stroke="#fbbf24"
+                                strokeWidth="2.2"
+                                animate={{ r: [4, 24], opacity: [0.95, 0] }}
+                                transition={{ duration: 0.7, repeat: Infinity, ease: 'easeOut' }}
+                              />
+                              <motion.circle
+                                cx={cx}
+                                cy={cy}
+                                r="5"
+                                fill="none"
+                                stroke="#ffffff"
+                                strokeWidth="1.6"
+                                animate={{ r: [3, 17], opacity: [0.9, 0] }}
+                                transition={{ duration: 0.7, repeat: Infinity, delay: 0.35, ease: 'easeOut' }}
+                              />
+                              <motion.g
+                                transform={`translate(${cx}, ${cy})`}
+                                animate={{ scale: [0.8, 1.3, 0.85], opacity: [0.7, 1, 0.7] }}
+                                transition={{ duration: 0.45, repeat: Infinity, ease: 'easeInOut' }}
+                              >
+                                <path d="M -9 -9 L 9 9 M 9 -9 L -9 9" stroke="#fde047" strokeWidth="2.5" strokeLinecap="round" />
+                                <circle r="4" fill="#fffbeb" />
+                              </motion.g>
+                            </g>
+                          )}
+                        </g>
+                      )}
                     </g>
                   );
                 })()}
@@ -2375,6 +2653,134 @@ export default function TacticalMap({
                   </div>
                 );
               })}
+
+              {/* Two-Faction Fighting HUD Overlay on Targeted Map Canvas */}
+              {(() => {
+                const activeBattle = isExpeditionRunning && expeditionBattleVisual
+                  ? { ...expeditionBattleVisual, step: expeditionStep }
+                  : (rivalBattleVisual ?? initialBattleVisual ?? null);
+                if (!activeBattle || !activeBattle.isSiege || activeBattle.step < 0) return null;
+
+                const origCity = CITIES.find(c => c.id === activeBattle.origId);
+                const targCity = CITIES.find(c => c.id === activeBattle.targId);
+                if (!origCity || !targCity) return null;
+
+                const dx = targCity.x - origCity.x;
+                const dy = targCity.y - origCity.y;
+                const dist = Math.hypot(dx, dy) || 1;
+                const ux = dx / dist;
+                const uy = dy / dist;
+                const clashRatio = dist > 9.5 ? Math.min(0.76, (dist - 3.6) / dist) : 0.56;
+                const cx = origCity.x + dx * clashRatio;
+                const cy = origCity.y + dy * clashRatio;
+                const offset = Math.min(4.2, Math.max(2.4, dist * 0.22));
+                const ax = cx - ux * offset;
+                const ay = cy - uy * offset;
+                const bx = cx + ux * offset;
+                const by = cy + uy * offset;
+
+                const isClashing = activeBattle.step === 2 || activeBattle.step === 3;
+                const isResolved = activeBattle.step >= 4;
+                const atkShort = activeBattle.attackerFactionName.slice(0, 2);
+                const defShort = activeBattle.defenderFactionName.slice(0, 2);
+                const tugRatio = isResolved
+                  ? (activeBattle.siegeWin ? 86 : 16)
+                  : activeBattle.successRate;
+                const hudLeft = Math.min(82, Math.max(18, cx));
+                const hudTop = Math.max(8, cy - 8.5);
+                const phaseText = isResolved
+                  ? (activeBattle.siegeWin ? `${atkShort} 破城` : `${defShort} 守胜`)
+                  : isClashing
+                    ? '两军激战'
+                    : '接战前夕';
+
+                return (
+                  <div id="faction-war-hud-overlay" className="absolute inset-0 z-35 pointer-events-none select-none">
+                    {/* Attacker Faction Army Marker */}
+                    <motion.div
+                      data-testid="war-anim-attacker"
+                      className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 px-1.5 py-0.5 rounded border shadow-lg text-[9.5px] font-serif font-bold text-white whitespace-nowrap"
+                      style={{
+                        left: `${ax}%`,
+                        top: `${ay}%`,
+                        backgroundColor: 'rgba(2, 6, 23, 0.92)',
+                        borderColor: activeBattle.attackerColor,
+                      }}
+                      animate={
+                        isClashing
+                          ? { x: [0, ux * 10, -ux * 3, ux * 8, 0], y: [0, uy * 6, -uy * 2, uy * 5, 0], scale: [1, 1.12, 0.98, 1.1, 1] }
+                          : { x: 0, y: 0, scale: isResolved && !activeBattle.siegeWin ? 0.85 : 1 }
+                      }
+                      transition={isClashing ? { duration: 0.72, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.35 }}
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: activeBattle.attackerColor }} />
+                      <span>⚔️ {atkShort}</span>
+                    </motion.div>
+
+                    {/* Center Clash Spark */}
+                    <motion.div
+                      data-testid="war-anim-clash"
+                      className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-full bg-slate-950/90 border border-amber-400/70 shadow-[0_0_12px_rgba(251,191,36,0.6)] text-xs"
+                      style={{ left: `${cx}%`, top: `${cy}%` }}
+                      animate={
+                        isClashing
+                          ? { scale: [0.9, 1.3, 0.95], rotate: [-14, 14, -14] }
+                          : { scale: 1, rotate: 0 }
+                      }
+                      transition={isClashing ? { duration: 0.48, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
+                    >
+                      {isResolved ? (activeBattle.siegeWin ? '🏆' : '🛡️') : '⚔️'}
+                    </motion.div>
+
+                    {/* Defender Faction Army Marker */}
+                    <motion.div
+                      data-testid="war-anim-defender"
+                      className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 px-1.5 py-0.5 rounded border shadow-lg text-[9.5px] font-serif font-bold text-white whitespace-nowrap"
+                      style={{
+                        left: `${bx}%`,
+                        top: `${by}%`,
+                        backgroundColor: 'rgba(2, 6, 23, 0.92)',
+                        borderColor: activeBattle.defenderColor,
+                      }}
+                      animate={
+                        isClashing
+                          ? { x: [0, -ux * 9, ux * 3, -ux * 7, 0], y: [0, -uy * 6, uy * 2, -uy * 5, 0], scale: [1, 1.1, 0.96, 1.08, 1] }
+                          : { x: 0, y: 0, opacity: isResolved && activeBattle.siegeWin ? 0.45 : 1 }
+                      }
+                      transition={isClashing ? { duration: 0.72, repeat: Infinity, ease: 'easeInOut', delay: 0.14 } : { duration: 0.35 }}
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: activeBattle.defenderColor }} />
+                      <span>🛡️ {defShort}</span>
+                    </motion.div>
+
+                    {/* Live Two-Faction Clash Tug-of-War Banner */}
+                    <div
+                      data-testid="war-anim-scoreboard"
+                      className="absolute -translate-x-1/2 -translate-y-full bg-slate-950/95 border border-slate-700/80 rounded-lg px-2 py-1 shadow-xl min-w-[146px]"
+                      style={{ left: `${hudLeft}%`, top: `${hudTop}%` }}
+                    >
+                      <div className="flex items-center justify-between gap-2 text-[9px] font-serif font-bold whitespace-nowrap">
+                        <span style={{ color: activeBattle.attackerColor }}>{activeBattle.attackerFactionName}</span>
+                        <span className="text-amber-400 font-mono text-[8.5px]">{phaseText}</span>
+                        <span style={{ color: activeBattle.defenderColor }}>{activeBattle.defenderFactionName}</span>
+                      </div>
+                      <div className="mt-1 h-1.5 w-full rounded-full overflow-hidden bg-slate-900 flex border border-slate-800">
+                        <motion.div
+                          className="h-full"
+                          style={{ backgroundColor: activeBattle.attackerColor }}
+                          animate={{
+                            width: isClashing
+                              ? [`${Math.max(20, tugRatio - 8)}%`, `${Math.min(80, tugRatio + 8)}%`, `${tugRatio}%`]
+                              : `${tugRatio}%`,
+                          }}
+                          transition={isClashing ? { duration: 1.1, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.4 }}
+                        />
+                        <div className="h-full flex-1" style={{ backgroundColor: activeBattle.defenderColor }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* CSS Animation Keyframes Inject for SVG March */}
               <style dangerouslySetInnerHTML={{__html: `

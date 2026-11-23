@@ -2240,7 +2240,7 @@ export default function TacticalMap({
                       {/* Roman Empire */}
                       <g transform="translate(130, 245)">
                         <rect x="-4" y="-10" width="105" height="18" rx="3" fill="#0f172a" stroke="#dc2626" strokeWidth="0.8" opacity="0.85" />
-                        <text x="0" y="2" fill="#fca5a5" className="text-[8.5px] font-bold tracking-wider">【罗马帝国・SPQR】</text>
+                        <text x="0" y="2" fill="#fca5a5" className="text-[8.5px] font-bold tracking-wider">【罗马帝国】</text>
                       </g>
 
                       {/* Carthage & Ptolemaic Egypt */}
@@ -2297,7 +2297,7 @@ export default function TacticalMap({
                       opacity="0.85"
                     />
                     <text x="350" y="235" fill="#fef08a" className="text-[8.5px] font-serif font-bold italic tracking-wide opacity-85">
-                      🐪 全欧亚丝绸之路 (The Great Overland Silk Road)
+                      🐪 全欧亚丝绸之路
                     </text>
 
                     {/* Roman Appian & Mediterranean Maritime Route: Rome -> Carthage -> Alexandria -> Antioch */}

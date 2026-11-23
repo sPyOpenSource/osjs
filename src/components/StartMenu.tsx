@@ -103,7 +103,9 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
     <main className="start-content">
       <div className="start-title"><span className="trade-muted">战役</span><h2>选择剧本</h2></div>
       <div className="start-scenarios">{scenarios.map(scenario => <Button id={`start-sc-${scenario.id}`} key={scenario.id} className="start-scenario" aria-pressed={scenario.id === selectedScenario.id} onClick={() => onSelectScenario(scenario)}><span className="start-year">{scenario.year}</span><strong>{scenario.title.split('：').pop()}</strong><span className="trade-muted">{scenario.difficulty === 'Easy' ? '简单' : scenario.difficulty === 'Medium' ? '普通' : '困难'}</span></Button>)}</div>
-      <div className="start-selected"><h3>{selectedScenario.title}</h3><p>{selectedScenario.description}</p><span className="trade-muted">胜利条件 · {selectedScenario.victoryCondition}</span>
+      <div className="start-selected">
+        <h3 title={selectedScenario.description}>{selectedScenario.title}</h3>
+        <span className="trade-muted">胜利 · {selectedScenario.victoryCondition}</span>
         <label className="start-multiplay-option" style={{ display: 'block', marginTop: '0.75rem' }}>
           <input
             id="toggle-multiplay"
@@ -150,13 +152,6 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
           const chosen = candidateOfficers.find(o => o.id === effectiveProtagonistId);
           if (!chosen) return null;
           const chosenFaction = FACTIONS.find(f => f.id === chosen.factionId);
-          const statBars: Array<[string, number]> = [
-            ['统', chosen.stats.leadership],
-            ['武', chosen.stats.force],
-            ['智', chosen.stats.intelligence],
-            ['政', chosen.stats.politics],
-            ['魅', chosen.stats.charisma],
-          ];
           const accent = chosenFaction?.color || '#f59e0b';
           return (
             <div className="start-protagonist-preview" data-testid="start-protagonist-preview">

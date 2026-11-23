@@ -393,7 +393,7 @@ export default function ProtagonistProfile({
 
           <div className="self-profile-title-block">
             <div className="self-profile-name-row">
-              <h2>{protagonist.name}</h2>
+              <h2 title={protagonist.biography || undefined}>{protagonist.name}</h2>
               {protagonist.styleName && (
                 <span className="self-profile-style">
                   {protagonist.isGlobalLeader ? '号' : '字'} {protagonist.styleName}
@@ -436,7 +436,7 @@ export default function ProtagonistProfile({
               onClick={() => onFocusAdvisor(protagonist)}
             >
               <Compass size={14} />
-              <span>聚焦军机栏</span>
+              <span>军机</span>
             </Button>
           )}
         </div>
@@ -447,10 +447,10 @@ export default function ProtagonistProfile({
         <div className="self-profile-kpi">
           <div className="self-kpi-top">
             <span className="self-profile-kpi-label">
-              <Zap size={12} aria-hidden="true" /> 经验境界
+              <Zap size={12} aria-hidden="true" /> 境界
             </span>
             <strong className="self-profile-kpi-value">
-              {nextLevelXp > 0 ? `${rpgCharacter.xp}/${nextLevelXp}` : '满阶'}
+              {nextLevelXp > 0 ? `${rpgCharacter.xp}/${nextLevelXp}` : '满'}
             </strong>
           </div>
           <div className="self-kpi-bar" aria-hidden="true">
@@ -491,7 +491,7 @@ export default function ProtagonistProfile({
         <div className="self-profile-kpi">
           <div className="self-kpi-top">
             <span className="self-profile-kpi-label">
-              <Handshake size={12} aria-hidden="true" /> 外交 / 使命
+              <Handshake size={12} aria-hidden="true" /> 外交
             </span>
             <strong className="self-profile-kpi-value">
               {diplomaticSummary.alliances}盟 · {diplomaticSummary.tradePacts}商
@@ -504,7 +504,7 @@ export default function ProtagonistProfile({
               </span>
             ) : (
               <span>
-                <Scale size={11} aria-hidden="true" /> {protagonist.promotionLevel ?? 0}/{promotion.maxLevel} 阶爵位
+                <Scale size={11} aria-hidden="true" /> {protagonist.promotionLevel ?? 0}/{promotion.maxLevel}阶
               </span>
             )}
           </div>
@@ -594,7 +594,7 @@ export default function ProtagonistProfile({
           {/* Visual Peer / Companion Avatar Roster */}
           <div className="self-peers-block">
             <div className="self-block-title">
-              <Heart size={12} aria-hidden="true" /> 同袍与故旧
+              <Heart size={12} aria-hidden="true" /> 同袍
             </div>
             {visualPeers.length > 0 ? (
               <div className="self-peers-grid">
@@ -611,17 +611,17 @@ export default function ProtagonistProfile({
                     )}
                     <div className="self-peer-info">
                       <strong>{peer.name}</strong>
-                      <span>{peer.tag} · {peer.full}</span>
+                      <span>{peer.tag}</span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="self-empty-visual">独行乱世 · 待结金兰与副将</div>
+              <div className="self-empty-visual">—</div>
             )}
           </div>
 
-          {/* Visual Trait / Skill Strip + Compact Bio Tooltip */}
+          {/* Visual Trait / Skill Strip */}
           <div className="self-abilities-strip">
             <div className="self-ability-cell">
               <span className="self-block-title">
@@ -642,12 +642,6 @@ export default function ProtagonistProfile({
               </strong>
             </div>
           </div>
-
-          {protagonist.biography && (
-            <p className="self-profile-bio" title={protagonist.biography}>
-              {protagonist.biography}
-            </p>
-          )}
         </div>
       </div>
     </section>

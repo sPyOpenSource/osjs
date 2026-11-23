@@ -220,11 +220,9 @@ export default function PeopleMigrationsPanel({
       <header className="trade-heading">
         <div>
           <h2>
-            <Users size={22} /> 人口迁徙 · 欧亚流民格局
+            <Users size={22} /> 人口迁徙
           </h2>
-          <span className="trade-muted">
-            {timestampLabel} · 灾荒、战火与兴盛皆会引发流民迁徙，亦可由朝廷敕令屯田实边
-          </span>
+          <span className="trade-muted">{timestampLabel}</span>
         </div>
         <strong className="trade-gold">
           <Coins size={18} /> <span>{gold.toLocaleString()}</span> 金

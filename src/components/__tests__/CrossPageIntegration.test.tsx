@@ -592,7 +592,7 @@ describe('ProtagonistProfile & StartMenu Self Information', () => {
       'expected protagonist preview card in StartMenu',
     );
     assert.ok(html.includes('五维属性雷达图'), 'expected mini radar chart in StartMenu preview');
-    assert.ok(html.includes('start-mini-bar-track'), 'expected visual stat bars in StartMenu preview');
+    assert.ok(html.includes('start-protagonist-traits'), 'expected traits summary in StartMenu preview');
   });
 });
 

@@ -1847,9 +1847,6 @@ export default function TacticalMap({
                 <span>{activeSeason.icon}</span>
                 <span>{activeSeason.name}</span>
               </span>
-              <span className="text-[10px] font-mono text-slate-400 font-bold px-1.5 flex items-center gap-1">
-                <Compass size={11} className="text-amber-500" /> 天候兵势:
-              </span>
               {WEATHERS.map(w => {
                 const isActive = weatherId === w.id;
                 return (
@@ -1858,18 +1855,15 @@ export default function TacticalMap({
                     id={`btn-weather-pill-${w.id}`}
                     type="button"
                     onClick={() => setWeatherId(w.id)}
-                    title={`${w.nameCn} (${w.name}): ${w.movementPenaltyLabel} | ${w.intelModLabel}`}
+                    title={`${w.nameCn}: ${w.movementPenaltyLabel} | ${w.intelModLabel}`}
                     className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-serif font-bold transition-all cursor-pointer ${
                       isActive 
-                        ? `${w.colorClass} ring-1 ring-amber-400/60 shadow-md scale-102` 
+                        ? `${w.colorClass} ring-1 ring-amber-400/60 shadow-md` 
                         : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-850 border border-slate-800/80'
                     }`}
                   >
                     <span>{w.icon}</span>
                     <span>{w.nameCn}</span>
-                    <span className="text-[9px] font-mono opacity-80">
-                      {Math.round(w.movementSpeedRatio * 100)}%速
-                    </span>
                   </button>
                 );
               })}
@@ -2793,17 +2787,9 @@ export default function TacticalMap({
                   onClick={() => { setMapZoom(1); setZoomOrigin({ x: 50, y: 50 }); }}
                   className="absolute top-2.5 right-2.5 z-30 px-2.5 py-1 bg-slate-950/85 backdrop-blur-sm border border-amber-500/40 text-amber-400 text-[10px] font-mono font-bold rounded-lg hover:bg-slate-900 hover:border-amber-400 transition-colors cursor-pointer"
                 >
-                  复位全景 ({mapZoom}×) ✕
+                  复位 ({mapZoom}×) ✕
                 </button>
               )}
-
-              {/* Visual Instruction Badge on map bottom */}
-              <div className="absolute bottom-2.5 left-2.5 bg-slate-950/85 backdrop-blur-sm border border-slate-900 rounded-lg p-2 max-w-md z-10 flex gap-2 items-center">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <p className="text-[9.5px] text-slate-400 leading-relaxed font-sans">
-                  <strong className="text-amber-400">欧亚全景：</strong>横跨罗马帝国、波斯萨珊、贵霜身毒、北方草原、华夏中原、东海瀛洲与交州（共 24 大欧亚战略帝国要邑）。
-                </p>
-              </div>
             </div>
           </div>
 
@@ -2814,23 +2800,26 @@ export default function TacticalMap({
             <div className="bg-slate-950 border border-slate-900 rounded-2xl p-5 space-y-4">
               <div className="flex justify-between items-start border-b border-slate-900 pb-3">
                 <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg" style={{ backgroundColor: `${selectedCityController.color}20`, color: selectedCityController.color, border: `1px solid ${selectedCityController.color}40` }}>
-                      {selectedCity.region}地区
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                    <span className="font-bold" style={{ color: selectedCityController.color }}>
+                      {selectedCity.region}
                     </span>
-                    <span className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-slate-900 text-slate-400 border border-slate-800">
+                    <span aria-hidden="true">·</span>
+                    <span>
                       {ASIA_THEATERS.find(t => t.id === selectedCity.theater)?.name || selectedCity.theater}
                     </span>
-                    <p className="text-[10px] font-mono text-slate-500">{selectedCity.pinyin}</p>
                   </div>
-                  <h3 className="text-xl font-serif font-black text-slate-100 mt-1 flex items-center gap-2">
-                    🛡️ {selectedCity.name}
+                  <h3
+                    title={selectedCity.description}
+                    className="text-xl font-serif font-black text-slate-100 mt-1 flex items-center gap-2"
+                  >
+                    {selectedCity.name}
                   </h3>
                 </div>
 
-                {/* Mini selector to mock/change control manually */}
+                {/* Mini selector to change control manually */}
                 <div className="text-right">
-                  <label className="text-[9px] font-mono text-slate-500 block mb-1">手动调配势力</label>
+                  <label className="text-[9px] font-mono text-slate-500 block mb-1">势力</label>
                   <select
                     id="select-city-controller"
                     value={selectedCityControllerId}
@@ -2843,10 +2832,6 @@ export default function TacticalMap({
                   </select>
                 </div>
               </div>
-
-              <p className="text-xs text-slate-400 leading-relaxed font-sans">
-                {selectedCity.description}
-              </p>
 
               {/* Selected city demographic & stockpile summary */}
               {cityStats[selectedCity.id] && (
@@ -2881,26 +2866,21 @@ export default function TacticalMap({
                 </div>
               )}
 
-              <div className="bg-slate-900/45 border border-slate-900 rounded-xl p-3.5 space-y-2">
-                <div className="flex justify-between items-center text-xs border-b border-slate-900 pb-1.5">
-                  <span className="text-slate-400 font-mono inline-flex items-center gap-1">
-                    <Flag size={11} className="text-amber-500" />
-                    当前坐镇执政官
-                  </span>
-                  <span className="font-serif font-bold" style={{ color: selectedCityController.color }}>
-                    {selectedCityController.name} (首领: {selectedCityController.ruler})
-                  </span>
-                </div>
-                <p className="text-[10.5px] text-slate-500 font-sans leading-relaxed">
-                  {selectedCityController.description}
-                </p>
+              <div className="bg-slate-900/45 border border-slate-900 rounded-xl px-3.5 py-2.5 flex justify-between items-center text-xs">
+                <span className="text-slate-400 font-mono inline-flex items-center gap-1">
+                  <Flag size={11} className="text-amber-500" />
+                  执政
+                </span>
+                <span className="font-serif font-bold" style={{ color: selectedCityController.color }}>
+                  {selectedCityController.name} · {selectedCityController.ruler}
+                </span>
               </div>
 
               {/* Stationed officers listing */}
               <div className="space-y-2">
-                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block flex items-center gap-1.5">
+                <span className="text-[10px] font-mono text-slate-400 tracking-wider flex items-center gap-1.5">
                   <Users size={12} />
-                  郡城驻扎武将名录 ({stationedOfficers.length})
+                  驻将 ({stationedOfficers.length})
                 </span>
 
                 {stationedOfficers.length > 0 ? (
@@ -2917,16 +2897,14 @@ export default function TacticalMap({
                         </div>
                         <div className="overflow-hidden">
                           <p className="text-[11.5px] font-serif text-slate-200 truncate group-hover:text-amber-400 transition-colors">{o.name}</p>
-                          <p className="text-[9px] font-mono text-slate-500">武力 {o.stats.force}</p>
+                          <p className="text-[9px] font-mono text-slate-500">武 {o.stats.force}</p>
                         </div>
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-4 text-[10.5px] text-slate-500 bg-slate-900/10 border border-dash border-slate-900 rounded-xl">
-                    {selectedCityControllerId === 'ronin' 
-                      ? '此地为在野或中立郡地，尚无可派遣武将，招募英雄或派遣自立豪杰可一展宏图。' 
-                      : '目前名将簿中，尚无可匹配的武将效忠本势力。可前去“自立武将”板块登用新名将，助其入仕！'}
+                  <div className="text-center py-3 text-[10.5px] text-slate-500 bg-slate-900/10 border border-dashed border-slate-900 rounded-xl">
+                    暂无驻将
                   </div>
                 )}
               </div>
@@ -3292,7 +3270,7 @@ export default function TacticalMap({
                 onClick={() => setMapTab('svg-map')}
                 className="flex-1 text-xs font-mono font-bold py-2.5 bg-slate-900 hover:bg-slate-850 hover:text-slate-200 text-slate-400 border border-slate-850 hover:border-slate-800 rounded-xl transition duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Compass size={12} /> ← 退出内城舆图・重归神州大战略沙盘
+                <Compass size={12} /> ← 返回沙盘
               </button>
             </div>
 
@@ -3305,11 +3283,8 @@ export default function TacticalMap({
             <div className="bg-slate-950 border border-slate-900 p-5 rounded-2xl flex flex-col justify-between min-h-[360px] relative overflow-hidden">
               <div>
                 <div className="flex justify-between items-center border-b border-slate-900 pb-2 mb-3">
-                  <span className="text-[11px] font-mono font-black uppercase text-amber-500 flex items-center gap-1.5">
-                    ⚙️ 行营执政公文
-                  </span>
-                  <span className="text-[10px] font-sans text-slate-500">
-                    当前选定・{selectedFacility === 'palace' ? '官府' : selectedFacility === 'market' ? '坊市' : selectedFacility === 'tavern' ? '酒馆' : selectedFacility === 'barracks' ? '军营' : '城防'}
+                  <span className="text-[11px] font-mono font-black text-amber-500">
+                    {selectedFacility === 'palace' ? '官府' : selectedFacility === 'market' ? '坊市' : selectedFacility === 'tavern' ? '酒馆' : selectedFacility === 'barracks' ? '军营' : '城防'}
                   </span>
                 </div>
 
@@ -3318,13 +3293,8 @@ export default function TacticalMap({
                   {selectedFacility === 'palace' && (
                     <div className="space-y-3">
                       <div className="bg-slate-900/50 border border-slate-900 p-3 rounded-xl flex items-center justify-between gap-2">
-                        <div className="space-y-0.5">
-                          <h3 className="text-[13px] font-serif font-black text-slate-200">🏯 官府大堂</h3>
-                          <p className="text-[10px] text-slate-500 leading-normal">
-                            签发征调令组织百业，开仓布粮聚揽流民信望。
-                          </p>
-                        </div>
-                        <Flag size={24} className="text-slate-800 shrink-0" />
+                        <h3 className="text-[13px] font-serif font-black text-slate-200">🏯 官府大堂</h3>
+                        <Flag size={20} className="text-slate-700 shrink-0" />
                       </div>
 
                       <div className="space-y-2">

@@ -687,12 +687,6 @@ export default function InternalAffairs({
       
       {/* ================= HEADER: CITY OVERVIEW & CALENDAR CONTROLS ================= */}
       <div className="bg-slate-950 border border-slate-900 rounded-3xl p-6 shadow-xl relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-950/20 via-slate-950 to-black">
-        
-        {/* Subtle decorative background watermarks */}
-        <div className="absolute right-6 -bottom-8 pointer-events-none opacity-5 flex items-center select-none font-serif text-8xl font-black text-amber-500">
-          政道
-        </div>
-
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
           
           {/* City & Timeline Details */}
@@ -701,24 +695,13 @@ export default function InternalAffairs({
               <span className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
                 <Building2 size={24} />
               </span>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-serif font-black text-slate-100 tracking-wide">
-                    {cityState.cityName} · 治所内政经略
-                  </h2>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">
-                    政通人和
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">
-                  {PRESET_CITIES[displayCityIndex].title}
-                </p>
-              </div>
+              <h2 className="text-xl font-serif font-black text-slate-100 tracking-wide">
+                {cityState.cityName} · 内政
+              </h2>
             </div>
 
             {/* City Preset Switcher Pills */}
             <div className="flex flex-wrap gap-1.5 mt-3.5">
-              <span className="text-[10px] font-mono text-slate-500 self-center mr-1">调阅治所：</span>
               {PRESET_CITIES.map((c, idx) => (
                 <button
                   key={c.cityName}
@@ -737,29 +720,16 @@ export default function InternalAffairs({
 
           {/* Timeline Date & Background Auto-Time Controls */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
-            <div className="bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-2xl flex items-center justify-between sm:justify-start gap-3 shadow-inner">
-              <div className="flex items-center gap-2">
-                <Calendar size={16} className="text-amber-400" />
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-serif font-black text-amber-300">
-                      公元 {currentYear} 年 · {currentMonth} 月
-                    </span>
-                    <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-amber-950/40 border border-amber-900/50 text-amber-400 font-serif" title={currentSeason.statSummary}>
-                      {currentSeason.icon} {currentSeason.name}
-                    </span>
-                  </div>
-                  <div className="text-[9.5px] font-mono text-slate-400 flex items-center gap-1.5 mt-0.5">
-                    <span className={`w-1.5 h-1.5 rounded-full ${isAutoTime ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
-                    <span>{isAutoTime ? '天运后台自转中' : '岁时已停步'}</span>
-                    <span className="text-slate-600">|</span>
-                    <span className="text-amber-400/90">{timeSpeed === 'fast' ? '急速 (1.2s)' : timeSpeed === 'normal' ? '常速 (2.5s)' : '慢速 (5.0s)'}</span>
-                  </div>
-                </div>
-              </div>
-
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-amber-400 font-bold">
+            <div className="bg-slate-900/90 border border-slate-800 px-3.5 py-2 rounded-2xl flex items-center justify-between sm:justify-start gap-2.5 shadow-inner">
+              <Calendar size={15} className="text-amber-400" />
+              <span className="text-xs font-serif font-black text-amber-300 tabular-nums">
+                {currentYear}年{currentMonth}月
+              </span>
+              <span className="text-[10px] font-mono text-amber-400 font-bold">
                 {currentTurnXun === 1 ? '上旬' : currentTurnXun === 2 ? '中旬' : '下旬'}
+              </span>
+              <span className="text-[10px] text-slate-400" title={currentSeason.statSummary}>
+                {currentSeason.icon} {currentSeason.name}
               </span>
             </div>
 
@@ -855,43 +825,39 @@ export default function InternalAffairs({
           <div className="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl flex flex-col justify-between">
             <div className="flex justify-between items-center text-[11px] text-slate-400 font-mono">
               <span className="flex items-center gap-1 font-serif text-slate-300">
-                <Wheat size={13} className="text-emerald-400" /> 仓廪军粮
+                <Wheat size={13} className="text-emerald-400" /> 军粮
               </span>
-              <span className="text-[10px] text-emerald-400">丰足</span>
             </div>
-            <div className="mt-2">
+            <div className="mt-2 tabular-nums">
               <span className="text-base font-serif font-black text-emerald-400">{cityState.grain.toLocaleString()}</span>
               <span className="text-[10px] text-slate-500 font-mono"> 石</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono mt-2">可供三军征战 18 个月</span>
           </div>
 
           {/* Gold */}
           <div className="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl flex flex-col justify-between">
             <div className="flex justify-between items-center text-[11px] text-slate-400 font-mono">
               <span className="flex items-center gap-1 font-serif text-slate-300">
-                <Coins size={13} className="text-amber-400" /> 府库金库
+                <Coins size={13} className="text-amber-400" /> 库银
               </span>
-              <span className="text-[10px] text-amber-400">盈裕</span>
             </div>
-            <div className="mt-2">
+            <div className="mt-2 tabular-nums">
               <span className="text-base font-serif font-black text-amber-400">{cityState.gold.toLocaleString()}</span>
               <span className="text-[10px] text-slate-500 font-mono"> 两</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono mt-2">商贸通达财源广进</span>
           </div>
 
           {/* Drill / Training */}
           <div className="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl flex flex-col justify-between">
             <div className="flex justify-between items-center text-[11px] text-slate-400 font-mono">
               <span className="flex items-center gap-1 font-serif text-slate-300">
-                <Swords size={13} className="text-rose-400" /> 训练与兵员
+                <Swords size={13} className="text-rose-400" /> 训练
               </span>
-              <span className="text-[10px] text-rose-400">{cityState.training}/100</span>
+              <span className="text-[10px] text-rose-400 tabular-nums">{cityState.training}%</span>
             </div>
-            <div className="mt-2">
-              <span className="text-base font-serif font-black text-rose-400">{cityState.training}</span>
-              <span className="text-[10px] text-slate-400 font-mono"> 熟练 | {cityState.troops.toLocaleString()}兵</span>
+            <div className="mt-2 tabular-nums">
+              <span className="text-base font-serif font-black text-rose-400">{cityState.troops.toLocaleString()}</span>
+              <span className="text-[10px] text-slate-400 font-mono"> 兵</span>
             </div>
             <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mt-2">
               <div 
@@ -905,13 +871,12 @@ export default function InternalAffairs({
           <div className="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl flex flex-col justify-between">
             <div className="flex justify-between items-center text-[11px] text-slate-400 font-mono">
               <span className="flex items-center gap-1 font-serif text-slate-300">
-                <Flame size={13} className="text-orange-400" /> 三军士气
+                <Flame size={13} className="text-orange-400" /> 士气
               </span>
-              <span className="text-[10px] text-orange-400">{cityState.morale}/100</span>
+              <span className="text-[10px] text-orange-400 tabular-nums">{cityState.morale}/100</span>
             </div>
-            <div className="mt-2">
+            <div className="mt-2 tabular-nums">
               <span className="text-base font-serif font-black text-orange-400">{cityState.morale}</span>
-              <span className="text-[10px] text-slate-500 font-mono"> 斗志昂扬</span>
             </div>
             <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mt-2">
               <div 
@@ -925,13 +890,12 @@ export default function InternalAffairs({
           <div className="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl flex flex-col justify-between">
             <div className="flex justify-between items-center text-[11px] text-slate-400 font-mono">
               <span className="flex items-center gap-1 font-serif text-slate-300">
-                <ShieldAlert size={13} className="text-teal-400" /> 治安民心
+                <ShieldAlert size={13} className="text-teal-400" /> 治安
               </span>
-              <span className="text-[10px] text-teal-400">{cityState.order}/100</span>
+              <span className="text-[10px] text-teal-400 tabular-nums">{cityState.order}/100</span>
             </div>
-            <div className="mt-2">
+            <div className="mt-2 tabular-nums">
               <span className="text-base font-serif font-black text-teal-400">{cityState.order}</span>
-              <span className="text-[10px] text-slate-500 font-mono"> 郡县安宁</span>
             </div>
             <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mt-2">
               <div 
@@ -974,11 +938,16 @@ export default function InternalAffairs({
         {/* Left Column (Span 7): Task Selection & Officer Formula Calculator */}
         <div className="lg:col-span-7 flex flex-col gap-6">
           
-          {/* 1. Task Category Navigation Pills */}
+          {/* 1. Task Category Navigation */}
           <div className="bg-slate-950 p-4 rounded-3xl border border-slate-900">
-            <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest block mb-3">
-              一、选择内政差役类型 (Task Category)
-            </span>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <span className="text-xs font-mono font-bold text-slate-400 tracking-wider">
+                差役
+              </span>
+              <span className="text-[11px] text-slate-400 truncate" title={currentTaskConfig.description}>
+                {currentTaskConfig.tagline}
+              </span>
+            </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
               {INTERNAL_TASKS.map(task => {
@@ -987,6 +956,7 @@ export default function InternalAffairs({
                   <button
                     key={task.id}
                     id={`btn-task-${task.id}`}
+                    title={task.description}
                     onClick={() => setActiveTaskType(task.id)}
                     className={`p-3 rounded-2xl text-left border transition-all cursor-pointer flex flex-col justify-between ${
                       isSelected
@@ -1003,46 +973,20 @@ export default function InternalAffairs({
                     <span className="text-[10px] font-mono text-slate-500 mt-1 block">
                       {task.category}
                     </span>
-                    <span className={`text-[9.5px] font-mono mt-2 px-1.5 py-0.5 rounded ${
-                      isSelected ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-950 text-slate-500'
-                    }`}>
-                      {task.id === 'fortify' ? 'POL + LDR' : 
-                       task.id === 'agriculture' ? 'POL 核心' : 
-                       task.id === 'drill' ? 'LDR + FOR' : 
-                       task.id === 'patrol' ? 'FOR + LDR' : 'POL + INT'}
-                    </span>
                   </button>
                 );
               })}
-            </div>
-
-            {/* Task Tagline Description */}
-            <div className="mt-4 p-3.5 bg-slate-900/50 rounded-2xl border border-slate-850 flex items-start gap-3">
-              <span className="p-2 rounded-xl bg-amber-500/10 text-amber-400 shrink-0 mt-0.5">
-                <BookOpen size={16} />
-              </span>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="font-serif font-black text-xs text-amber-300">
-                    【{currentTaskConfig.name}】· {currentTaskConfig.tagline}
-                  </h4>
-                  <span className="text-[10px] font-mono text-slate-500">主考五维：{currentTaskConfig.coreAttributes}</span>
-                </div>
-                <p className="text-[11px] text-slate-400 font-sans mt-1 leading-relaxed">
-                  {currentTaskConfig.description}
-                </p>
-              </div>
             </div>
           </div>
 
           {/* 2. Select Officer for this task */}
           <div className="bg-slate-950 p-5 rounded-3xl border border-slate-900 flex flex-col gap-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">
-                二、遴选任命主理武将 (Assign Officer)
+              <span className="text-xs font-mono font-bold text-slate-400 tracking-wider">
+                委任武将
               </span>
               <span className="text-[11px] font-mono text-slate-500">
-                {playerFactionId ? `${playerFactionName || playerFactionId} 麾下武将：` : '当前军中名将库：'}{factionOfficers.length} 位
+                {playerFactionId ? `${playerFactionName || playerFactionId} 麾下武将：` : '名将：'}{factionOfficers.length} 位
               </span>
             </div>
 
@@ -1100,62 +1044,43 @@ export default function InternalAffairs({
 
             {/* 3. Mathematical Formula HUD Calculation Card */}
             {currentOfficer && (
-              <div className="bg-slate-900 border border-slate-850 p-4.5 rounded-2xl flex flex-col gap-3 mt-1">
-                <div className="flex justify-between items-center border-b border-slate-800/80 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="p-1.5 rounded-lg bg-teal-500/10 text-teal-400">
-                      <Calculator size={15} />
-                    </span>
-                    <div>
-                      <h4 className="font-serif font-black text-xs text-slate-100">
-                        【{currentOfficer.name}】主理【{currentTaskConfig.name}】精准数理测算
-                      </h4>
-                      <span className="text-[10px] font-mono text-slate-500">五维属性动态加权公式</span>
-                    </div>
+              <div className="bg-slate-900 border border-slate-850 p-4 rounded-2xl flex flex-col gap-3 mt-1">
+                <div className="flex justify-between items-center border-b border-slate-800/80 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Calculator size={15} className="text-teal-400" />
+                    <h4 className="font-serif font-black text-xs text-slate-100">
+                      {currentOfficer.name} · {currentTaskConfig.name}
+                    </h4>
                   </div>
 
-                  <span className={`text-[10px] font-serif font-black px-2.5 py-1 rounded-xl border ${formulaCalculation.ratingBadge}`}>
+                  <span className={`text-[10px] font-serif font-black px-2 py-0.5 rounded-lg border ${formulaCalculation.ratingBadge}`}>
                     {formulaCalculation.rating}
                   </span>
                 </div>
 
-                {/* Mathematical Formula Walkthrough */}
-                <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-900 font-mono text-xs space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-slate-400 text-[11px]">任务进度推演：</span>
-                    <span className="text-amber-400 font-bold text-right text-[11.5px]">
-                      {formulaCalculation.formulaStep1}
-                    </span>
-                  </div>
-
-                  <div className="flex items-start justify-between gap-2 border-t border-slate-900 pt-2">
-                    <span className="text-slate-400 text-[11px]">成果收益折算：</span>
-                    <span className="text-emerald-400 font-bold text-right text-[11.5px]">
-                      {formulaCalculation.formulaStep2}
-                    </span>
-                  </div>
-
-                  <div className="flex items-start justify-between gap-2 border-t border-slate-900 pt-2 text-[10.5px]">
-                    <span className="text-slate-500">理论公式：</span>
-                    <span className="text-slate-400 text-right">
-                      {currentTaskConfig.formulaDisplay}
-                    </span>
-                  </div>
+                {/* Concise Yield Readout */}
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-900 font-mono text-xs flex flex-wrap items-center justify-between gap-2" title={currentTaskConfig.formulaDisplay}>
+                  <span className="text-amber-400 font-bold text-[11.5px]">
+                    {formulaCalculation.formulaStep1}
+                  </span>
+                  <span className="text-emerald-400 font-bold text-[11.5px]">
+                    {formulaCalculation.formulaStep2}
+                  </span>
                 </div>
 
                 {/* Assign Button */}
-                <div className="flex items-center justify-between gap-3 pt-1">
+                <div className="flex items-center justify-between gap-3">
                   <div className="text-[11px] text-slate-400 font-serif">
-                    预期成果：<strong className="text-amber-400">{formulaCalculation.outputLabel}</strong>
+                    <strong className="text-amber-400">{formulaCalculation.outputLabel}</strong>
                   </div>
 
                   <button
                     id="btn-confirm-assign-task"
                     onClick={handleAssignTask}
-                    className="bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-serif font-black text-xs px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-serif font-black text-xs px-4 py-2 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <UserCheck size={14} />
-                    <span>颁布将令 · 委派此将</span>
+                    <span>委派</span>
                   </button>
                 </div>
 
@@ -1169,14 +1094,11 @@ export default function InternalAffairs({
         {/* Right Column (Span 5): Active Ongoing Task Slots & Chronicle Log */}
         <div className="lg:col-span-5 flex flex-col gap-6">
           
-          {/* Ongoing Task Assignments (在督内政差役) */}
+          {/* Ongoing Task Assignments */}
           <div className="bg-slate-950 p-5 rounded-3xl border border-slate-900 flex flex-col gap-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <Layers size={13} className="text-amber-500" /> 当前督理差役 ({assignments.length} / 4)
-              </span>
-              <span className="text-[10px] font-mono text-slate-500">
-                可多位名将同步督办
+              <span className="text-xs font-mono font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                <Layers size={13} className="text-amber-500" /> 在督差役 ({assignments.length}/4)
               </span>
             </div>
 
@@ -1252,14 +1174,6 @@ export default function InternalAffairs({
                         </div>
                       </div>
 
-                      {/* Last output message */}
-                      {assignment.lastOutputSummary && (
-                        <div className="text-[10px] font-sans text-slate-400 bg-slate-950/60 px-2.5 py-1 rounded-lg border border-slate-900 flex items-center justify-between">
-                          <span className="truncate">{assignment.lastOutputSummary}</span>
-                          <span className="text-[9px] font-mono text-emerald-400 ml-1 shrink-0">结算效验</span>
-                        </div>
-                      )}
-
                     </div>
                   );
                 })}
@@ -1267,50 +1181,26 @@ export default function InternalAffairs({
             )}
           </div>
 
-          {/* Chronicle History Log (内政奏折实录) */}
-          <div className="bg-slate-950 p-5 rounded-3xl border border-slate-900 flex flex-col gap-3">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <BookOpen size={13} className="text-amber-400" /> 内政经略实录奏折
+          {/* Chronicle History Log (collapsed by default to minimize text) */}
+          <details className="bg-slate-950 p-4 rounded-3xl border border-slate-900">
+            <summary className="text-xs font-mono font-bold text-slate-400 flex items-center justify-between cursor-pointer select-none">
+              <span className="flex items-center gap-1.5">
+                <BookOpen size={13} className="text-amber-400" /> 奏折实录 ({chronicleLogs.length})
               </span>
-              <span className="text-[10px] font-mono text-slate-500">
-                最新奏疏
-              </span>
-            </div>
+            </summary>
 
-            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-              {chronicleLogs.map(log => {
-                const badgeColor = 
-                  log.type === 'grain' ? 'text-emerald-400 border-emerald-900/50 bg-emerald-950/20' :
-                  log.type === 'defense' ? 'text-sky-400 border-sky-900/50 bg-sky-950/20' :
-                  log.type === 'drill' ? 'text-rose-400 border-rose-900/50 bg-rose-950/20' :
-                  log.type === 'gold' ? 'text-amber-400 border-amber-900/50 bg-amber-950/20' :
-                  log.type === 'critical' ? 'text-purple-400 border-purple-900/50 bg-purple-950/30' :
-                  'text-slate-400 border-slate-800 bg-slate-900';
-
-                return (
-                  <div 
-                    key={log.id} 
-                    className="p-2.5 bg-slate-900/50 border border-slate-850 rounded-xl flex flex-col gap-1 text-[11px] leading-relaxed font-sans"
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-mono text-[10px] text-slate-500">{log.date}</span>
-                      <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${badgeColor}`}>
-                        {log.type === 'grain' ? '屯田入库' :
-                         log.type === 'defense' ? '坚城竣工' :
-                         log.type === 'drill' ? '誓师大捷' :
-                         log.type === 'gold' ? '商税大征' :
-                         log.type === 'critical' ? '天降神工' : '治下平定'}
-                      </span>
-                    </div>
-                    <p className="text-slate-300 font-serif">
-                      {log.text}
-                    </p>
-                  </div>
-                );
-              })}
+            <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1 mt-3">
+              {chronicleLogs.slice(0, 6).map(log => (
+                <div
+                  key={log.id}
+                  className="px-2.5 py-2 bg-slate-900/50 border border-slate-850 rounded-xl flex items-baseline justify-between gap-2 text-[11px]"
+                >
+                  <p className="text-slate-300 font-serif truncate" title={log.text}>{log.text}</p>
+                  <span className="font-mono text-[10px] text-slate-500 shrink-0">{log.date}</span>
+                </div>
+              ))}
             </div>
-          </div>
+          </details>
 
         </div>
 

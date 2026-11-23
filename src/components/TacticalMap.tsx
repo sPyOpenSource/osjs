@@ -1934,44 +1934,12 @@ export default function TacticalMap({
             <div className="map-filter-bar">
               <label>战区<select aria-label="战区" value={selectedTheater} onChange={event => setSelectedTheater(event.target.value as AsiaTheater)}>{ASIA_THEATERS.map(th => <option key={th.id} value={th.id}>{th.name} · {th.id === 'all' ? CITIES.length : CITIES.filter(city => city.theater === th.id).length}</option>)}</select></label>
               <details className="game-disclosure game-disclosure-popover"><summary>地图设置</summary><div className="game-settings-body">
-                <label>天气<select aria-label="天气" value={weatherId} onChange={event => setWeatherId(event.target.value as typeof weatherId)}>{WEATHERS.map(w => <option key={w.id} value={w.id}>{w.icon} {w.nameCn}</option>)}</select></label>
                 <label className="game-check"><input id="toggle-190-border" type="checkbox" checked={show190Border} onChange={event => setShow190Border(event.target.checked)} />汉境国界</label>
                 <label className="game-check"><input id="toggle-trade-routes" type="checkbox" checked={showTradeRoutes} onChange={event => setShowTradeRoutes(event.target.checked)} />丝路航线</label>
                 <label className="game-check"><input id="toggle-migrations" type="checkbox" checked={showMigrations} onChange={event => setShowMigrations(event.target.checked)} />人口迁徙图</label>
                 <label className="game-check"><input id="toggle-topography" type="checkbox" checked={showTopography} onChange={event => setShowTopography(event.target.checked)} />山川地貌</label>
                 <label className="game-check"><input id="toggle-wide-view" type="checkbox" checked={isWideView} onChange={event => setIsWideView(event.target.checked)} />全景宽屏</label>
               </div></details>
-            </div>
-
-            {/* Quick Weather Switching Pills Bar */}
-            <div className="flex flex-wrap items-center gap-1.5 bg-slate-950/70 p-2 rounded-xl border border-slate-900/80">
-              <span
-                className="text-[10px] font-mono font-bold px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-amber-300 flex items-center gap-1"
-                title={activeSeason.tacticalSummary}
-              >
-                <span>{activeSeason.icon}</span>
-                <span>{activeSeason.name}</span>
-              </span>
-              {WEATHERS.map(w => {
-                const isActive = weatherId === w.id;
-                return (
-                  <button
-                    key={w.id}
-                    id={`btn-weather-pill-${w.id}`}
-                    type="button"
-                    onClick={() => setWeatherId(w.id)}
-                    title={`${w.nameCn}: ${w.movementPenaltyLabel} | ${w.intelModLabel}`}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-serif font-bold transition-all cursor-pointer ${
-                      isActive 
-                        ? `${w.colorClass} ring-1 ring-amber-400/60 shadow-md` 
-                        : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-850 border border-slate-800/80'
-                    }`}
-                  >
-                    <span>{w.icon}</span>
-                    <span>{w.nameCn}</span>
-                  </button>
-                );
-              })}
             </div>
           </div>
 

@@ -1737,8 +1737,8 @@ export default function TacticalMap({
       
       <div className="map-tabs-bar">
         <nav className="map-tabs" aria-label="地图视图">
-          <Button id="tab-map-svg" aria-pressed={mapTab === 'svg-map'} onClick={() => setMapTab('svg-map')}><Compass size={15} />地图</Button>
           <Button id="tab-map-city-view" aria-pressed={mapTab === 'city-view'} onClick={() => setMapTab('city-view')}><Home size={15} />{selectedCity.name}</Button>
+          <Button id="tab-map-svg" aria-pressed={mapTab === 'svg-map'} onClick={() => setMapTab('svg-map')}><Compass size={15} />地图</Button>
           <Button id="tab-global-trade" aria-pressed={mapTab === 'global-trade'} onClick={() => { setTradeFaction(originControllerId); setMapTab('global-trade'); }}><Coins size={15} />商贸</Button>
           {selectedScenario.year === 2026 && (
             <Button id="tab-map-world-2026" aria-pressed={mapTab === 'world-2026'} onClick={() => setMapTab('world-2026')}>

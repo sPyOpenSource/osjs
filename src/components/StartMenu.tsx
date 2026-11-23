@@ -104,39 +104,9 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
       <div className="start-title"><span className="trade-muted">战役</span><h2>选择剧本</h2></div>
       <div className="start-scenarios">{scenarios.map(scenario => <Button id={`start-sc-${scenario.id}`} key={scenario.id} className="start-scenario" aria-pressed={scenario.id === selectedScenario.id} onClick={() => onSelectScenario(scenario)}><span className="start-year">{scenario.year}</span><strong>{scenario.title.split('：').pop()}</strong><span className="trade-muted">{scenario.difficulty === 'Easy' ? '简单' : scenario.difficulty === 'Medium' ? '普通' : '困难'}</span></Button>)}</div>
       <div className="start-selected">
-        <h3 title={selectedScenario.description}>{selectedScenario.title}</h3>
-        <span className="trade-muted">胜利 · {selectedScenario.victoryCondition}</span>
-        <label className="start-multiplay-option" style={{ display: 'block', marginTop: '0.75rem' }}>
-          <input
-            id="toggle-multiplay"
-            data-testid="multiplay-option"
-            type="checkbox"
-            checked={isMultiplayer}
-            onChange={(e) => setMultiplayer(e.target.checked)}
-          />
-          {' '}多人联机模式
-        </label>
-        <div className="start-player-factions" style={{ marginTop: '0.75rem' }}>
-          <span className="trade-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>可操控势力</span>
-          {selectedScenario.featuredFactions.map(fid => {
-            const faction = FACTIONS.find(f => f.id === fid);
-            return (
-              <label key={fid} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginRight: '0.75rem' }}>
-                <input
-                  type="checkbox"
-                  data-testid={`player-faction-${fid}`}
-                  onChange={(e) => {
-                    const next = e.target.checked
-                      ? [...selectedPlayerFactions, fid]
-                      : selectedPlayerFactions.filter(id => id !== fid);
-                    setPlayerFactions(next.length ? next : [fid]);
-                  }}
-                />
-                {faction?.name || fid}
-              </label>
-            );
-          })}
-        </div>
+        <h3 title={`${selectedScenario.description} · ${selectedScenario.victoryCondition}`}>
+          {selectedScenario.title}
+        </h3>
         <label className="start-protagonist" style={{ display: 'block', marginTop: '0.75rem' }}>
           <span className="trade-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>主角武将</span>
           <select
@@ -155,7 +125,7 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
           const accent = chosenFaction?.color || '#f59e0b';
           return (
             <div className="start-protagonist-preview" data-testid="start-protagonist-preview">
-              <AvatarRenderer style={chosen.avatarStyle} size={68} />
+              <AvatarRenderer style={chosen.avatarStyle} size={64} />
               <div className="start-protagonist-preview-body">
                 <div className="start-protagonist-preview-head">
                   <strong>{chosen.name}</strong>
@@ -186,8 +156,42 @@ export default function StartMenu({ scenarios, selectedScenario, onSelectScenari
             </div>
           );
         })()}
-        <br></br>
-        <div className="start-portrait">{FAMOUS_OFFICERS.filter(officer => ['liubei', 'caocao', 'zhugeliang', 'guanyu', 'lubu'].includes(officer.id)).map(officer => <Button key={officer.id} onClick={() => onEnterApp('roster')}><AvatarRenderer style={officer.avatarStyle} size={56} /><span>{officer.name}</span></Button>)}</div>
+        <details className="game-disclosure" style={{ marginTop: '0.75rem' }}>
+          <summary>战役设置</summary>
+          <div style={{ paddingTop: '0.5rem' }}>
+            <label className="start-multiplay-option" style={{ display: 'block' }}>
+              <input
+                id="toggle-multiplay"
+                data-testid="multiplay-option"
+                type="checkbox"
+                checked={isMultiplayer}
+                onChange={(e) => setMultiplayer(e.target.checked)}
+              />
+              {' '}多人联机模式
+            </label>
+            <div className="start-player-factions" style={{ marginTop: '0.5rem' }}>
+              <span className="trade-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>可操控势力</span>
+              {selectedScenario.featuredFactions.map(fid => {
+                const faction = FACTIONS.find(f => f.id === fid);
+                return (
+                  <label key={fid} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginRight: '0.75rem' }}>
+                    <input
+                      type="checkbox"
+                      data-testid={`player-faction-${fid}`}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...selectedPlayerFactions, fid]
+                          : selectedPlayerFactions.filter(id => id !== fid);
+                        setPlayerFactions(next.length ? next : [fid]);
+                      }}
+                    />
+                    {faction?.name || fid}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </details>
       </div>
       <Button id="start-menu-map" className="start-play" onClick={() => onEnterApp('map')}><Play size={18} />{isMultiplayer ? '开始多人战役' : '开始战役'}</Button>
       <nav className="start-secondary" aria-label="其他游戏模式">

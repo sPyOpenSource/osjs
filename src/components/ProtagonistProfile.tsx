@@ -364,7 +364,6 @@ export default function ProtagonistProfile({
   }, [quests, questStates]);
 
   const nextLevelXp = rpgCharacter.level >= MAX_LEVEL ? 0 : xpForLevel(rpgCharacter.level + 1);
-  const xpPct = nextLevelXp > 0 ? Math.min(100, Math.round((rpgCharacter.xp / nextLevelXp) * 100)) : 100;
   const accentColor = faction?.color || '#f59e0b';
 
   const equippedList = [
@@ -442,73 +441,42 @@ export default function ProtagonistProfile({
         </div>
       </header>
 
-      {/* Visual Telemetry Gauges */}
-      <div className="self-profile-kpis">
-        <div className="self-profile-kpi">
-          <div className="self-kpi-top">
-            <span className="self-profile-kpi-label">
-              <Zap size={12} aria-hidden="true" /> 境界
-            </span>
-            <strong className="self-profile-kpi-value">
-              {nextLevelXp > 0 ? `${rpgCharacter.xp}/${nextLevelXp}` : '满'}
-            </strong>
-          </div>
-          <div className="self-kpi-bar" aria-hidden="true">
-            <span style={{ width: `${xpPct}%`, background: accentColor }} />
-          </div>
-        </div>
-
-        <div className="self-profile-kpi">
-          <div className="self-kpi-top">
-            <span className="self-profile-kpi-label">
-              <Coins size={12} aria-hidden="true" /> 库银
-            </span>
-            <strong className="self-profile-kpi-value">{gold.toLocaleString()}</strong>
-          </div>
-          <div className="self-kpi-sub">
-            <span>{season.icon} {season.name}</span>
-          </div>
-        </div>
-
-        <div className="self-profile-kpi">
-          <div className="self-kpi-top">
-            <span className="self-profile-kpi-label">
-              <Users size={12} aria-hidden="true" /> 随行
-            </span>
-            <strong className="self-profile-kpi-value">{party.companionIds.length}/3</strong>
-          </div>
-          <div className="self-mini-slots" aria-hidden="true">
-            {[0, 1, 2].map(slot => (
-              <span
-                key={slot}
-                className={slot < party.companionIds.length ? 'is-filled' : ''}
-                style={slot < party.companionIds.length ? { background: accentColor } : undefined}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="self-profile-kpi">
-          <div className="self-kpi-top">
-            <span className="self-profile-kpi-label">
-              <Handshake size={12} aria-hidden="true" /> 外交
-            </span>
-            <strong className="self-profile-kpi-value">
-              {diplomaticSummary.alliances}盟 · {diplomaticSummary.tradePacts}商
-            </strong>
-          </div>
-          <div className="self-kpi-sub">
-            {activeQuest ? (
-              <span>
-                {activeQuest.title} ({activeQuest.done}/{activeQuest.total})
-              </span>
-            ) : (
-              <span>
-                <Scale size={11} aria-hidden="true" /> {protagonist.promotionLevel ?? 0}/{promotion.maxLevel}阶
-              </span>
-            )}
-          </div>
-        </div>
+      {/* Compact Single-Line Telemetry Ribbon */}
+      <div className="self-profile-ribbon">
+        <span className="self-ribbon-item" title={`境界经验 ${nextLevelXp > 0 ? `${rpgCharacter.xp}/${nextLevelXp}` : '已满级'}`}>
+          <Zap size={12} aria-hidden="true" />
+          <span>境界</span>
+          <strong>{nextLevelXp > 0 ? `${rpgCharacter.xp}/${nextLevelXp}` : '满'}</strong>
+        </span>
+        <span className="self-ribbon-item">
+          <Coins size={12} aria-hidden="true" />
+          <span>库银</span>
+          <strong>{gold.toLocaleString()}</strong>
+        </span>
+        <span className="self-ribbon-item">
+          <Users size={12} aria-hidden="true" />
+          <span>随行</span>
+          <strong>{party.companionIds.length}/3</strong>
+        </span>
+        <span className="self-ribbon-item">
+          <Handshake size={12} aria-hidden="true" />
+          <span>外交</span>
+          <strong>{diplomaticSummary.alliances}盟·{diplomaticSummary.tradePacts}商</strong>
+        </span>
+        <span className="self-ribbon-item">
+          <span>{season.icon} {season.name}</span>
+        </span>
+        {activeQuest ? (
+          <span className="self-ribbon-item">
+            <Scale size={12} aria-hidden="true" />
+            <span>{activeQuest.title} ({activeQuest.done}/{activeQuest.total})</span>
+          </span>
+        ) : (
+          <span className="self-ribbon-item">
+            <Scale size={12} aria-hidden="true" />
+            <strong>{protagonist.promotionLevel ?? 0}/{promotion.maxLevel}阶</strong>
+          </span>
+        )}
       </div>
 
       {/* Main 2-Column Visual Showcase */}

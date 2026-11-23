@@ -1737,16 +1737,16 @@ export default function TacticalMap({
       
       <div className="map-tabs-bar">
         <nav className="map-tabs" aria-label="地图视图">
-          <Button id="tab-map-svg" aria-pressed={mapTab === 'svg-map'} onClick={() => setMapTab('svg-map')}><Compass size={15} />战略地图</Button>
+          <Button id="tab-map-svg" aria-pressed={mapTab === 'svg-map'} onClick={() => setMapTab('svg-map')}><Compass size={15} />地图</Button>
           <Button id="tab-map-city-view" aria-pressed={mapTab === 'city-view'} onClick={() => setMapTab('city-view')}><Home size={15} />{selectedCity.name}</Button>
-          <Button id="tab-global-trade" aria-pressed={mapTab === 'global-trade'} onClick={() => { setTradeFaction(originControllerId); setMapTab('global-trade'); }}><Coins size={15} />贸易与债务</Button>
+          <Button id="tab-global-trade" aria-pressed={mapTab === 'global-trade'} onClick={() => { setTradeFaction(originControllerId); setMapTab('global-trade'); }}><Coins size={15} />商贸</Button>
           {selectedScenario.year === 2026 && (
             <Button id="tab-map-world-2026" aria-pressed={mapTab === 'world-2026'} onClick={() => setMapTab('world-2026')}>
-              <Globe size={15} />全球局势{pending2026Events.length > 0 ? ` (${pending2026Events.length})` : ''}
+              <Globe size={15} />局势{pending2026Events.length > 0 ? ` (${pending2026Events.length})` : ''}
             </Button>
           )}
-          <Button id="tab-map-disasters" aria-pressed={mapTab === 'disasters'} onClick={() => setMapTab('disasters')}><AlertTriangle size={15} />天灾史变{unresolvedActiveDisasters.length > 0 ? ` (${unresolvedActiveDisasters.length})` : ''}</Button>
-          <Button id="tab-map-migrations" aria-pressed={mapTab === 'migrations'} onClick={() => setMapTab('migrations')}><Users size={15} />人口迁徙{migrationState.waves.length > 0 ? ` (${migrationState.waves.length})` : ''}</Button>
+          <Button id="tab-map-disasters" aria-pressed={mapTab === 'disasters'} onClick={() => setMapTab('disasters')}><AlertTriangle size={15} />灾疫{unresolvedActiveDisasters.length > 0 ? ` (${unresolvedActiveDisasters.length})` : ''}</Button>
+          <Button id="tab-map-migrations" aria-pressed={mapTab === 'migrations'} onClick={() => setMapTab('migrations')}><Users size={15} />迁徙{migrationState.waves.length > 0 ? ` (${migrationState.waves.length})` : ''}</Button>
           <Button id="tab-map-war-mode" aria-pressed={mapTab === 'war-mode'} onClick={() => setMapTab('war-mode')}><Sword size={15} />会战</Button>
         </nav>
 
@@ -4018,30 +4018,82 @@ export default function TacticalMap({
         </div>
       )}
 
-      {/* Underneath: Expedition & Combat March simulator (Classic visual game-like panel) */}
-      <div className="bg-slate-950 border border-slate-900 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-12 gap-6 relative overflow-hidden">
-        
-        {/* Expedition Form column (Span 5) */}
-        <div className="md:col-span-5 space-y-4">
-          <div className="flex items-center gap-1.5 border-b border-slate-900 pb-2">
-            <Swords size={16} className="text-amber-500 animate-pulse" />
-            <h3 className="text-base font-serif font-black text-amber-500 uppercase tracking-wider">
-              大军师中军帐：发兵调度
-            </h3>
-          </div>
+      {/* Compact Expedition Dispatch Bar (only on strategic map view) */}
+      {mapTab === 'svg-map' && (() => {
+        const currWeather = WEATHERS.find(w => w.id === weatherId) || WEATHERS[0];
+        const rawSelectedGen = officers.find(o => o.id === selectedGeneralId);
+        const selectedGen = rawSelectedGen ? applySeasonalOfficerModifiers(rawSelectedGen, activeSeasonId) : undefined;
+        const seasonalPreview = getSeasonalTacticalPreview(activeSeasonId, currWeather.movementSpeedRatio);
+        const combinedPct = Math.round(seasonalPreview.combinedMovementRatio * 100);
+        const genInt = selectedGen?.stats.intelligence || 50;
+        const genLdr = selectedGen?.stats.leadership || 50;
+        const isInternalTransfer = originControllerId === (cityOwnership[effectiveExpeditionTargetId] || 'ronin');
+        const isHostileTarget = Boolean(effectiveExpeditionTargetId && !isInternalTransfer);
 
-          <form onSubmit={handleLaunchExpedition} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+        const stratagemHint =
+          weatherId === 'heavy_rain'
+            ? genInt >= 80
+              ? '水淹七军激活：破城杀伤 +80%'
+              : '暴雨泥沼：火攻禁用，攻城折损提升'
+            : weatherId === 'dense_fog'
+              ? genInt >= 85
+                ? '八阵遁甲激活：无视防务直击要冲'
+                : genInt >= 75
+                  ? '结阵探道：机动 -50%'
+                  : '大雾易中伏：智力不足 75 风险极高'
+              : weatherId === 'windy'
+                ? '顺风助威：火攻杀伤翻倍 (+100%)'
+                : weatherId === 'snow'
+                  ? genLdr >= 80
+                    ? '雪夜坚军：统帅 ≥ 80 稳住士气'
+                    : '严寒封冻：机动力降为 40%'
+                  : weatherId === 'rainy'
+                    ? '细雨湿柴：移速 -20%，火计微降'
+                    : '晴朗平川：100% 机动，弓火齐发';
+
+        return (
+          <div className="bg-slate-950 border border-slate-900 rounded-2xl p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-900 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Swords size={15} className="text-amber-500" />
+                <h3 className="text-sm font-serif font-black text-amber-500 tracking-wider">发兵调度</h3>
+                <span className={`text-[11px] font-mono ${isInternalTransfer ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {isInternalTransfer ? '内部调配' : '主动攻城'}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono tabular-nums text-slate-400">
+                <span title={activeSeason.statSummary}>
+                  {activeSeason.icon} {activeSeason.name} · {currWeather.icon} {currWeather.nameCn}
+                </span>
+                <span>
+                  机动{' '}
+                  <strong className={seasonalPreview.combinedMovementRatio < 0.6 ? 'text-rose-400' : 'text-emerald-400'}>
+                    {combinedPct}%
+                  </strong>
+                </span>
+                <details className="game-disclosure game-disclosure-popover">
+                  <summary>天候谋略</summary>
+                  <div className="game-settings-body">
+                    <span className="text-[11px] text-slate-200">{stratagemHint}</span>
+                    <span className="text-[10px] text-slate-400">{currWeather.movementPenaltyLabel} · {activeSeason.tacticalSummary}</span>
+                    <span className="text-[10px] text-amber-300/85">{activeSeason.statSummary}</span>
+                  </div>
+                </details>
+              </div>
+            </div>
+
+            <form onSubmit={handleLaunchExpedition} className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-end">
+              <div className="md:col-span-3">
                 <label className="text-[10px] font-mono text-slate-400 block mb-1">
-                  🚩 起源郡地{ownFactionId ? ` · 本势 ${ownCities.length} 城` : ''}
+                  出发地{ownFactionId ? ` (${ownCities.length})` : ''}
                 </label>
                 <select
                   id="select-exp-origin"
                   value={effectiveExpeditionOriginId}
                   onChange={(e) => setExpeditionOriginId(e.target.value)}
                   disabled={isExpeditionRunning || ownCities.length === 0}
-                  className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs disabled:opacity-50"
+                  className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-2.5 py-2 text-xs disabled:opacity-50"
                 >
                   {ownCities.length === 0 ? (
                     <option value="">当前所属势力暂无城池</option>
@@ -4055,7 +4107,7 @@ export default function TacticalMap({
                             const owner = cityOwnership[c.id] || 'ronin';
                             const fact = FACTIONS.find(f => f.id === owner)?.name || '在野';
                             return (
-                              <option key={c.id} value={c.id}>{c.name} - {c.region} ({fact})</option>
+                              <option key={c.id} value={c.id}>{c.name} · {fact}</option>
                             );
                           })}
                         </optgroup>
@@ -4065,16 +4117,16 @@ export default function TacticalMap({
                 </select>
               </div>
 
-              <div>
+              <div className="md:col-span-3">
                 <label className="text-[10px] font-mono text-slate-400 block mb-1">
-                  🎯 进攻/调遣郡地{effectiveExpeditionOriginId ? ` · 邻近 ${nearbyTargetCities.length} 城` : ''}
+                  目标地{effectiveExpeditionOriginId ? ` (${nearbyTargetCities.length})` : ''}
                 </label>
                 <select
                   id="select-exp-target"
                   value={effectiveExpeditionTargetId}
                   onChange={(e) => setExpeditionTargetId(e.target.value)}
                   disabled={isExpeditionRunning || nearbyTargetCities.length === 0}
-                  className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs disabled:opacity-50"
+                  className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-2.5 py-2 text-xs disabled:opacity-50"
                 >
                   {nearbyTargetCities.length === 0 ? (
                     <option value="">请先选择起源城池</option>
@@ -4088,7 +4140,7 @@ export default function TacticalMap({
                             const owner = cityOwnership[c.id] || 'ronin';
                             const fact = FACTIONS.find(f => f.id === owner)?.name || '在野';
                             return (
-                              <option key={c.id} value={c.id}>{c.name} - {c.region} ({fact})</option>
+                              <option key={c.id} value={c.id}>{c.name} · {fact}</option>
                             );
                           })}
                         </optgroup>
@@ -4097,255 +4149,112 @@ export default function TacticalMap({
                   )}
                 </select>
               </div>
-            </div>
 
-            <div>
-              <label className="text-[10px] font-mono text-slate-400 block mb-1">⚔️ 位挂主帅大将</label>
-              {leadersAvailable.length > 0 ? (
-                <select
-                  id="select-exp-general"
-                  value={selectedGeneralId}
-                  onChange={(e) => setSelectedGeneralId(e.target.value)}
-                  disabled={isExpeditionRunning}
-                  className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-3 py-2.5 text-xs font-serif font-medium"
+              <div className="md:col-span-3">
+                <label className="text-[10px] font-mono text-slate-400 block mb-1">主帅</label>
+                {leadersAvailable.length > 0 ? (
+                  <select
+                    id="select-exp-general"
+                    value={selectedGeneralId}
+                    onChange={(e) => setSelectedGeneralId(e.target.value)}
+                    disabled={isExpeditionRunning}
+                    className="w-full bg-slate-900 border border-slate-800 text-slate-100 rounded-xl px-2.5 py-2 text-xs font-serif"
+                  >
+                    {leadersAvailable.map(o => (
+                      <option key={o.id} value={o.id}>
+                        {o.name} (武{o.stats.force} 统{o.stats.leadership})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="text-[10.5px] px-2.5 py-2 text-rose-400 bg-rose-950/20 border border-rose-950/30 rounded-xl truncate" title="此起源城池暂无可用驻将，请先调遣或登用武将">
+                    暂无可用主帅
+                  </div>
+                )}
+              </div>
+
+              <div className="md:col-span-3 flex gap-2">
+                <button
+                  id="btn-launch-exp"
+                  type="submit"
+                  disabled={isExpeditionRunning || leadersAvailable.length === 0 || !effectiveExpeditionTargetId}
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 text-xs font-black py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
-                  {leadersAvailable.map(o => (
-                    <option key={o.id} value={o.id}>
-                      {o.name} (武力 {o.stats.force} | 统帅 {o.stats.leadership})
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="text-[10.5px] p-2 text-rose-400 bg-rose-950/20 border border-rose-950/30 rounded-xl">
-                  ⚠️ 此起源城池由于为【在野/中立】或无可用武将驻扎，大军无法召集统帅！请先从下方调拨势力，或去“自立武将”板块登用其入仕此地势力。
-                </div>
-              )}
-            </div>
+                  <Play size={12} fill="currentColor" />
+                  {isExpeditionRunning ? '推演中...' : '发兵演武'}
+                </button>
 
-            <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-900 text-[11px] text-slate-400 space-y-1">
-              <div className="flex justify-between font-mono">
-                <span>远征策略形式:</span>
-                <span className={originControllerId === cityOwnership[effectiveExpeditionTargetId] ? 'text-emerald-400' : 'text-rose-400'}>
-                  {originControllerId === cityOwnership[effectiveExpeditionTargetId] ? '🛡️ 内部粮草输配 / 兵力调配' : '⚔️ 主动军势讨伐 / 攻城掠地'}
-                </span>
+                {isHostileTarget && (
+                  <button
+                    id="btn-launch-war-mode-direct"
+                    type="button"
+                    onClick={() => setMapTab('war-mode')}
+                    disabled={isExpeditionRunning || leadersAvailable.length === 0}
+                    title="亲自指挥攻城（手动合战役）"
+                    className="bg-[linear-gradient(135deg,#e11d48,_#be123c)] hover:bg-[linear-gradient(135deg,#f43f5e,_#e11d48)] disabled:opacity-45 text-slate-50 text-xs font-black py-2 px-3 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer border border-rose-500/30 whitespace-nowrap"
+                  >
+                    <Sword size={12} />
+                    <span>合战</span>
+                  </button>
+                )}
               </div>
-              <p className="text-[9.5px] text-slate-500 leading-relaxed">
-                内部输送调遣胜率必然为 100%；攻伐敌方领地将对领军大将的五维属性（统帅与武力值）有着极高的硬考量，高属性可显著增加克关斩将几率。
-              </p>
-            </div>
+            </form>
 
-            {/* Weather Troop Movement & Intelligence Stratagem Assessment Card */}
-            {(() => {
-              const currWeather = WEATHERS.find(w => w.id === weatherId) || WEATHERS[0];
-              const rawSelectedGen = officers.find(o => o.id === selectedGeneralId);
-              const selectedGen = rawSelectedGen ? applySeasonalOfficerModifiers(rawSelectedGen, activeSeasonId) : undefined;
-              const seasonalPreview = getSeasonalTacticalPreview(activeSeasonId, currWeather.movementSpeedRatio);
-              const combinedPct = Math.round(seasonalPreview.combinedMovementRatio * 100);
-              const genInt = selectedGen?.stats.intelligence || 50;
-              const genLdr = selectedGen?.stats.leadership || 50;
-
-              return (
-                <div className={`p-3 rounded-xl border space-y-2.5 transition-colors ${currWeather.colorClass}`}>
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="text-[11px] font-serif font-black flex items-center gap-1.5 text-slate-100">
-                      <span>{currWeather.icon}</span>
-                      <span>节气与天候谋略测算</span>
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-950/70 border border-slate-800 text-amber-300">
-                        {activeSeason.icon} {activeSeason.name}
-                      </span>
-                      <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-950/70 border border-slate-800 text-slate-200">
-                        {currWeather.nameCn} ({currWeather.name})
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Troop Movement Speed Bar */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-mono">
-                      <span className="text-slate-400">季节×天候机动率:</span>
-                      <strong className={seasonalPreview.combinedMovementRatio < 0.6 ? 'text-rose-400' : 'text-emerald-400'}>
-                        {combinedPct}%
-                      </strong>
-                    </div>
-                    <div className="w-full bg-slate-950/80 rounded-full h-1.5 overflow-hidden border border-slate-800">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          seasonalPreview.combinedMovementRatio <= 0.45 ? 'bg-rose-500' 
-                          : seasonalPreview.combinedMovementRatio <= 0.6 ? 'bg-amber-500' 
-                          : 'bg-emerald-400'
-                        }`}
-                        style={{ width: `${Math.min(100, combinedPct)}%` }}
-                      />
-                    </div>
-                    <p className="text-[9px] font-sans text-slate-400 leading-tight">
-                      {currWeather.movementPenaltyLabel} · {activeSeason.tacticalSummary}
-                    </p>
-                  </div>
-
-                  {/* Intelligence Stratagem Assessment */}
-                  <div className="bg-slate-950/75 p-2 rounded-lg border border-slate-800/80 space-y-1">
-                    <div className="flex justify-between items-center text-[10px] font-mono">
-                      <span className="text-slate-400 flex items-center gap-1">
-                        <Brain size={11} className="text-purple-400" />
-                        主帅谋略克应 ({selectedGen ? `${selectedGen.name} · 智力 ${genInt} · 统帅 ${genLdr}` : '未定将帅'})
-                      </span>
-                      {weatherId === 'heavy_rain' && (
-                        <span className="text-[8.5px] font-bold text-rose-400">火攻禁用</span>
-                      )}
-                    </div>
-                    <div className="text-[9px] font-mono text-amber-300/85">
-                      {activeSeason.icon} {activeSeason.name}将领修正：{activeSeason.statSummary}
-                    </div>
-
-                    <div className="text-[9.5px] font-sans leading-relaxed">
-                      {weatherId === 'heavy_rain' ? (
-                        genInt >= 80 ? (
-                          <span className="text-sky-300 font-medium">
-                            🌊 <strong className="text-sky-200">【水淹七军·决水破关】激活！</strong> (智力 {genInt} ≥ 80)：引江汉暴涨波涛倒灌关隘，破城杀伤力额外暴增 <strong>+80%</strong>！
-                          </span>
-                        ) : (
-                          <span className="text-amber-300/90 font-medium">
-                            ⛈️ <strong className="text-amber-200">【泥沼困顿】</strong> (智力 {genInt} &lt; 80)：薪柴全湿火计禁用，泥沼阻滞攻城车，攻关折损提升。
-                          </span>
-                        )
-                      ) : weatherId === 'dense_fog' ? (
-                        genInt >= 85 ? (
-                          <span className="text-indigo-300 font-medium">
-                            👁️‍🗨️ <strong className="text-indigo-200">【八阵遁甲·借雾瞒天】激活！</strong> (智力 {genInt} ≥ 85)：大军如幽灵匿迹绕开敌垒，一击直捣核心要冲，大幅摧毁城防！
-                          </span>
-                        ) : genInt >= 75 ? (
-                          <span className="text-slate-300 font-medium">
-                            🌫️ <strong className="text-slate-200">【结阵探道】</strong> (智力 {genInt})：探骑鸣锣开道谨防伏兵，行军机动受制 (-50%)。
-                          </span>
-                        ) : (
-                          <span className="text-rose-300 font-medium">
-                            ⚠️ <strong className="text-rose-200">【大雾迷踪·极易中伏】</strong> (智力 {genInt} &lt; 75)：领军不识天象，易陷敌伏兵，若敌将设伏将遭惨重溃伤！
-                          </span>
-                        )
-                      ) : weatherId === 'windy' ? (
-                        <span className="text-teal-300 font-medium">
-                          💨 <strong className="text-teal-200">【赤壁烈焰】</strong>：顺风火攻杀伤翻倍 (+100%)，飞矢轨迹微偏。
-                        </span>
-                      ) : weatherId === 'snow' ? (
-                        genLdr >= 80 ? (
-                          <span className="text-cyan-300 font-medium">
-                            ❄️ <strong className="text-cyan-200">【雪夜坚军】</strong> (统帅 {genLdr} ≥ 80)：名帅严明军纪抗击严寒，行军机动 40% 但士气不泄！
-                          </span>
-                        ) : (
-                          <span className="text-rose-300 font-medium">
-                            ❄️ <strong className="text-rose-200">【严寒封冻】</strong> (统帅 {genLdr} &lt; 80)：风雪塞道冻馁难耐，机动力仅 40%，士气易散。
-                          </span>
-                        )
-                      ) : weatherId === 'rainy' ? (
-                        <span className="text-blue-300 font-medium">
-                          🌧️ <strong className="text-blue-200">【细雨湿柴】</strong>：道路微显泥泞 (-20% 移速)，火计威力稍减。
-                        </span>
-                      ) : (
-                        <span className="text-amber-300 font-medium">
-                          ☀️ <strong className="text-amber-200">【烈日平川】</strong>：神速行军 (100% 机动)，远程弓火齐发无阻。
-                        </span>
-                      )}
-                    </div>
-                  </div>
+            {(isExpeditionRunning || expeditionLogs.length > 0) && (
+              <div className="border-t border-slate-900 pt-2.5 space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                  <span className="inline-flex items-center gap-1 text-teal-400">
+                    <Hourglass size={11} className={isExpeditionRunning ? 'animate-spin' : ''} />
+                    战报
+                  </span>
+                  {isExpeditionRunning && (
+                    <span>胜算 <strong className="text-slate-100">{expeditionSuccessRate}%</strong></span>
+                  )}
                 </div>
-              );
-            })()}
 
-            <button
-              id="btn-launch-exp"
-              type="submit"
-              disabled={isExpeditionRunning || leadersAvailable.length === 0 || !effectiveExpeditionTargetId}
-              className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 text-xs font-black uppercase tracking-widest py-3 px-4 rounded-xl transition duration-300 shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Play size={12} fill="currentColor" />
-              {isExpeditionRunning ? '大军兵临绝地，推演克敌中...' : '传令三军：发兵演武！'}
-            </button>
+                {isExpeditionRunning && (
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[
+                      { name: '誓师', step: 0 },
+                      { name: '急行', step: 1 },
+                      { name: '搏杀', step: 2 },
+                      { name: '克城', step: 3 }
+                    ].map((item, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <div className="h-1 rounded bg-slate-900 overflow-hidden">
+                          <div
+                            className={`h-full rounded transition-all duration-500 ${
+                              expeditionStep >= item.step
+                                ? idx === 3 && expeditionLogs.some(l => l.includes('攻城受阻'))
+                                  ? 'bg-rose-500'
+                                  : 'bg-emerald-500'
+                                : 'bg-slate-900'
+                            }`}
+                            style={{ width: expeditionStep >= item.step ? '100%' : '0%' }}
+                          />
+                        </div>
+                        <p className={`text-[9.5px] font-sans text-center ${
+                          expeditionStep >= item.step ? 'text-amber-400 font-bold' : 'text-slate-500'
+                        }`}>
+                          {item.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-            {effectiveExpeditionTargetId && originControllerId !== (cityOwnership[effectiveExpeditionTargetId] || 'ronin') && (
-              <button
-                id="btn-launch-war-mode-direct"
-                type="button"
-                onClick={() => setMapTab('war-mode')}
-                disabled={isExpeditionRunning || leadersAvailable.length === 0}
-                className="w-full bg-[linear-gradient(135deg,#e11d48,_#be123c)] hover:bg-[linear-gradient(135deg,#f43f5e,_#e11d48)] disabled:opacity-45 text-slate-50 text-xs font-black uppercase tracking-widest py-3 px-4 rounded-xl transition duration-300 shadow-lg flex items-center justify-center gap-1.5 cursor-pointer border border-rose-500/30"
-              >
-                <Sword size={12} className="text-slate-50" />
-                <span>亲自指挥攻城（手动合战役）</span>
-              </button>
-            )}
-          </form>
-        </div>
-
-        {/* Scrolling logs visual column (Span 7) */}
-        <div className="md:col-span-7 bg-slate-950 border border-slate-900 p-4 rounded-2xl flex flex-col justify-between min-h-[250px]">
-          <div className="flex justify-between items-center border-b border-slate-900 pb-2 mb-2">
-            <span className="text-xs font-mono font-bold text-teal-400 flex items-center gap-1">
-              <Hourglass size={12} className={isExpeditionRunning ? 'animate-spin' : ''} />
-              战役军机演武日志滚动屏
-            </span>
-            {isExpeditionRunning && (
-              <span className="text-[10px] font-mono text-amber-500">
-                攻关胜算率: <strong className="text-slate-100">{expeditionSuccessRate}%</strong>
-              </span>
-            )}
-          </div>
-
-          <div className="flex-1 bg-slate-950 p-3 rounded-xl border border-slate-900 font-mono text-xs text-slate-300 max-h-[190px] overflow-y-auto space-y-2.5">
-            {expeditionLogs.length > 0 ? (
-              expeditionLogs.map((log, idx) => (
-                <div key={idx} className="border-l-2 border-slate-800 pl-2.5 leading-relaxed py-0.5">
-                  <p className="text-slate-200">{log}</p>
-                </div>
-              ))
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center py-8 text-center text-slate-600 space-y-2">
-                <Compass size={28} className="text-slate-800" />
-                <div>
-                  <p className="text-xs">军机处目前一片沉寂。</p>
-                  <p className="text-[10px] text-slate-600 mt-0.5 max-w-sm">
-                    在左侧配置兵力起点、目标点以及领受挂帅的名帅，点击【发兵演武】。孔明大军师将统筹汇报实时对阵推演。
-                  </p>
-                </div>
+                {expeditionLogs.length > 0 && (
+                  <div className="bg-slate-900/50 px-3 py-2 rounded-xl border border-slate-900 font-mono text-[11px] text-slate-300 max-h-[120px] overflow-y-auto space-y-1">
+                    {expeditionLogs.map((log, idx) => (
+                      <p key={idx} className="leading-relaxed">{log}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
-
-          {/* Staggered progress indicator bar */}
-          {isExpeditionRunning && (
-            <div className="mt-3 grid grid-cols-4 gap-1">
-              {[
-                { name: '安营誓师', step: 0 },
-                { name: '关山急行', step: 1 },
-                { name: '城下搏杀', step: 2 },
-                { name: '捷报克城', step: 3 }
-              ].map((item, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="h-1.5 rounded bg-slate-900 overflow-hidden">
-                    <div 
-                      className={`h-full rounded transition-all duration-500 ${
-                        expeditionStep >= item.step 
-                          ? idx === 3 && expeditionLogs.some(l => l.includes('攻城受阻')) 
-                            ? 'bg-rose-500' 
-                            : 'bg-emerald-500' 
-                          : 'bg-slate-900'
-                      }`}
-                      style={{ width: expeditionStep >= item.step ? '100%' : '0%' }}
-                    />
-                  </div>
-                  <p className={`text-[9px] font-sans text-center truncate ${
-                    expeditionStep >= item.step ? 'text-amber-400 font-bold' : 'text-slate-500'
-                  }`}>
-                    {item.name}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-      </div>
+        );
+      })()}
 
     </div>
   );

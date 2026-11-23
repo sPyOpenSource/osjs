@@ -60,7 +60,7 @@ export default function GameNavigation(props: Props) {
 
       <div className="game-time">
         <span className="game-time-date">
-          {props.year} 年 · {props.month} 月 · {['上旬', '中旬', '下旬'][props.xun - 1]}
+          {props.year}.{props.month}·{['上旬', '中旬', '下旬'][props.xun - 1]}
         </span>
         {season && (
           <span

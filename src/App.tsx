@@ -1257,8 +1257,6 @@ export default function App() {
         <div className="game-header-inner">
           <div className="game-header-brand">
             <span className="game-header-meta">
-              <span>{selectedScenario.title}</span>
-              <span aria-hidden="true">·</span>
               <button
                 id="btn-header-self-profile"
                 type="button"
@@ -1268,7 +1266,7 @@ export default function App() {
                   setActiveTab('roster');
                 }}
                 className="underline decoration-amber-500/40 hover:text-amber-300 cursor-pointer transition-colors"
-                title="查看并完善主公本人档案"
+                title={selectedScenario.title}
               >
                 主公 {officers.find(o => o.id === protagonistId)?.name ?? selectedOfficer.name}
               </button>
@@ -1277,7 +1275,7 @@ export default function App() {
               {multiplayerEnabled && (
                 <>
                   <span aria-hidden="true">·</span>
-                  <span role="status">{wsStatus === 'connected' ? '联机已连接' : wsStatus === 'connecting' ? '联机连接中' : '离线模式'}</span>
+                  <span role="status">{wsStatus === 'connected' ? '联机' : wsStatus === 'connecting' ? '连接中' : '离线'}</span>
                 </>
               )}
             </span>
@@ -1296,33 +1294,36 @@ export default function App() {
               }`}
             >
               <Compass size={15} />
-              <span className="header-btn-label">军师幕府</span>
-            </Button>
-            <Button
-              id="btn-header-bgm"
-              aria-label={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
-              aria-pressed={bgmEnabled}
-              title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
-              onClick={handleToggleBgm}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-            >
-              <Music size={15} />
-              <span className="header-btn-label">{bgmEnabled ? '配乐开' : '配乐关'}</span>
-            </Button>
-            <Button
-              id="btn-header-sfx"
-              aria-label={soundEnabled ? '关闭音效' : '开启音效'}
-              aria-pressed={soundEnabled}
-              title={soundEnabled ? '关闭音效' : '开启音效'}
-              onClick={handleToggleSound}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-            >
-              {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
-              <span className="header-btn-label">{soundEnabled ? '音效开' : '音效关'}</span>
+              <span className="header-btn-label">军师</span>
             </Button>
             <details className="game-disclosure game-disclosure-popover">
-              <summary className="whitespace-nowrap shrink-0">音量</summary>
+              <summary className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">
+                {soundEnabled || bgmEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                <span>声音</span>
+              </summary>
               <div className="game-settings-body">
+                <div className="flex items-center gap-2">
+                  <Button
+                    id="btn-header-bgm"
+                    aria-label={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
+                    aria-pressed={bgmEnabled}
+                    onClick={handleToggleBgm}
+                    className="inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+                  >
+                    <Music size={13} />
+                    <span>{bgmEnabled ? '配乐开' : '配乐关'}</span>
+                  </Button>
+                  <Button
+                    id="btn-header-sfx"
+                    aria-label={soundEnabled ? '关闭音效' : '开启音效'}
+                    aria-pressed={soundEnabled}
+                    onClick={handleToggleSound}
+                    className="inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+                  >
+                    {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                    <span>{soundEnabled ? '音效开' : '音效关'}</span>
+                  </Button>
+                </div>
                 <label className="text-xs font-mono text-slate-300">
                   <span>配乐</span>
                   <input
@@ -1355,7 +1356,7 @@ export default function App() {
                 </label>
               </div>
             </details>
-            <Button id="btn-return-start" className="whitespace-nowrap shrink-0" onClick={() => setShowStartMenu(true)}>返回首页</Button>
+            <Button id="btn-return-start" className="whitespace-nowrap shrink-0" onClick={() => setShowStartMenu(true)}>首页</Button>
           </div>
         </div>
       </header>

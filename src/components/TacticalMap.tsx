@@ -2000,7 +2000,7 @@ export default function TacticalMap({
                   stroke="#1e293b" 
                   strokeWidth="0.8" 
                 />
-                <text x="145" y="358" fill="#38bdf8" className="text-[8px] font-serif italic opacity-60">地中海 (Mediterranean)</text>
+                <text x="145" y="358" fill="#38bdf8" className="text-[8px] font-serif italic opacity-60">地中海</text>
 
                 {/* Italian Peninsula & Sicily (亚平宁半岛与西西里) */}
                 <path d="M 128 260 L 146 288 L 158 316 L 142 322 L 132 292 L 122 268 Z" fill="#0c182c" stroke="#334155" strokeWidth="0.9" />
@@ -2022,7 +2022,7 @@ export default function TacticalMap({
                   stroke="#1e293b" 
                   strokeWidth="0.9" 
                 />
-                <text x="260" y="246" fill="#38bdf8" className="text-[7.5px] font-serif italic opacity-55">黑海 (Pontus)</text>
+                <text x="260" y="246" fill="#38bdf8" className="text-[7.5px] font-serif italic opacity-55">黑海</text>
 
                 {/* Caspian Sea (里海) */}
                 <path 
@@ -2107,7 +2107,7 @@ export default function TacticalMap({
 
                     {/* Alps (阿尔卑斯山脉 - Europe) */}
                     <path d="M 105 252 Q 130 242 155 254" fill="none" stroke="#64748b" strokeWidth="2.2" strokeDasharray="3 2" opacity="0.7" />
-                    <text x="115" y="246" fill="#94a3b8" className="text-[7px] font-mono opacity-70">阿尔卑斯山 (Alps)</text>
+                    <text x="115" y="246" fill="#94a3b8" className="text-[7px] font-mono opacity-70">阿尔卑斯山</text>
 
                     {/* Caucasus Range (高加索山脉 - between Black Sea & Caspian Sea) */}
                     <path d="M 295 236 Q 320 228 340 238" fill="none" stroke="#64748b" strokeWidth="2" strokeDasharray="3 2" opacity="0.65" />
@@ -2123,7 +2123,7 @@ export default function TacticalMap({
 
                     {/* Mongolian Gobi Desert */}
                     <ellipse cx="680" cy="140" rx="75" ry="22" fill="url(#desertPattern)" stroke="#a16207" strokeWidth="0.5" strokeDasharray="3 3" opacity="0.6" />
-                    <text x="680" y="144" fill="#ca8a04" className="text-[8px] font-serif italic opacity-55 text-center" textAnchor="middle">瀚海大漠 (Gobi)</text>
+                    <text x="680" y="144" fill="#ca8a04" className="text-[8px] font-serif italic opacity-55 text-center" textAnchor="middle">瀚海大漠</text>
 
                     {/* Himalayas & Tibetan Plateau (青藏高原 / 喜马拉雅雪脉) */}
                     <polygon 
@@ -2143,10 +2143,10 @@ export default function TacticalMap({
 
                     {/* Tianshan & Kunlun Ranges */}
                     <path d="M 460 220 Q 510 210 560 228" fill="none" stroke="#475569" strokeWidth="2" strokeDasharray="4 3" opacity="0.65" />
-                    <text x="490" y="215" fill="#94a3b8" className="text-[7px] font-mono opacity-65">天山山脉 (Tianshan)</text>
+                    <text x="490" y="215" fill="#94a3b8" className="text-[7px] font-mono opacity-65">天山山脉</text>
 
                     <path d="M 465 275 Q 520 270 575 282" fill="none" stroke="#475569" strokeWidth="2" strokeDasharray="4 3" opacity="0.65" />
-                    <text x="500" y="270" fill="#94a3b8" className="text-[7px] font-mono opacity-65">昆仑山脉 (Kunlun)</text>
+                    <text x="500" y="270" fill="#94a3b8" className="text-[7px] font-mono opacity-65">昆仑山脉</text>
 
                     {/* Qinling Range (秦岭) */}
                     <path d="M 645 320 Q 675 330 705 322" fill="none" stroke="#475569" strokeWidth="2" strokeDasharray="3 3" opacity="0.6" />
@@ -2154,37 +2154,37 @@ export default function TacticalMap({
 
                     {/* Yinshan Range (阴山 - Steppe Border) */}
                     <path d="M 660 190 Q 720 180 770 195" fill="none" stroke="#475569" strokeWidth="2" strokeDasharray="4 3" opacity="0.55" />
-                    <text x="705" y="180" fill="#94a3b8" className="text-[7px] font-mono opacity-60">阴山古道 (Yinshan)</text>
+                    <text x="705" y="180" fill="#94a3b8" className="text-[7px] font-mono opacity-60">阴山古道</text>
 
                     {/* Eurasian River Systems */}
                     {/* Danube (多瑙河) */}
                     <path d="M 130 225 Q 170 232 210 226 T 245 234" fill="none" stroke="url(#riverGradient)" strokeWidth="2.4" strokeLinecap="round" opacity="0.6" />
-                    <text x="170" y="222" fill="#38bdf8" className="text-[7px] font-serif italic opacity-50">多瑙河 (Danube)</text>
+                    <text x="170" y="222" fill="#38bdf8" className="text-[7px] font-serif italic opacity-50">多瑙河</text>
 
                     {/* Nile River (尼罗河) */}
                     <path d="M 240 365 Q 242 410 248 460" fill="none" stroke="url(#riverGradient)" strokeWidth="2.6" strokeLinecap="round" opacity="0.6" />
-                    <text x="248" y="410" fill="#38bdf8" className="text-[7px] font-serif italic opacity-55">尼罗河 (Nile)</text>
+                    <text x="248" y="410" fill="#38bdf8" className="text-[7px] font-serif italic opacity-55">尼罗河</text>
 
                     {/* Tigris & Euphrates (两河流域 / 美索不达米亚) */}
                     <path d="M 285 300 Q 310 325 340 365" fill="none" stroke="url(#riverGradient)" strokeWidth="2.5" strokeLinecap="round" opacity="0.6" />
                     <path d="M 295 295 Q 320 320 348 358" fill="none" stroke="url(#riverGradient)" strokeWidth="2.5" strokeLinecap="round" opacity="0.5" />
-                    <text x="305" y="315" fill="#38bdf8" className="text-[7px] font-serif italic opacity-55">两河流域 (Tigris/Euphrates)</text>
+                    <text x="305" y="315" fill="#38bdf8" className="text-[7px] font-serif italic opacity-55">两河流域</text>
 
                     {/* Indus River (印度河) */}
                     <path d="M 445 320 Q 435 370 422 418" fill="none" stroke="url(#riverGradient)" strokeWidth="2.6" strokeLinecap="round" opacity="0.55" />
-                    <text x="415" y="365" fill="#38bdf8" className="text-[7px] font-serif italic opacity-50">印度河 (Indus)</text>
+                    <text x="415" y="365" fill="#38bdf8" className="text-[7px] font-serif italic opacity-50">印度河</text>
 
                     {/* Ganges River (恒河) */}
                     <path d="M 485 365 Q 520 385 550 415" fill="none" stroke="url(#riverGradient)" strokeWidth="2.6" strokeLinecap="round" opacity="0.55" />
-                    <text x="510" y="390" fill="#38bdf8" className="text-[7px] font-serif italic opacity-50">恒河 (Ganges)</text>
+                    <text x="510" y="390" fill="#38bdf8" className="text-[7px] font-serif italic opacity-50">恒河</text>
 
                     {/* Yellow River 黄河 (Ordos Loop) */}
                     <path d="M 645 300 Q 685 240 735 220 T 755 248 T 725 290 T 780 265 T 820 255" fill="none" stroke="url(#riverGradient)" strokeWidth="3.6" strokeLinecap="round" opacity="0.75" />
-                    <text x="735" y="240" fill="#38bdf8" className="text-[8.5px] font-serif font-black italic opacity-60">黄河 (Yellow River)</text>
+                    <text x="735" y="240" fill="#38bdf8" className="text-[8.5px] font-serif font-black italic opacity-60">黄河</text>
 
                     {/* Yangtze River 长江 */}
                     <path d="M 635 365 Q 675 375 700 345 T 755 352 T 805 342 T 845 330" fill="none" stroke="url(#riverGradient)" strokeWidth="3.8" strokeLinecap="round" opacity="0.75" />
-                    <text x="735" y="365" fill="#38bdf8" className="text-[8.5px] font-serif font-black italic opacity-60">长江天堑 (Yangtze)</text>
+                    <text x="735" y="365" fill="#38bdf8" className="text-[8.5px] font-serif font-black italic opacity-60">长江天堑</text>
 
                     {/* Mekong River (湄公河) */}
                     <path d="M 650 405 Q 670 450 705 500 T 725 560" fill="none" stroke="url(#riverGradient)" strokeWidth="2.8" strokeLinecap="round" opacity="0.6" />
@@ -2233,7 +2233,7 @@ export default function TacticalMap({
                       strokeDasharray="6 4"
                       opacity="0.75"
                     />
-                    <text x="690" y="200" fill="#f59e0b" className="text-[8px] font-serif font-black tracking-widest opacity-80">🏯 汉长城烽燧线 (Great Wall)</text>
+                    <text x="690" y="200" fill="#f59e0b" className="text-[8px] font-serif font-black tracking-widest opacity-80">🏯 汉长城烽燧线</text>
 
                     {/* Eurasian Regional Realm Title Callouts */}
                     <g id="eurasian-realm-labels" className="select-none font-serif">

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
 import InternalAffairs from '../InternalAffairs';
 import DuelArena from '../DuelArena';
-import TacticalMap, { getNearbyTargetCities } from '../TacticalMap';
+import TacticalMap, { CITIES, getNearbyTargetCities } from '../TacticalMap';
 import RelationshipTree from '../RelationshipTree';
 import DiplomacyPanel from '../DiplomacyPanel';
 import PeopleMigrationsPanel from '../PeopleMigrationsPanel';
@@ -248,6 +248,61 @@ describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {
     const yamataiTargets = getNearbyTargetCities('yamatai').map(c => c.id);
     assert.equal(yamataiTargets.length, 3);
     assert.deepEqual(yamataiTargets, ['xiangping', 'xiapi', 'beiping']);
+  });
+
+  test('includes 5 bigger metropolis cities rendered with enlarged tier markers', () => {
+    const metropolisIds = ['london', 'paris', 'constantinople', 'moscow', 'guangzhou'];
+    const metropolises = CITIES.filter(c => c.tier === 'metropolis');
+    assert.deepEqual(
+      metropolises.map(c => c.id),
+      metropolisIds,
+      'expected exactly the 5 added metropolis cities',
+    );
+
+    const chibiScenario = SCENARIOS.find(s => s.id === 'chibi') ?? SCENARIOS[1];
+    const chibiHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+      />,
+    );
+
+    for (const id of metropolisIds) {
+      const nodeMatch = chibiHtml.match(new RegExp(`<div[^>]*id="city-node-${id}"[^>]*>`));
+      assert.ok(nodeMatch, `expected #city-node-${id} in map markup`);
+      assert.ok(
+        nodeMatch[0].includes('data-city-tier="metropolis"'),
+        `expected data-city-tier="metropolis" on #city-node-${id}`,
+      );
+      assert.ok(
+        nodeMatch[0].includes('大都城 · '),
+        `expected 大都城 tooltip prefix on #city-node-${id}`,
+      );
+    }
+
+    assert.ok(chibiHtml.includes('h-4 w-4'), 'expected enlarged metropolis core marker sizing');
+    assert.ok(chibiHtml.includes('h-6 w-6'), 'expected enlarged metropolis outer ring sizing');
+
+    const guangzhouNode = chibiHtml.match(/<div[^>]*id="city-node-guangzhou"[^>]*>/)?.[0] ?? '';
+    assert.ok(guangzhouNode.includes('孙吴'), 'expected guangzhou owned by Wu (孙吴) in 208 AD Chibi scenario');
+
+    const presentScenario = SCENARIOS.find(s => s.id === 'present');
+    if (presentScenario) {
+      const presentHtml = renderToStaticMarkup(
+        <TacticalMap
+          selectedScenario={presentScenario}
+          officers={officers}
+          playerFactionId="shu"
+          soundEnabled={false}
+        />,
+      );
+      const parisNode = presentHtml.match(/<div[^>]*id="city-node-paris"[^>]*>/)?.[0] ?? '';
+      const moscowNode = presentHtml.match(/<div[^>]*id="city-node-moscow"[^>]*>/)?.[0] ?? '';
+      assert.ok(parisNode.includes('法兰西') || parisNode.includes('法国'), 'expected Paris owned by France in present scenario');
+      assert.ok(moscowNode.includes('俄罗斯') || moscowNode.includes('俄'), 'expected Moscow owned by Russia in present scenario');
+    }
   });
 });
 

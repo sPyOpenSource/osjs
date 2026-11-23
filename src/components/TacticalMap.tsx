@@ -89,6 +89,7 @@ export interface City {
   region: string;
   theater: AsiaTheater;
   description: string;
+  tier?: 'city' | 'metropolis';
 }
 
 export const EURASIA_THEATERS: { id: AsiaTheater; name: string; title: string; desc: string; icon: string }[] = [
@@ -104,11 +105,14 @@ export const EURASIA_THEATERS: { id: AsiaTheater; name: string; title: string; d
 
 export const ASIA_THEATERS = EURASIA_THEATERS;
 
-const CITIES: City[] = [
+export const CITIES: City[] = [
   // 1. 欧洲与环地中海 (Europe & Mediterranean)
+  { id: 'london', name: '伦敦', pinyin: 'London', x: 7.5, y: 20, region: '不列颠', theater: 'europe', tier: 'metropolis', description: '泰晤士河畔不列颠首府，伦蒂尼姆古港。连通北海与大西洋商路之西方巨埠，港口繁盛，雄踞西北海疆。' },
+  { id: 'paris', name: '巴黎', pinyin: 'Paris', x: 11, y: 33, region: '高卢', theater: 'europe', tier: 'metropolis', description: '塞纳河畔高卢核心大都（卢泰西亚）。贯通莱茵防线与地中海之欧陆重镇，文风鼎盛，铁骑与炮阵威震西欧。' },
   { id: 'rome', name: '罗马', pinyin: 'Rome', x: 14, y: 44, region: '意大利', theater: 'europe', description: '罗马帝国元老院与万神庙之都。重装军团严整如移动铁壁，横扫环地中海，条条大路通罗马。' },
   { id: 'carthage', name: '迦太基', pinyin: 'Carthage', x: 12, y: 53, region: '北非', theater: 'europe', description: '北非地中海航海大邦。汉尼拔·巴卡统领数万猛犸战象与精骑在此誓师翻越阿尔卑斯山，威震亚平宁。' },
   { id: 'pella', name: '佩拉・雅典', pinyin: 'Pella & Athens', x: 20, y: 46, region: '希腊', theater: 'europe', description: '马其顿帝国王都佩拉与希腊古典卫城雅典。亚历山大大帝长枪方阵与王家骑兵策源地，东征横扫欧亚非。' },
+  { id: 'constantinople', name: '君士坦丁堡', pinyin: 'Constantinople', x: 23.5, y: 39.5, region: '色雷斯', theater: 'europe', tier: 'metropolis', description: '扼守博斯普鲁斯海峡的千年帝都，三面环海、金角湾坚城如铁，欧亚大陆陆海交汇第一枢纽。' },
   { id: 'alexandria', name: '亚历山大港', pinyin: 'Alexandria', x: 24, y: 56, region: '埃及', theater: 'europe', description: '尼罗河入海口明珠，托勒密王朝都城与世界灯塔所在。埃及艳后克利奥帕特拉七世在此操盘地中海风云。' },
 
   // 2. 近东与萨珊波斯 (Near East & Persian Empires)
@@ -124,6 +128,7 @@ const CITIES: City[] = [
 
   // 4. 欧亚北方大草原与游牧汗庭 (Eurasian Steppe & Nomads)
   { id: 'pontic_steppe', name: '萨尔马提亚', pinyin: 'Sarmatia', x: 28, y: 26, region: '黑海草原', theater: 'steppe', description: '顿河与黑海北岸欧亚大草原西端。斯基泰与萨尔马提亚重铠具装骑兵驰骋的原野，西方游牧控弦诸部集聚之所。' },
+  { id: 'moscow', name: '莫斯科', pinyin: 'Moscow', x: 35, y: 18, region: '罗斯', theater: 'steppe', tier: 'metropolis', description: '莫斯科河畔北疆重都。广袤森林草原拱卫克里姆林坚壁，扼守伏尔加与东欧商道，控引极北冰雪万里疆土。' },
   { id: 'longcheng', name: '漠北龙城', pinyin: 'Dragon City', x: 65, y: 18, region: '瀚海', theater: 'steppe', description: '匈奴单于祭天大会王庭。冒顿单于统一北方草原控弦三十万，鸣镝号令风卷残云，勒石燕然与漠北决战之地。' },
   { id: 'xianbei', name: '鲜卑汗庭', pinyin: 'Xianbei', x: 71, y: 19, region: '漠北', theater: 'steppe', description: '北方草原游牧部落联盟核心。檀石槐一统各部后控弦数十万，轲比能雄踞大漠，骑射如风。' },
 
@@ -144,6 +149,7 @@ const CITIES: City[] = [
   { id: 'yamatai', name: '邪马台', pinyin: 'Yamatai', x: 94, y: 40, region: '瀛洲', theater: 'eastsea', description: '东海日本列岛古国，由卑弥呼女王统治。景初二年（239年）遣使泛海朝贡，魏明帝特赐金印紫绶封为「亲魏倭王」。' },
 
   // 7. 岭南交州 (Southeast Asia)
+  { id: 'guangzhou', name: '广州', pinyin: 'Guangzhou', x: 78, y: 64, region: '岭南', theater: 'southeast', tier: 'metropolis', description: '番禺南海大都会，海上丝绸之路东方起点。珠江入海门户，商船云集、人口殷盛，沟通江南与南洋诸邦。' },
   { id: 'jiaozhi', name: '交趾', pinyin: 'Jiaozhi', x: 72, y: 75, region: '交广', theater: 'southeast', description: '汉末士燮割据岭南交州之治所（今越南红河三角洲龙编）。百越通海第一大港，输出象牙、翡翠与南珠，后归孙吴。' }
 ];
 
@@ -169,9 +175,12 @@ export function getNearbyTargetCities(originId: string, cities: City[] = CITIES)
 const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string> => {
   const baseRonin: Record<string, string> = {
     // 欧洲与地中海
+    london: 'rome',
+    paris: 'rome',
     rome: 'rome',
     carthage: 'carthage',
     pella: 'macedon',
+    constantinople: 'rome',
     alexandria: 'carthage',
     // 中东与波斯
     antioch: 'macedon',
@@ -184,6 +193,7 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
     dunhuang: 'ronin',
     // 欧亚草原
     pontic_steppe: 'steppe',
+    moscow: 'steppe',
     longcheng: 'steppe',
     xianbei: 'steppe',
     // 华夏中原
@@ -201,6 +211,7 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
     xiangping: 'ronin',
     yamatai: 'yamatai',
     // 南海交广
+    guangzhou: 'ronin',
     jiaozhi: 'ronin'
   };
 
@@ -234,6 +245,7 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
         dunhuang: 'wei', // Cao Cao secured Hexi
         jingzhou: 'shu', // Liu Bei core
         jianye: 'wu',
+        guangzhou: 'wu',
         jiaozhi: 'wu' // Shi Xie pledged allegiance to Sun Quan
       };
     case 'jing': // 219 AD
@@ -251,6 +263,7 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
         chengdu: 'shu',
         jingzhou: 'shu', // Guan Yu defends Jingzhou
         jianye: 'wu',
+        guangzhou: 'wu',
         jiaozhi: 'wu'
       };
     case 'northern': // 227 AD
@@ -268,21 +281,26 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
         chengdu: 'shu',
         jingzhou: 'wu', // Wu seized Jingzhou
         jianye: 'wu',
+        guangzhou: 'wu',
         jiaozhi: 'wu'
       };
     case 'present': // 2026 AD multipolar world order
       return {
         ...baseRonin,
         // 欧洲与地中海
+        london: 'europe',
+        paris: 'france',
         rome: 'europe',
         carthage: 'france',
         pella: 'germany',
+        constantinople: 'europe',
         alexandria: 'netherlands',
         // 中东与黑海/欧亚草原
         antioch: 'france',
         ctesiphon: 'persia',
         samarkand: 'persia',
         pontic_steppe: 'russia',
+        moscow: 'russia',
         longcheng: 'russia',
         xianbei: 'russia',
         // 印太与美利坚前沿盟友体系
@@ -303,6 +321,7 @@ const getScenarioDefaultOwnership = (scenarioId: string): Record<string, string>
         chengdu: 'ronin',
         jingzhou: 'ronin',
         jianye: 'ronin',
+        guangzhou: 'ronin',
         jiaozhi: 'ronin'
       };
     default:
@@ -523,10 +542,10 @@ export default function TacticalMap({
     }
   };
   const [selectedTheater, setSelectedTheater] = useState<AsiaTheater>('all');
-  const [show190Border, setShow190Border] = useState(true);
-  const [showTradeRoutes, setShowTradeRoutes] = useState(true);
+  const [show190Border, setShow190Border] = useState(false);
+  const [showTradeRoutes, setShowTradeRoutes] = useState(false);
   const [showMigrations, setShowMigrations] = useState(true);
-  const [showTopography, setShowTopography] = useState(true);
+  const [showTopography, setShowTopography] = useState(false);
   const [isWideView, setIsWideView] = useState(false);
   // Double-click zoom for the tactical map canvas
   const [mapZoom, setMapZoom] = useState(1);
@@ -554,12 +573,20 @@ export default function TacticalMap({
   const [cityStats, setCityStats] = useState<Record<string, { prosperity: number; defense: number; grain: number; population: number }>>(() => {
     const stats: Record<string, { prosperity: number; defense: number; grain: number; population: number }> = {};
     CITIES.forEach(c => {
-      stats[c.id] = {
-        prosperity: 65 + Math.floor(Math.random() * 20),
-        defense: 70 + Math.floor(Math.random() * 20),
-        grain: 1200 + Math.floor(Math.random() * 2000),
-        population: 82000 + Math.floor(Math.random() * 110000)
-      };
+      const isMetropolis = c.tier === 'metropolis';
+      stats[c.id] = isMetropolis
+        ? {
+            prosperity: 82 + Math.floor(Math.random() * 14),
+            defense: 80 + Math.floor(Math.random() * 14),
+            grain: 2600 + Math.floor(Math.random() * 1800),
+            population: 240000 + Math.floor(Math.random() * 140000),
+          }
+        : {
+            prosperity: 65 + Math.floor(Math.random() * 20),
+            defense: 70 + Math.floor(Math.random() * 20),
+            grain: 1200 + Math.floor(Math.random() * 2000),
+            population: 82000 + Math.floor(Math.random() * 110000),
+          };
     });
     return stats;
   });
@@ -1873,20 +1900,21 @@ export default function TacticalMap({
           <div className={`grid grid-cols-1 ${isWideView ? 'lg:grid-cols-1' : 'lg:grid-cols-12'} gap-6`}>
           
           {/* SVG Interactive Map */}
-          <div className={`${isWideView ? 'w-full' : 'lg:col-span-8'} bg-slate-950 p-4 rounded-2xl border border-slate-900 flex flex-col justify-between relative overflow-hidden min-h-[460px]`}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 z-10">
-              <div className="flex flex-wrap gap-2">
+          <div className={`${isWideView ? 'w-full' : 'lg:col-span-8'} bg-slate-950 p-3.5 rounded-2xl border border-slate-900 flex flex-col justify-between relative overflow-hidden min-h-[460px]`}>
+            <div className="flex items-center justify-between gap-2 mb-2.5 z-10">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 {FACTIONS.filter(f => f.id !== 'ronin').map(f => (
-                  <div key={f.id} className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: f.color }} />
-                    <span className="text-[9px] text-slate-400 font-sans font-medium">{f.name.slice(0, 2)}</span>
+                  <div key={f.id} className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: f.color }} />
+                    <span className="text-[10.5px] text-slate-400 font-sans">{f.name.slice(0, 2)}</span>
                   </div>
                 ))}
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-slate-500" />
-                  <span className="text-[9px] text-slate-500 font-sans">异邦/中立</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-slate-500 shrink-0" />
+                  <span className="text-[10.5px] text-slate-500 font-sans">中立</span>
                 </div>
               </div>
+              <span className="text-[10px] font-mono text-slate-600 hidden sm:inline">双击缩放</span>
             </div>
 
             {/* Interactive SVG Canvas */}
@@ -1905,7 +1933,7 @@ export default function TacticalMap({
                 <defs>
                   {/* Grid */}
                   <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" strokeWidth="0.5" opacity="0.25" />
+                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" strokeWidth="0.5" opacity="0.12" />
                   </pattern>
 
                   {/* Ocean Gradient */}
@@ -1993,65 +2021,58 @@ export default function TacticalMap({
                 />
 
                 {/* Inland Seas and Major Water Bodies */}
-                {/* Mediterranean Sea (地中海) */}
+                {/* Mediterranean Sea */}
                 <path 
-                  d="M 48 348 Q 75 330 100 320 Q 120 310 135 315 L 140 335 Q 165 345 185 335 Q 215 320 225 300 Q 240 315 255 330 L 245 362 Q 195 372 165 385 Q 125 358 115 358 Q 75 362 48 348 Z" 
+                  d="M 48 348 Q 75 330 100 320 Q 120 310 135 315 L 140 335 Q 165 345 185 335 Q 215 320 225 300 Q 240 315 255 330 L 245 362 Q 195 372 165 385 Q 125 358 115 358 Q 75 362 48 348 Z"
                   fill="url(#inlandWaterGrad)" 
                   stroke="#1e293b" 
                   strokeWidth="0.8" 
                 />
-                <text x="145" y="358" fill="#38bdf8" className="text-[8px] font-serif italic opacity-60">地中海</text>
 
-                {/* Italian Peninsula & Sicily (亚平宁半岛与西西里) */}
+                {/* Italian Peninsula & Sicily */}
                 <path d="M 128 260 L 146 288 L 158 316 L 142 322 L 132 292 L 122 268 Z" fill="#0c182c" stroke="#334155" strokeWidth="0.9" />
                 <path d="M 139 330 Q 149 330 145 340 Q 135 338 139 330 Z" fill="#0c182c" stroke="#334155" strokeWidth="0.8" />
-                <text x="148" y="342" fill="#64748b" className="text-[6.5px] font-mono">西西里</text>
 
-                {/* Greek Peninsula, Peloponnese & Crete (希腊半岛与克里特) */}
+                {/* Greek Peninsula, Peloponnese & Crete */}
                 <path d="M 194 275 L 208 285 L 204 308 L 194 304 Z" fill="#0c182c" stroke="#334155" strokeWidth="0.8" />
                 <path d="M 205 330 Q 225 328 220 336 Q 205 336 205 330 Z" fill="#0c182c" stroke="#334155" strokeWidth="0.8" />
-                <text x="212" y="340" fill="#64748b" className="text-[6.5px] font-mono">克里特</text>
 
-                {/* Cyprus (塞浦路斯) */}
+                {/* Cyprus */}
                 <path d="M 264 322 Q 275 320 272 326 Q 262 326 264 322 Z" fill="#0c182c" stroke="#334155" strokeWidth="0.7" />
 
-                {/* Black Sea (黑海) */}
+                {/* Black Sea */}
                 <path 
                   d="M 240 232 Q 270 218 295 228 Q 300 252 280 262 Q 250 256 240 232 Z" 
                   fill="url(#inlandWaterGrad)" 
                   stroke="#1e293b" 
                   strokeWidth="0.9" 
                 />
-                <text x="260" y="246" fill="#38bdf8" className="text-[7.5px] font-serif italic opacity-55">黑海</text>
 
-                {/* Caspian Sea (里海) */}
+                {/* Caspian Sea */}
                 <path 
                   d="M 342 208 Q 358 212 362 238 Q 358 268 348 288 Q 336 278 338 244 Q 338 218 342 208 Z" 
                   fill="url(#inlandWaterGrad)" 
                   stroke="#1e293b" 
                   strokeWidth="0.9" 
                 />
-                <text x="345" y="250" fill="#38bdf8" className="text-[7.5px] font-serif italic opacity-55">里海</text>
 
-                {/* Red Sea (红海) */}
+                {/* Red Sea */}
                 <path 
                   d="M 260 372 L 285 458 L 275 464 L 250 382 Z" 
                   fill="url(#inlandWaterGrad)" 
                   stroke="#1e293b" 
                   strokeWidth="0.8" 
                 />
-                <text x="262" y="425" fill="#38bdf8" className="text-[7px] font-serif italic opacity-50">红海</text>
 
-                {/* Persian Gulf (波斯湾) */}
+                {/* Persian Gulf */}
                 <path 
                   d="M 322 362 Q 346 376 370 410 L 360 416 Q 336 386 316 366 Z" 
                   fill="url(#inlandWaterGrad)" 
                   stroke="#1e293b" 
                   strokeWidth="0.8" 
                 />
-                <text x="338" y="394" fill="#38bdf8" className="text-[7.5px] font-serif italic opacity-50">波斯湾</text>
 
-                {/* Baltic Sea (波罗的海) */}
+                {/* Baltic Sea */}
                 <path 
                   d="M 145 150 Q 160 140 170 170 Q 155 190 145 180 Z" 
                   fill="url(#inlandWaterGrad)" 
@@ -2059,319 +2080,81 @@ export default function TacticalMap({
                   strokeWidth="0.7" 
                 />
 
-                {/* British Isles (不列颠群岛) */}
+                {/* British Isles */}
                 <g id="british-isles" className="opacity-90">
-                  {/* Great Britain */}
                   <path d="M 66 172 Q 80 162 84 190 Q 75 224 65 214 Q 60 190 66 172 Z" fill="#0c182c" stroke="#334155" strokeWidth="0.8" />
-                  <text x="68" y="195" fill="#64748b" className="text-[6.5px] font-mono">不列颠</text>
-                  {/* Ireland */}
                   <path d="M 44 186 Q 54 182 52 204 Q 42 214 44 186 Z" fill="#0c182c" stroke="#334155" strokeWidth="0.7" />
                 </g>
 
-                {/* Japanese Archipelago (Honshu, Hokkaido, Kyushu/Shikoku) */}
+                {/* Japanese Archipelago */}
                 <g id="japan-archipelago" className="opacity-90">
-                  {/* Hokkaido */}
                   <path d="M 945 110 Q 970 100 978 128 Q 950 146 945 110 Z" fill="#0c182c" stroke="#334155" strokeWidth="1" />
-                  {/* Honshu */}
                   <path d="M 915 168 Q 955 182 980 216 Q 958 264 925 244 Q 912 205 915 168 Z" fill="#0c182c" stroke="#334155" strokeWidth="1" />
-                  {/* Kyushu & Shikoku */}
                   <path d="M 902 254 Q 926 244 918 282 Q 890 278 902 254 Z" fill="#0c182c" stroke="#334155" strokeWidth="1" />
-                  <text x="948" y="220" fill="#f472b6" className="text-[7.5px] font-serif font-bold">扶桑东瀛</text>
                 </g>
 
                 {/* Offshore Asian Islands */}
-                {/* Taiwan (夷州) */}
                 <path d="M 816 448 Q 826 472 820 498 Q 808 472 816 448 Z" fill="#0c1a2f" stroke="#334155" strokeWidth="0.8" />
-                <text x="826" y="475" fill="#64748b" className="text-[7px] font-mono">夷州</text>
-
-                {/* Hainan (朱崖洲) */}
                 <path d="M 742 516 Q 755 528 748 542 Q 734 532 742 516 Z" fill="#0c1a2f" stroke="#334155" strokeWidth="0.8" />
-                <text x="754" y="534" fill="#64748b" className="text-[7px] font-mono">朱崖洲</text>
-
-                {/* Sri Lanka (天竺狮子国) */}
                 <path d="M 498 596 Q 508 605 502 615 Q 492 610 498 596 Z" fill="#0c1a2f" stroke="#334155" strokeWidth="0.8" />
-                <text x="508" y="612" fill="#64748b" className="text-[6.5px] font-mono">狮子国</text>
+
+                {/* Subtle core rivers (always crisp, zero text clutter) */}
+                <path d="M 645 300 Q 685 240 735 220 T 755 248 T 725 290 T 780 265 T 820 255" fill="none" stroke="url(#riverGradient)" strokeWidth="2.4" strokeLinecap="round" opacity="0.4" />
+                <path d="M 635 365 Q 675 375 700 345 T 755 352 T 805 342 T 845 330" fill="none" stroke="url(#riverGradient)" strokeWidth="2.6" strokeLinecap="round" opacity="0.4" />
 
                 {/* Topography Layer: Eurasian Mountains, Deserts, Lakes, Rivers */}
                 {showTopography && (
                   <g id="topography-layer" className="transition-opacity duration-300">
-                    {/* Lake Baikal (北海 / 贝加尔湖) */}
-                    <path 
-                      d="M 680 82 Q 705 55 715 82 Q 695 110 680 82 Z" 
-                      fill="#0284c7" 
-                      opacity="0.55" 
-                      stroke="#38bdf8" 
-                      strokeWidth="1" 
-                    />
-                    <text x="688" y="74" fill="#38bdf8" className="text-[8px] font-serif font-bold italic opacity-75">北海 (贝加尔湖)</text>
-
-                    {/* Alps (阿尔卑斯山脉 - Europe) */}
-                    <path d="M 105 252 Q 130 242 155 254" fill="none" stroke="#64748b" strokeWidth="2.2" strokeDasharray="3 2" opacity="0.7" />
-                    <text x="115" y="246" fill="#94a3b8" className="text-[7px] font-mono opacity-70">阿尔卑斯山</text>
-
-                    {/* Caucasus Range (高加索山脉 - between Black Sea & Caspian Sea) */}
-                    <path d="M 295 236 Q 320 228 340 238" fill="none" stroke="#64748b" strokeWidth="2" strokeDasharray="3 2" opacity="0.65" />
-                    <text x="300" y="232" fill="#94a3b8" className="text-[6.8px] font-mono opacity-65">高加索山脉</text>
-
-                    {/* Zagros Range (扎格罗斯山脉 - Persia) */}
-                    <path d="M 330 320 Q 350 340 365 365" fill="none" stroke="#64748b" strokeWidth="2" strokeDasharray="3 2" opacity="0.65" />
-                    <text x="345" y="338" fill="#94a3b8" className="text-[6.8px] font-mono opacity-65">扎格罗斯山</text>
-
-                    {/* Taklamakan Desert / Gobi Sand dune texture */}
-                    <ellipse cx="510" cy="235" rx="70" ry="26" fill="url(#desertPattern)" stroke="#a16207" strokeWidth="0.5" strokeDasharray="3 3" opacity="0.7" />
-                    <text x="510" y="238" fill="#ca8a04" className="text-[8px] font-serif italic opacity-60 text-center" textAnchor="middle">塔克拉玛干瀚海大漠</text>
-
-                    {/* Mongolian Gobi Desert */}
-                    <ellipse cx="680" cy="140" rx="75" ry="22" fill="url(#desertPattern)" stroke="#a16207" strokeWidth="0.5" strokeDasharray="3 3" opacity="0.6" />
-                    <text x="680" y="144" fill="#ca8a04" className="text-[8px] font-serif italic opacity-55 text-center" textAnchor="middle">瀚海大漠</text>
-
-                    {/* Himalayas & Tibetan Plateau (青藏高原 / 喜马拉雅雪脉) */}
-                    <polygon 
-                      points="440,320 510,310 590,345 610,405 570,435 490,420 445,365" 
-                      fill="#0e1e36" 
-                      stroke="#334155" 
-                      strokeWidth="1.2" 
-                    />
-                    <path 
-                      d="M 450 360 L 475 332 L 500 350 L 530 322 L 560 345 L 585 335 L 600 370 L 575 395 L 545 375 L 515 400 L 485 385 Z" 
-                      fill="url(#snowPeakGrad)" 
-                      stroke="#cbd5e1" 
-                      strokeWidth="0.8" 
-                      opacity="0.85" 
-                    />
-                    <text x="525" y="365" fill="#e2e8f0" className="text-[8.5px] font-serif font-bold tracking-wider opacity-85 text-center" textAnchor="middle">喜马拉雅雪峰・世界屋脊</text>
-
-                    {/* Tianshan & Kunlun Ranges */}
-                    <path d="M 460 220 Q 510 210 560 228" fill="none" stroke="#475569" strokeWidth="2" strokeDasharray="4 3" opacity="0.65" />
-                    <text x="490" y="215" fill="#94a3b8" className="text-[7px] font-mono opacity-65">天山山脉</text>
-
-                    <path d="M 465 275 Q 520 270 575 282" fill="none" stroke="#475569" strokeWidth="2" strokeDasharray="4 3" opacity="0.65" />
-                    <text x="500" y="270" fill="#94a3b8" className="text-[7px] font-mono opacity-65">昆仑山脉</text>
-
-                    {/* Qinling Range (秦岭) */}
-                    <path d="M 645 320 Q 675 330 705 322" fill="none" stroke="#475569" strokeWidth="2" strokeDasharray="3 3" opacity="0.6" />
-                    <text x="665" y="318" fill="#94a3b8" className="text-[7px] font-mono opacity-60">秦岭天堑</text>
-
-                    {/* Yinshan Range (阴山 - Steppe Border) */}
-                    <path d="M 660 190 Q 720 180 770 195" fill="none" stroke="#475569" strokeWidth="2" strokeDasharray="4 3" opacity="0.55" />
-                    <text x="705" y="180" fill="#94a3b8" className="text-[7px] font-mono opacity-60">阴山古道</text>
-
-                    {/* Eurasian River Systems */}
-                    {/* Danube (多瑙河) */}
-                    <path d="M 130 225 Q 170 232 210 226 T 245 234" fill="none" stroke="url(#riverGradient)" strokeWidth="2.4" strokeLinecap="round" opacity="0.6" />
-                    <text x="170" y="222" fill="#38bdf8" className="text-[7px] font-serif italic opacity-50">多瑙河</text>
-
-                    {/* Nile River (尼罗河) */}
-                    <path d="M 240 365 Q 242 410 248 460" fill="none" stroke="url(#riverGradient)" strokeWidth="2.6" strokeLinecap="round" opacity="0.6" />
-                    <text x="248" y="410" fill="#38bdf8" className="text-[7px] font-serif italic opacity-55">尼罗河</text>
-
-                    {/* Tigris & Euphrates (两河流域 / 美索不达米亚) */}
-                    <path d="M 285 300 Q 310 325 340 365" fill="none" stroke="url(#riverGradient)" strokeWidth="2.5" strokeLinecap="round" opacity="0.6" />
-                    <path d="M 295 295 Q 320 320 348 358" fill="none" stroke="url(#riverGradient)" strokeWidth="2.5" strokeLinecap="round" opacity="0.5" />
-                    <text x="305" y="315" fill="#38bdf8" className="text-[7px] font-serif italic opacity-55">两河流域</text>
-
-                    {/* Indus River (印度河) */}
-                    <path d="M 445 320 Q 435 370 422 418" fill="none" stroke="url(#riverGradient)" strokeWidth="2.6" strokeLinecap="round" opacity="0.55" />
-                    <text x="415" y="365" fill="#38bdf8" className="text-[7px] font-serif italic opacity-50">印度河</text>
-
-                    {/* Ganges River (恒河) */}
-                    <path d="M 485 365 Q 520 385 550 415" fill="none" stroke="url(#riverGradient)" strokeWidth="2.6" strokeLinecap="round" opacity="0.55" />
-                    <text x="510" y="390" fill="#38bdf8" className="text-[7px] font-serif italic opacity-50">恒河</text>
-
-                    {/* Yellow River 黄河 (Ordos Loop) */}
-                    <path d="M 645 300 Q 685 240 735 220 T 755 248 T 725 290 T 780 265 T 820 255" fill="none" stroke="url(#riverGradient)" strokeWidth="3.6" strokeLinecap="round" opacity="0.75" />
-                    <text x="735" y="240" fill="#38bdf8" className="text-[8.5px] font-serif font-black italic opacity-60">黄河</text>
-
-                    {/* Yangtze River 长江 */}
-                    <path d="M 635 365 Q 675 375 700 345 T 755 352 T 805 342 T 845 330" fill="none" stroke="url(#riverGradient)" strokeWidth="3.8" strokeLinecap="round" opacity="0.75" />
-                    <text x="735" y="365" fill="#38bdf8" className="text-[8.5px] font-serif font-black italic opacity-60">长江天堑</text>
-
-                    {/* Mekong River (湄公河) */}
-                    <path d="M 650 405 Q 670 450 705 500 T 725 560" fill="none" stroke="url(#riverGradient)" strokeWidth="2.8" strokeLinecap="round" opacity="0.6" />
-                    <text x="680" y="475" fill="#38bdf8" className="text-[7px] font-serif italic opacity-50">湄公河</text>
+                    {/* Lake Baikal */}
+                    <path d="M 680 82 Q 705 55 715 82 Q 695 110 680 82 Z" fill="#0284c7" opacity="0.45" stroke="#38bdf8" strokeWidth="1" />
+                    {/* Mountain ranges */}
+                    <path d="M 105 252 Q 130 242 155 254" fill="none" stroke="#64748b" strokeWidth="2" strokeDasharray="3 2" opacity="0.55" />
+                    <path d="M 295 236 Q 320 228 340 238" fill="none" stroke="#64748b" strokeWidth="2" strokeDasharray="3 2" opacity="0.5" />
+                    <path d="M 330 320 Q 350 340 365 365" fill="none" stroke="#64748b" strokeWidth="2" strokeDasharray="3 2" opacity="0.5" />
+                    <ellipse cx="510" cy="235" rx="70" ry="26" fill="url(#desertPattern)" stroke="#a16207" strokeWidth="0.5" strokeDasharray="3 3" opacity="0.55" />
+                    <ellipse cx="680" cy="140" rx="75" ry="22" fill="url(#desertPattern)" stroke="#a16207" strokeWidth="0.5" strokeDasharray="3 3" opacity="0.45" />
+                    <polygon points="440,320 510,310 590,345 610,405 570,435 490,420 445,365" fill="#0e1e36" stroke="#334155" strokeWidth="1" />
+                    <path d="M 450 360 L 475 332 L 500 350 L 530 322 L 560 345 L 585 335 L 600 370 L 575 395 L 545 375 L 515 400 L 485 385 Z" fill="url(#snowPeakGrad)" stroke="#cbd5e1" strokeWidth="0.7" opacity="0.7" />
+                    <path d="M 460 220 Q 510 210 560 228" fill="none" stroke="#475569" strokeWidth="2" strokeDasharray="4 3" opacity="0.5" />
+                    <path d="M 465 275 Q 520 270 575 282" fill="none" stroke="#475569" strokeWidth="2" strokeDasharray="4 3" opacity="0.5" />
+                    <path d="M 645 320 Q 675 330 705 322" fill="none" stroke="#475569" strokeWidth="2" strokeDasharray="3 3" opacity="0.45" />
+                    <path d="M 660 190 Q 720 180 770 195" fill="none" stroke="#475569" strokeWidth="2" strokeDasharray="4 3" opacity="0.45" />
+                    {/* Secondary Rivers */}
+                    <path d="M 130 225 Q 170 232 210 226 T 245 234" fill="none" stroke="url(#riverGradient)" strokeWidth="2" strokeLinecap="round" opacity="0.45" />
+                    <path d="M 240 365 Q 242 410 248 460" fill="none" stroke="url(#riverGradient)" strokeWidth="2.2" strokeLinecap="round" opacity="0.45" />
+                    <path d="M 285 300 Q 310 325 340 365" fill="none" stroke="url(#riverGradient)" strokeWidth="2.2" strokeLinecap="round" opacity="0.45" />
+                    <path d="M 445 320 Q 435 370 422 418" fill="none" stroke="url(#riverGradient)" strokeWidth="2.2" strokeLinecap="round" opacity="0.45" />
+                    <path d="M 485 365 Q 520 385 550 415" fill="none" stroke="url(#riverGradient)" strokeWidth="2.2" strokeLinecap="round" opacity="0.45" />
+                    <path d="M 650 405 Q 670 450 705 500 T 725 560" fill="none" stroke="url(#riverGradient)" strokeWidth="2.2" strokeLinecap="round" opacity="0.45" />
                   </g>
                 )}
 
                 {/* 190 AD Historical Eurasian Dynasties & Empires Borders Layer */}
                 {show190Border && (
                   <g id="eurasian-empires-190-border" className="transition-opacity duration-500">
-                    {/* Glowing Imperial territory tints */}
-                    {/* Han Dynasty */}
-                    <path
-                      d="M 655 230 L 730 200 L 805 210 L 830 240 L 810 270 Q 830 320 840 370 L 820 430 L 780 475 L 720 490 L 655 450 L 635 390 L 580 260 L 640 240 Z"
-                      fill="url(#hanGlow)"
-                      opacity="0.9"
-                    />
-
-                    {/* Roman Empire (SPQR) */}
-                    <path
-                      d="M 85 240 L 140 220 L 210 230 L 255 280 L 285 315 L 260 360 L 230 370 L 120 360 L 75 360 L 65 310 Z"
-                      fill="url(#romeGlow)"
-                      opacity="0.9"
-                    />
-
-                    {/* Persian Empire (Sassanid) */}
-                    <path
-                      d="M 310 280 L 360 270 L 395 320 L 380 380 L 330 385 L 300 330 Z"
-                      fill="url(#persiaGlow)"
-                      opacity="0.85"
-                    />
-
-                    {/* Kushan Empire */}
-                    <path
-                      d="M 430 270 L 490 260 L 535 330 L 510 400 L 440 370 Z"
-                      fill="url(#kushanGlow)"
-                      opacity="0.85"
-                    />
-
-                    {/* Han Great Wall line */}
-                    <path
-                      d="M 590 250 L 645 240 L 690 215 L 740 208 L 790 204 L 830 210"
-                      fill="none"
-                      stroke="#f59e0b"
-                      strokeWidth="2.5"
-                      strokeDasharray="6 4"
-                      opacity="0.75"
-                    />
-                    <text x="690" y="200" fill="#f59e0b" className="text-[8px] font-serif font-black tracking-widest opacity-80">🏯 汉长城烽燧线</text>
-
-                    {/* Eurasian Regional Realm Title Callouts */}
-                    <g id="eurasian-realm-labels" className="select-none font-serif">
-                      {/* Roman Empire */}
-                      <g transform="translate(130, 245)">
-                        <rect x="-4" y="-10" width="105" height="18" rx="3" fill="#0f172a" stroke="#dc2626" strokeWidth="0.8" opacity="0.85" />
-                        <text x="0" y="2" fill="#fca5a5" className="text-[8.5px] font-bold tracking-wider">【罗马帝国】</text>
-                      </g>
-
-                      {/* Carthage & Ptolemaic Egypt */}
-                      <g transform="translate(145, 365)">
-                        <rect x="-4" y="-10" width="105" height="18" rx="3" fill="#0f172a" stroke="#d97706" strokeWidth="0.8" opacity="0.8" />
-                        <text x="0" y="2" fill="#fde68a" className="text-[8px] font-bold tracking-wider">【迦太基与北非埃及】</text>
-                      </g>
-
-                      {/* Sassanid Persia */}
-                      <g transform="translate(325, 275)">
-                        <rect x="-4" y="-10" width="105" height="18" rx="3" fill="#0f172a" stroke="#0d9488" strokeWidth="0.8" opacity="0.85" />
-                        <text x="0" y="2" fill="#99f6e4" className="text-[8.5px] font-bold tracking-wider">【萨珊波斯・拜火国】</text>
-                      </g>
-
-                      {/* Kushan Empire */}
-                      <g transform="translate(445, 280)">
-                        <rect x="-4" y="-10" width="112" height="18" rx="3" fill="#0f172a" stroke="#ca8a04" strokeWidth="0.8" opacity="0.85" />
-                        <text x="0" y="2" fill="#fef08a" className="text-[8.5px] font-bold tracking-wider">【大月氏・贵霜帝国】</text>
-                      </g>
-
-                      {/* Eurasian Steppe Nomads */}
-                      <g transform="translate(630, 105)">
-                        <rect x="-4" y="-10" width="115" height="18" rx="3" fill="#0f172a" stroke="#4f46e5" strokeWidth="0.8" opacity="0.85" />
-                        <text x="0" y="2" fill="#c7d2fe" className="text-[8.5px] font-bold tracking-wider">【欧亚草原・匈奴鲜卑】</text>
-                      </g>
-
-                      {/* Ancient Japan / Yamatai */}
-                      <g transform="translate(895, 215)">
-                        <rect x="-4" y="-10" width="105" height="18" rx="3" fill="#0f172a" stroke="#ec4899" strokeWidth="0.8" opacity="0.85" />
-                        <text x="0" y="2" fill="#fbcfe8" className="text-[8px] font-bold tracking-wider">【东海瀛洲・邪马台】</text>
-                      </g>
-
-                      {/* Unified Han Dynasty Centerpiece */}
-                      <g transform="translate(710, 330)">
-                        <rect x="-100" y="-12" width="200" height="24" rx="4" fill="#1e1b4b" stroke="#f43f5e" strokeWidth="1.2" opacity="0.9" />
-                        <text x="0" y="4" fill="#ffe4e6" className="text-[10.5px] font-serif font-black tracking-[0.25em]" textAnchor="middle">公元190年・华夏三国万邦舆图</text>
-                      </g>
+                    <path d="M 655 230 L 730 200 L 805 210 L 830 240 L 810 270 Q 830 320 840 370 L 820 430 L 780 475 L 720 490 L 655 450 L 635 390 L 580 260 L 640 240 Z" fill="url(#hanGlow)" opacity="0.75" />
+                    <path d="M 85 240 L 140 220 L 210 230 L 255 280 L 285 315 L 260 360 L 230 370 L 120 360 L 75 360 L 65 310 Z" fill="url(#romeGlow)" opacity="0.75" />
+                    <path d="M 310 280 L 360 270 L 395 320 L 380 380 L 330 385 L 300 330 Z" fill="url(#persiaGlow)" opacity="0.7" />
+                    <path d="M 430 270 L 490 260 L 535 330 L 510 400 L 440 370 Z" fill="url(#kushanGlow)" opacity="0.7" />
+                    <path d="M 590 250 L 645 240 L 690 215 L 740 208 L 790 204 L 830 210" fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="6 4" opacity="0.6" />
+                    <g id="eurasian-realm-labels" className="select-none font-serif opacity-55">
+                      <text x="155" y="255" fill="#fca5a5" className="text-[9px] font-bold tracking-widest" textAnchor="middle">罗马</text>
+                      <text x="350" y="330" fill="#99f6e4" className="text-[9px] font-bold tracking-widest" textAnchor="middle">波斯</text>
+                      <text x="480" y="330" fill="#fef08a" className="text-[9px] font-bold tracking-widest" textAnchor="middle">贵霜</text>
+                      <text x="685" y="105" fill="#c7d2fe" className="text-[9px] font-bold tracking-widest" textAnchor="middle">草原</text>
                     </g>
                   </g>
                 )}
 
                 {/* Silk Road & Eurasian Trade Routes Layer */}
                 {showTradeRoutes && (
-                  <g id="trade-routes-layer" className="transition-opacity duration-300">
-                    {/* The Great Overland Silk Road: Rome -> Pella -> Antioch -> Ctesiphon -> Samarkand -> Shule -> Dunhuang -> Chang'an -> Luoyang */}
-                    <path
-                      d="M 140 273 L 200 285 L 280 291 L 340 310 L 400 236 L 490 248 L 600 248 L 670 273 L 710 267"
-                      fill="none"
-                      stroke="#eab308"
-                      strokeWidth="2.4"
-                      strokeDasharray="6 4"
-                      className="animate-dash"
-                      style={{ animation: 'dash 1.8s linear infinite' }}
-                      opacity="0.85"
-                    />
-                    <text x="350" y="235" fill="#fef08a" className="text-[8.5px] font-serif font-bold italic tracking-wide opacity-85">
-                      🐪 全欧亚丝绸之路
-                    </text>
-
-                    {/* Roman Appian & Mediterranean Maritime Route: Rome -> Carthage -> Alexandria -> Antioch */}
-                    <path
-                      d="M 140 273 L 120 329 L 240 347 L 280 291"
-                      fill="none"
-                      stroke="#dc2626"
-                      strokeWidth="1.8"
-                      strokeDasharray="5 3"
-                      className="animate-dash"
-                      style={{ animation: 'dash 2s linear infinite' }}
-                      opacity="0.75"
-                    />
-                    <text x="140" y="325" fill="#fca5a5" className="text-[7.5px] font-serif font-bold italic opacity-75">
-                      🏛️ 罗马环地中海航线
-                    </text>
-
-                    {/* Persian Royal & Steppe Corridor: Ctesiphon -> Samarkand -> Pontic Steppe -> Longcheng */}
-                    <path
-                      d="M 340 310 L 400 236 L 280 161 L 650 112 L 710 118"
-                      fill="none"
-                      stroke="#0d9488"
-                      strokeWidth="1.8"
-                      strokeDasharray="4 4"
-                      className="animate-dash"
-                      style={{ animation: 'dash 2.4s linear infinite' }}
-                      opacity="0.7"
-                    />
-                    <text x="460" y="150" fill="#99f6e4" className="text-[7.5px] font-serif font-bold italic opacity-70">
-                      🏹 欧亚草原丝路商道
-                    </text>
-
-                    {/* Southern Silk Road / Tea-Horse & Maritime: Chang'an -> Chengdu -> Pataliputra -> Purushapura */}
-                    <path
-                      d="M 670 273 L 640 372 L 530 347 L 450 291"
-                      fill="none"
-                      stroke="#10b981"
-                      strokeWidth="1.8"
-                      strokeDasharray="4 3"
-                      opacity="0.75"
-                    />
-                    <text x="540" y="340" fill="#86efac" className="text-[7.5px] font-serif font-bold italic opacity-75">
-                      🍵 蜀身毒道
-                    </text>
-
-                    {/* Maritime Spice Road: Jianye -> Jiaozhi */}
-                    <path
-                      d="M 800 322 Q 810 400 720 465"
-                      fill="none"
-                      stroke="#14b8a6"
-                      strokeWidth="2"
-                      strokeDasharray="5 4"
-                      className="animate-dash"
-                      style={{ animation: 'dash 2.2s linear infinite' }}
-                      opacity="0.75"
-                    />
-                    <text x="735" y="415" fill="#99f6e4" className="text-[7.5px] font-serif font-bold italic opacity-75">
-                      ⛵ 南海海上香料航道
-                    </text>
-
-                    {/* Eastern Maritime Road to Yamatai: Ye -> Xiangping -> Yamatai */}
-                    <path
-                      d="M 740 229 L 830 174 Q 880 210 940 248"
-                      fill="none"
-                      stroke="#f472b6"
-                      strokeWidth="1.8"
-                      strokeDasharray="5 4"
-                      className="animate-dash"
-                      style={{ animation: 'dash 2s linear infinite' }}
-                      opacity="0.75"
-                    />
-                    <text x="860" y="240" fill="#fbcfe8" className="text-[7.5px] font-serif font-bold italic opacity-75">
-                      ⛵ 魏倭东海通海航道
-                    </text>
+                  <g id="trade-routes-layer" className="transition-opacity duration-300 opacity-70">
+                    <path d="M 140 273 L 200 285 L 280 291 L 340 310 L 400 236 L 490 248 L 600 248 L 670 273 L 710 267" fill="none" stroke="#eab308" strokeWidth="2" strokeDasharray="6 4" className="animate-dash" style={{ animation: 'dash 1.8s linear infinite' }} />
+                    <path d="M 140 273 L 120 329 L 240 347 L 280 291" fill="none" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="5 3" />
+                    <path d="M 340 310 L 400 236 L 280 161 L 650 112 L 710 118" fill="none" stroke="#0d9488" strokeWidth="1.5" strokeDasharray="4 4" />
+                    <path d="M 670 273 L 640 372 L 530 347 L 450 291" fill="none" stroke="#10b981" strokeWidth="1.5" strokeDasharray="4 3" />
+                    <path d="M 800 322 Q 810 400 720 465" fill="none" stroke="#14b8a6" strokeWidth="1.6" strokeDasharray="5 4" />
+                    <path d="M 740 229 L 830 174 Q 880 210 940 248" fill="none" stroke="#f472b6" strokeWidth="1.5" strokeDasharray="5 4" />
                   </g>
                 )}
 
@@ -2515,11 +2298,12 @@ export default function TacticalMap({
                 )}
               </svg>
 
-              {/* Render All 24 Eurasian Strategic City Nodes */}
+              {/* Render All Strategic City Nodes (including 5 larger metropolis hubs) */}
               {CITIES.map(city => {
                 const controllerId = cityOwnership[city.id] || 'ronin';
                 const faction = FACTIONS.find(f => f.id === controllerId) || FACTIONS[5];
                 const isSelected = selectedCity.id === city.id;
+                const isMetropolis = city.tier === 'metropolis';
                 
                 const isOrig = effectiveExpeditionOriginId === city.id;
                 const isTarg = effectiveExpeditionTargetId === city.id;
@@ -2530,54 +2314,48 @@ export default function TacticalMap({
                 return (
                   <div 
                     id={`city-node-${city.id}`}
+                    data-city-tier={isMetropolis ? 'metropolis' : 'city'}
                     key={city.id}
                     style={{ left: `${city.x}%`, top: `${city.y}%` }}
-                    className={`absolute -translate-x-1/2 -translate-y-1/2 group cursor-pointer z-20 transition-all duration-300 ${
-                      isFocusedTheater ? 'opacity-100 scale-100' : 'opacity-40 hover:opacity-95 scale-90'
+                    title={`${isMetropolis ? '大都城 · ' : ''}${city.name} · ${city.region} · ${faction.name}${isStationedNum > 0 ? ` (${isStationedNum}将)` : ''}`}
+                    className={`absolute -translate-x-1/2 -translate-y-1/2 group cursor-pointer transition-all duration-200 ${
+                      isSelected || isOrig || isTarg ? 'z-30' : isMetropolis ? 'z-25 hover:z-30' : 'z-20 hover:z-30'
+                    } ${
+                      isFocusedTheater ? 'opacity-100 scale-100' : 'opacity-35 hover:opacity-95 scale-90'
                     }`}
                     onClick={() => {
                       onSetCurrentCity?.(city.name);
                       setMapTab('city-view');
                     }}
                   >
-                    {/* Anchor Pointing Beacon */}
                     <div className="relative flex items-center justify-center">
-                      
-                      {/* Ring Pulse */}
-                      <span 
-                        className={`absolute inline-flex h-6 w-6 rounded-full opacity-60 transition-transform ${
-                          isSelected ? 'scale-125' : 'group-hover:scale-110'
-                        }`}
-                        style={{ 
-                          backgroundColor: `${faction.color}25`,
-                          border: `1.5px solid ${faction.color}` 
-                        }} 
-                      />
-
-                      {/* Expedition Markers badges (ORIG/TARG indicators) */}
-                      {isOrig && (
-                        <span className="absolute -top-7 px-1.5 py-0.5 bg-emerald-500 text-slate-950 font-mono text-[8px] font-black rounded-md border border-emerald-400 z-10 whitespace-nowrap shadow-md">
-                          起
-                        </span>
-                      )}
-                      {isTarg && (
-                        <span className="absolute -top-7 px-1.5 py-0.5 bg-rose-500 text-slate-100 font-mono text-[8px] font-black rounded-md border border-rose-400 z-10 whitespace-nowrap shadow-md">
-                          迄
-                        </span>
+                      {(isSelected || isOrig || isTarg || isMetropolis) && (
+                        <span
+                          className={`absolute inline-flex rounded-full pointer-events-none ${
+                            isMetropolis ? 'h-6 w-6' : 'h-5 w-5'
+                          } ${isSelected || isOrig || isTarg ? 'opacity-85' : 'opacity-45 group-hover:opacity-80'}`}
+                          style={{
+                            border: `1.5px solid ${
+                              isOrig ? '#10b981' : isTarg ? '#f43f5e' : isSelected ? '#fbbf24' : faction.color
+                            }`,
+                          }}
+                        />
                       )}
 
                       {/* Core Point Circle representing City */}
                       <div 
-                        className={`h-3 w-3 rounded-full shadow-inner border transition-all duration-300 ${
-                          isSelected ? 'ring-2 ring-amber-400 scale-125' : 'group-hover:scale-115'
+                        className={`rounded-full border transition-transform duration-200 ${
+                          isMetropolis ? 'h-4 w-4 ring-1 ring-white/25' : 'h-2.5 w-2.5'
+                        } ${
+                          isSelected ? 'ring-2 ring-amber-400 scale-125' : 'group-hover:scale-125'
                         }`}
                         style={{ 
                           backgroundColor: faction.color,
-                          borderColor: isSelected ? '#fbbf24' : '#1e293b'
+                          borderColor: isSelected ? '#fbbf24' : '#0f172a'
                         }} 
                       />
 
-                      {/* Quest anchors: quests whose cityId is this city */}
+                      {/* Quest marker */}
                       {(initialQuests ?? [])
                         .filter(q => q.cityId === city.id)
                         .filter(q => {
@@ -2588,23 +2366,26 @@ export default function TacticalMap({
                           <span
                             key={q.id}
                             data-testid={`quest-marker-${q.id}`}
-                            className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center justify-center"
+                            className="absolute -top-2.5 -right-2.5 h-2 w-2 rounded-full bg-amber-400 border border-slate-950"
                             title={q.title}
-                          >
-                            <span className="h-2.5 w-2.5 rounded-full bg-amber-400 border-2 border-slate-900 shadow" />
-                          </span>
+                          />
                         ))}
 
-                      {/* Label Placement */}
-                      <span className={`absolute top-3.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-md text-[9.5px] font-serif font-black tracking-wider shadow-md whitespace-nowrap border z-10 transition-colors ${
+                      {/* Clean Single-Line City Label */}
+                      <span className={`absolute left-1/2 -translate-x-1/2 rounded font-serif leading-tight whitespace-nowrap border transition-colors ${
+                        isMetropolis ? 'top-3.5 px-2 py-0.5 text-[10.5px] font-bold' : 'top-3 px-1.5 py-px text-[9.5px]'
+                      } ${
                         isSelected 
-                          ? 'bg-amber-400 text-slate-950 border-amber-500 font-bold' 
-                          : 'bg-slate-950/90 text-slate-300 border-slate-800'
+                          ? 'bg-amber-400 text-slate-950 border-amber-400 font-bold' 
+                          : isOrig
+                            ? 'bg-emerald-950/95 text-emerald-300 border-emerald-500/60 font-semibold'
+                            : isTarg
+                              ? 'bg-rose-950/95 text-rose-300 border-rose-500/60 font-semibold'
+                              : isMetropolis
+                                ? 'bg-slate-950/95 text-slate-100 border-slate-700 group-hover:text-amber-300 group-hover:border-amber-500/60'
+                                : 'bg-slate-950/85 text-slate-300 border-slate-800/80 group-hover:text-amber-300 group-hover:border-slate-600'
                       }`}>
                         {city.name}
-                        <span className="text-[7px] font-light font-mono block text-center leading-none opacity-80 uppercase mt-0.5">
-                          {isStationedNum > 0 ? `${isStationedNum}将` : city.region}
-                        </span>
                       </span>
                     </div>
                   </div>

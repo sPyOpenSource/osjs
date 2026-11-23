@@ -2340,7 +2340,7 @@ export default function TacticalMap({
                       opacity="0.75"
                     />
                     <text x="540" y="340" fill="#86efac" className="text-[7.5px] font-serif font-bold italic opacity-75">
-                      🍵 蜀身毒道 (Tea Horse Route)
+                      🍵 蜀身毒道
                     </text>
 
                     {/* Maritime Spice Road: Jianye -> Jiaozhi */}

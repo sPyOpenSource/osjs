@@ -77,9 +77,8 @@ export default function WorldSituation2026({
     (f): f is Faction => Boolean(f)
   );
   const currentActiveEvents = activeEvents(worldState, currentTick);
-  const pendingEvents = EVENTS_2026.filter(
-    e => worldState.occurred.includes(e.id) && !(e.id in worldState.responses)
-  );
+  const occurredEvents = EVENTS_2026.filter(e => worldState.occurred.includes(e.id));
+  const pendingEvents = occurredEvents.filter(e => !(e.id in worldState.responses));
 
   return (
     <section className="world2026-panel" aria-label="全球局势">
@@ -187,84 +186,87 @@ export default function WorldSituation2026({
           <span className="trade-muted">随顶部历史时钟推进逐月触发，每次响应将永久改写大国稳定与关系</span>
         </div>
 
-        <div className="world2026-events-grid">
-          {EVENTS_2026.map(event => {
-            const hasOccurred = worldState.occurred.includes(event.id);
-            const chosenIndex = worldState.responses[event.id];
-            const hasResponded = chosenIndex !== undefined;
-            const isActiveNow = currentActiveEvents.some(e => e.id === event.id);
-            const category = CATEGORY_META[event.category ?? 'trade'];
+        {occurredEvents.length > 0 ? (
+          <div className="world2026-events-grid">
+            {occurredEvents.map(event => {
+              const chosenIndex = worldState.responses[event.id];
+              const hasResponded = chosenIndex !== undefined;
+              const isActiveNow = currentActiveEvents.some(e => e.id === event.id);
+              const category = CATEGORY_META[event.category ?? 'trade'];
 
-            return (
-              <article
-                key={event.id}
-                className={`world2026-event-card ${hasOccurred && !hasResponded ? 'is-pending' : ''} ${
-                  !hasOccurred ? 'is-upcoming' : ''
-                }`}
-              >
-                <div className="disaster-card-head">
-                  <span className={`world2026-category ${category.badgeClass}`}>
-                    {renderCategoryIcon(event.category)} {category.label}
-                  </span>
-                  <span className="trade-muted">
-                    <Clock size={12} className="inline align-[-2px] mr-1" />
-                    2026年 {event.month}月 ·{' '}
-                    {!hasOccurred ? '待触发' : isActiveNow ? '生效中' : '历史节点'}
-                  </span>
-                </div>
-
-                <h4>{event.title}</h4>
-                <p className="disaster-desc">{event.description}</p>
-
-                {event.trade && (
-                  <div className="disaster-impact-meta">
-                    <span>
-                      贸易影响：
-                      {event.trade.embargo
-                        ? '双边贸易禁运阻断'
-                        : `运费倍率 ×${event.trade.multiplier.toFixed(2)}`}
+              return (
+                <article
+                  key={event.id}
+                  data-testid={`world2026-event-${event.id}`}
+                  className={`world2026-event-card ${!hasResponded ? 'is-pending' : ''}`}
+                >
+                  <div className="disaster-card-head">
+                    <span className={`world2026-category ${category.badgeClass}`}>
+                      {renderCategoryIcon(event.category)} {category.label}
                     </span>
-                    <span>
-                      {event.trade.pair
-                        ? `特定双边 (${event.trade.pair.join(' ↔ ')})`
-                        : event.trade.factions
-                        ? `波及 ${event.trade.factions.length} 方`
-                        : '全球航运联动'}
+                    <span className="trade-muted">
+                      <Clock size={12} className="inline align-[-2px] mr-1" />
+                      2026年 {event.month}月 ·{' '}
+                      {isActiveNow ? '生效中' : '历史节点'}
                     </span>
                   </div>
-                )}
 
-                {!hasOccurred ? (
-                  <p className="trade-muted">推进游戏时间至 2026年 {event.month}月 上旬即可触发此事件。</p>
-                ) : hasResponded ? (
-                  <div className="disaster-resolved-box">
-                    <CheckCircle2 size={14} />
-                    <span>
-                      已执行：{event.choices[chosenIndex]?.label}（{event.choices[chosenIndex]?.summary}）
-                    </span>
-                  </div>
-                ) : (
-                  <div className="disaster-choices">
-                    {event.choices.map((choice, idx) => (
-                      <div key={choice.label} className="disaster-choice-item">
-                        <div className="disaster-choice-text">
-                          <strong>{choice.label}</strong>
-                          <span className="trade-muted">{choice.summary}</span>
+                  <h4>{event.title}</h4>
+                  <p className="disaster-desc">{event.description}</p>
+
+                  {event.trade && (
+                    <div className="disaster-impact-meta">
+                      <span>
+                        贸易影响：
+                        {event.trade.embargo
+                          ? '双边贸易禁运阻断'
+                          : `运费倍率 ×${event.trade.multiplier.toFixed(2)}`}
+                      </span>
+                      <span>
+                        {event.trade.pair
+                          ? `特定双边 (${event.trade.pair.join(' ↔ ')})`
+                          : event.trade.factions
+                          ? `波及 ${event.trade.factions.length} 方`
+                          : '全球航运联动'}
+                      </span>
+                    </div>
+                  )}
+
+                  {hasResponded ? (
+                    <div className="disaster-resolved-box">
+                      <CheckCircle2 size={14} />
+                      <span>
+                        已执行：{event.choices[chosenIndex]?.label}（{event.choices[chosenIndex]?.summary}）
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="disaster-choices">
+                      {event.choices.map((choice, idx) => (
+                        <div key={choice.label} className="disaster-choice-item">
+                          <div className="disaster-choice-text">
+                            <strong>{choice.label}</strong>
+                            <span className="trade-muted">{choice.summary}</span>
+                          </div>
+                          <Button
+                            id={`btn-world2026-${event.id}-${idx}`}
+                            onClick={() => onRespondEvent(event.id, idx)}
+                          >
+                            采纳方案
+                          </Button>
                         </div>
-                        <Button
-                          id={`btn-world2026-${event.id}-${idx}`}
-                          onClick={() => onRespondEvent(event.id, idx)}
-                        >
-                          采纳方案
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </article>
-            );
-          })}
-        </div>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="disaster-empty-box">
+            <Clock size={16} />
+            <span>当前尚无已触发的地缘事件，推进历史时钟即可逐月揭晓局势推演。</span>
+          </div>
+        )}
       </div>
     </section>
   );

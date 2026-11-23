@@ -67,31 +67,6 @@ export default function PeopleMigrationsPanel({
     [factions],
   );
 
-  const defaultOriginId = useMemo(() => {
-    const owned = cities.find(c => cityOwnership[c.id] === playerFactionId);
-    return owned?.id ?? cities[0]?.id ?? '';
-  }, [cities, cityOwnership, playerFactionId]);
-
-  const defaultTargetId = useMemo(() => {
-    const other = cities.find(c => c.id !== defaultOriginId);
-    return other?.id ?? '';
-  }, [cities, defaultOriginId]);
-
-  const [originCityId, setOriginCityId] = useState<string>(defaultOriginId);
-  const [targetCityId, setTargetCityId] = useState<string>(defaultTargetId);
-  const [resettlementAmount, setResettlementAmount] = useState<number>(5000);
-  const [causeFilter, setCauseFilter] = useState<MigrationCause | 'all'>('all');
-  const [formError, setFormError] = useState<string>('');
-  const [formNotice, setFormNotice] = useState<string>('');
-
-  const resolvedOriginId = cities.some(c => c.id === originCityId)
-    ? originCityId
-    : defaultOriginId;
-  const resolvedTargetId =
-    cities.some(c => c.id === targetCityId) && targetCityId !== resolvedOriginId
-      ? targetCityId
-      : cities.find(c => c.id !== resolvedOriginId)?.id ?? '';
-
   const cityRows = useMemo(() => {
     return cities
       .map(city => {
@@ -123,6 +98,34 @@ export default function PeopleMigrationsPanel({
       })
       .sort((a, b) => b.stats.population - a.stats.population);
   }, [cities, cityStats, cityOwnership, factionMap, activeDisasterCityIds, officers]);
+
+  const ownOriginRows = useMemo(() => {
+    if (!playerFactionId) return cityRows;
+    if (playerFactionId === 'ronin') return [];
+    return cityRows.filter(row => row.ownerId === playerFactionId);
+  }, [cityRows, playerFactionId]);
+
+  const defaultOriginId = ownOriginRows[0]?.city.id ?? '';
+
+  const defaultTargetId = useMemo(() => {
+    const other = cities.find(c => c.id !== defaultOriginId);
+    return other?.id ?? '';
+  }, [cities, defaultOriginId]);
+
+  const [originCityId, setOriginCityId] = useState<string>(defaultOriginId);
+  const [targetCityId, setTargetCityId] = useState<string>(defaultTargetId);
+  const [resettlementAmount, setResettlementAmount] = useState<number>(5000);
+  const [causeFilter, setCauseFilter] = useState<MigrationCause | 'all'>('all');
+  const [formError, setFormError] = useState<string>('');
+  const [formNotice, setFormNotice] = useState<string>('');
+
+  const resolvedOriginId = ownOriginRows.some(r => r.city.id === originCityId)
+    ? originCityId
+    : defaultOriginId;
+  const resolvedTargetId =
+    cities.some(c => c.id === targetCityId) && targetCityId !== resolvedOriginId
+      ? targetCityId
+      : cities.find(c => c.id !== resolvedOriginId)?.id ?? '';
 
   const totalPopulation = useMemo(
     () => cityRows.reduce((sum, r) => sum + r.stats.population, 0),
@@ -279,18 +282,23 @@ export default function PeopleMigrationsPanel({
             <select
               id="select-migration-origin"
               value={resolvedOriginId}
+              disabled={ownOriginRows.length === 0}
               onChange={e => {
                 setOriginCityId(e.target.value);
                 setFormError('');
                 setFormNotice('');
               }}
             >
-              {cityRows.map(row => (
-                <option key={row.city.id} value={row.city.id}>
-                  {row.city.name} ({row.ownerName}) ·{' '}
-                  {row.stats.population.toLocaleString()} 人
-                </option>
-              ))}
+              {ownOriginRows.length === 0 ? (
+                <option value="">当前所属势力暂无城池</option>
+              ) : (
+                ownOriginRows.map(row => (
+                  <option key={row.city.id} value={row.city.id}>
+                    {row.city.name} ({row.ownerName}) ·{' '}
+                    {row.stats.population.toLocaleString()} 人
+                  </option>
+                ))
+              )}
             </select>
           </label>
 
@@ -359,7 +367,9 @@ export default function PeopleMigrationsPanel({
 
           {!liveQuote.ok && liveQuote.error && (
             <p className="trade-error" role="alert">
-              {liveQuote.error}
+              {ownOriginRows.length === 0
+                ? '当前所属势力暂无城池，无法迁出民户。'
+                : liveQuote.error}
             </p>
           )}
           {formError && (
@@ -470,7 +480,6 @@ export default function PeopleMigrationsPanel({
                     <th>粮草</th>
                     <th>宜居</th>
                     <th>净流向</th>
-                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -515,28 +524,6 @@ export default function PeopleMigrationsPanel({
                             : net < 0
                               ? net.toLocaleString()
                               : '0'}
-                        </td>
-                        <td className="migration-row-actions">
-                          <button
-                            type="button"
-                            className="migration-row-btn"
-                            onClick={() => {
-                              setOriginCityId(row.city.id);
-                              setFormError('');
-                            }}
-                          >
-                            迁出
-                          </button>
-                          <button
-                            type="button"
-                            className="migration-row-btn"
-                            onClick={() => {
-                              setTargetCityId(row.city.id);
-                              setFormError('');
-                            }}
-                          >
-                            迁入
-                          </button>
                         </td>
                       </tr>
                     );

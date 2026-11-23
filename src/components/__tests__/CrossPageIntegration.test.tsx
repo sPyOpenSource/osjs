@@ -10,8 +10,10 @@ import PeopleMigrationsPanel from '../PeopleMigrationsPanel';
 import Alerts, { evaluateWeatherAndDisasterAlert } from '../Alerts';
 import ProtagonistProfile from '../ProtagonistProfile';
 import StartMenu from '../StartMenu';
+import WorldSituation2026 from '../WorldSituation2026';
 import { createInitialDiplomacyState } from '../../utils/diplomacy';
 import { createInitialMigrationState, MigrationCityRef } from '../../utils/migrations';
+import { advanceWorld, campaignTick, createWorldState } from '../../utils/geopolitics';
 import { createRpgCharacter } from '../../utils/rpg';
 import { ALL_QUESTS } from '../../data/quests';
 import { FACTIONS, FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS, SCENARIOS } from '../../data';
@@ -597,6 +599,43 @@ describe('PeopleMigrationsPanel & TacticalMap Migration Controls', () => {
     assert.ok(html.includes('灾荒流徙'), 'expected disaster exodus label');
     assert.ok(html.includes('受灾'), 'expected affected city flag in table');
     assert.ok(html.includes('145,000'), 'expected city population in ledger table');
+
+    const originMatch = html.match(/<select[^>]*id="select-migration-origin"[\s\S]*?<\/select>/);
+    const targetMatch = html.match(/<select[^>]*id="select-migration-target"[\s\S]*?<\/select>/);
+    assert.ok(originMatch, 'expected #select-migration-origin markup');
+    assert.ok(targetMatch, 'expected #select-migration-target markup');
+    assert.ok(originMatch[0].includes('value="chengdu"'), 'expected own city chengdu in origin selector');
+    assert.ok(originMatch[0].includes('value="hanzhong"'), 'expected own city hanzhong in origin selector');
+    assert.ok(!originMatch[0].includes('value="luoyang"'), 'expected rival city luoyang excluded from origin selector');
+    assert.ok(targetMatch[0].includes('value="luoyang"'), 'expected luoyang still selectable as target');
+  });
+
+  test('renders empty option and disables #select-migration-origin when playerFactionId owns no cities', () => {
+    const html = renderToStaticMarkup(
+      <PeopleMigrationsPanel
+        cities={sampleCities}
+        factions={FACTIONS}
+        officers={officers}
+        cityOwnership={{ chengdu: 'shu', hanzhong: 'shu', luoyang: 'wei' }}
+        cityStats={{
+          chengdu: { prosperity: 86, defense: 82, grain: 2800, population: 145000 },
+          hanzhong: { prosperity: 74, defense: 78, grain: 1900, population: 95000 },
+          luoyang: { prosperity: 60, defense: 75, grain: 1100, population: 112000 },
+        }}
+        activeDisasterCityIds={new Set()}
+        migrationState={createInitialMigrationState()}
+        playerFactionId="wu"
+        gold={1500}
+        timestampLabel="208年 1月 中旬"
+        onExecuteResettlement={() => undefined}
+      />,
+    );
+
+    const originMatch = html.match(/<select[^>]*id="select-migration-origin"[\s\S]*?<\/select>/);
+    assert.ok(originMatch, 'expected #select-migration-origin markup');
+    assert.ok(originMatch[0].includes('当前所属势力暂无城池'), 'expected empty city option');
+    assert.ok(!originMatch[0].includes('value="chengdu"'), 'expected chengdu excluded when not owned');
+    assert.ok(!originMatch[0].includes('value="luoyang"'), 'expected luoyang excluded when not owned');
   });
 });
 
@@ -794,5 +833,44 @@ describe('Expanded FAMOUS_OFFICERS & FAMOUS_RELATIONSHIPS', () => {
       assert.ok(officerIdSet.has(rel.fromOfficerId), `expected valid fromOfficerId ${rel.fromOfficerId}`);
       assert.ok(officerIdSet.has(rel.toOfficerId), `expected valid toOfficerId ${rel.toOfficerId}`);
     }
+  });
+});
+
+describe('WorldSituation2026 Event Visibility', () => {
+  test('renders only occurred events and hides events that have not happened yet', () => {
+    const tick = campaignTick(2026, 2, 1); // fires tariffs (m1) and ai_chips (m2) only
+    const worldState = advanceWorld(createWorldState(FACTIONS), 2026, tick);
+
+    const html = renderToStaticMarkup(
+      <WorldSituation2026
+        worldState={worldState}
+        factions={FACTIONS}
+        currentTick={tick}
+        timestampLabel="2026年 2月 上旬"
+        onRespondEvent={noop}
+      />,
+    );
+
+    assert.ok(html.includes('data-testid="world2026-event-tariffs"'), 'expected occurred m1 tariffs event');
+    assert.ok(html.includes('data-testid="world2026-event-ai_chips"'), 'expected occurred m2 ai_chips event');
+    assert.ok(!html.includes('data-testid="world2026-event-energy"'), 'expected upcoming m3 energy event hidden');
+    assert.ok(!html.includes('data-testid="world2026-event-food"'), 'expected upcoming m7 food event hidden');
+    assert.ok(!html.includes('data-testid="world2026-event-summit"'), 'expected upcoming m11 summit event hidden');
+    assert.ok(!html.includes('待触发'), 'expected no upcoming badge rendered');
+  });
+
+  test('renders empty message when no geopolitical events have occurred yet', () => {
+    const html = renderToStaticMarkup(
+      <WorldSituation2026
+        worldState={createWorldState(FACTIONS)}
+        factions={FACTIONS}
+        currentTick={0}
+        timestampLabel="2026年 1月 上旬"
+        onRespondEvent={noop}
+      />,
+    );
+
+    assert.ok(!html.includes('world2026-events-grid'), 'expected no event cards grid before any event fires');
+    assert.ok(html.includes('当前尚无已触发的地缘事件'), 'expected empty state prompt');
   });
 });

@@ -2355,22 +2355,6 @@ export default function TacticalMap({
                         }} 
                       />
 
-                      {/* Quest marker */}
-                      {(initialQuests ?? [])
-                        .filter(q => q.cityId === city.id)
-                        .filter(q => {
-                          const st = questStates.find(s => s.questId === q.id);
-                          return st && st.status !== 'completed';
-                        })
-                        .map(q => (
-                          <span
-                            key={q.id}
-                            data-testid={`quest-marker-${q.id}`}
-                            className="absolute -top-2.5 -right-2.5 h-2 w-2 rounded-full bg-amber-400 border border-slate-950"
-                            title={q.title}
-                          />
-                        ))}
-
                       {/* Clean Single-Line City Label */}
                       <span className={`absolute left-1/2 -translate-x-1/2 rounded font-serif leading-tight whitespace-nowrap border transition-colors ${
                         isMetropolis ? 'top-3.5 px-2 py-0.5 text-[10.5px] font-bold' : 'top-3 px-1.5 py-px text-[9.5px]'

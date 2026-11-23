@@ -40,6 +40,10 @@ const merkelPortrait = '/portraits/merkel.jpg';
 const ruttePortrait = '/portraits/rutte.jpg';
 const jettenPortrait = '/portraits/jetten.jpg';
 const guterresPortrait = '/portraits/guterres.jpg';
+const zhangfeiPortrait = '/portraits/zhangfei.jpg';
+const zhaoyunPortrait = '/portraits/zhaoyun.jpg';
+const simayiPortrait = '/portraits/simayi.jpg';
+const suncePortrait = '/portraits/sunce.jpg';
 
 export const FACTIONS: Faction[] = [
   {
@@ -496,6 +500,242 @@ export const FAMOUS_OFFICERS: Officer[] = [
     traits: ['美周郎 (大幅提高我方士气及水军行军移动)', '神算 (奇门陷阱与火计策略之成功率、杀伤力大幅增强)'],
     skills: ['火计 (点燃目标区域地格，火焰随风方向蔓延)', '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)', '齐射 (发动大范围远程箭雨压制)'],
     biography: `东吴大都督。精通音律，足智多谋，在赤壁之战中运用精妙的连环火计，将曹操庞大的连锁水师战船烧成灰烬。`
+  },
+  {
+    id: 'zhangfei',
+    name: '张飞',
+    gender: 'Male',
+    styleName: '翼德',
+    englishName: 'Zhang Fei',
+    origin: '华夏三国 · 蜀汉',
+    isGlobalLeader: false,
+    factionId: 'shu',
+    homeCity: '成都',
+    avatarStyle: {
+      portrait: zhangfeiPortrait,
+      hairColor: '#171717',
+      hairStyle: 'Long Bound Mane',
+      armorColor: '#059669',
+      accessory: 'Serpent Spear',
+      expression: 'Fierce Roaring',
+      bgGradient: 'from-emerald-950 to-stone-950'
+    },
+    stats: {
+      leadership: 86,
+      force: 98,
+      intelligence: 34,
+      politics: 24,
+      charisma: 58
+    },
+    traits: ['威风 (突击攻击时显著削弱周围敌军之防御)', '军神 (以无双霸道震慑周围低统帅敌军并强行开启单挑)'],
+    skills: ['突击 (造成恐怖的近战冲撞伤害)', '挑衅 (强迫目标敌军失去冷静，暴露出防守破绽)', '单挑 (开启惊心动魄的1对1武将武艺对决)'],
+    biography: '刘备、关羽桃园结义之三弟，蜀汉五虎上将之一。长坂桥前一声怒喝震退曹军数十万众，葭萌关挑灯夜战马超，粗中有细、义释严颜，为一代万人敌虎将。'
+  },
+  {
+    id: 'zhaoyun',
+    name: '赵云',
+    gender: 'Male',
+    styleName: '子龙',
+    englishName: 'Zhao Yun',
+    origin: '华夏三国 · 蜀汉',
+    isGlobalLeader: false,
+    factionId: 'shu',
+    homeCity: '汉中',
+    avatarStyle: {
+      portrait: zhaoyunPortrait,
+      hairColor: '#0f172a',
+      hairStyle: 'Topknot Imperial',
+      armorColor: '#f8fafc',
+      accessory: 'Dragon Gallant Spear',
+      expression: 'Brilliant Calm',
+      bgGradient: 'from-emerald-950 to-slate-900'
+    },
+    stats: {
+      leadership: 92,
+      force: 96,
+      intelligence: 76,
+      politics: 66,
+      charisma: 90
+    },
+    traits: ['忠义 (大幅降低战斗中被俘虏、策反成敌方之可能)', '警惕 (免疫来自后方的伏击和奇袭包夹)'],
+    skills: ['突击 (造成恐怖的近战冲撞伤害)', '单挑 (开启惊心动魄的1对1武将武艺对决)', '奇袭 (穿越丛林灌木发动奔袭，无视城墙防守防线)'],
+    biography: '常山真定人，人称“常胜将军”。当阳长坂坡七进七出单骑救主，汉水以寡敌众施空营计威慑曹军，一生忠肝义胆、浑身是胆，为蜀汉中流砥柱。'
+  },
+  {
+    id: 'machao',
+    name: '马超',
+    gender: 'Male',
+    styleName: '孟起',
+    englishName: 'Ma Chao',
+    origin: '华夏三国 · 西凉蜀汉',
+    isGlobalLeader: false,
+    factionId: 'shu',
+    homeCity: '汉中',
+    avatarStyle: {
+      hairColor: '#1e293b',
+      hairStyle: 'Pheasant-Tail Ribbon',
+      armorColor: '#10b981',
+      accessory: 'Engraved Commander Sword',
+      expression: 'Fierce Roaring',
+      bgGradient: 'from-emerald-950 via-amber-950 to-slate-950'
+    },
+    stats: {
+      leadership: 91,
+      force: 97,
+      intelligence: 48,
+      politics: 34,
+      charisma: 82
+    },
+    traits: ['威风 (突击攻击时显著削弱周围敌军之防御)', '征服者 (远征军行军速度与士气大幅提升，攻击异域要塞有额外斩获)'],
+    skills: ['突击 (造成恐怖的近战冲撞伤害)', '单挑 (开启惊心动魄的1对1武将武艺对决)', '雷霆远征 (以雷霆万钧之势奔袭敌军核心指挥所)'],
+    biography: '西凉锦马超，伏波将军马援之后，以锦甲银枪纵横关陇。潼关之战杀得曹操割须弃袍，后归附刘备威震西陲羌胡，位列蜀汉五虎大将。'
+  },
+  {
+    id: 'simayi',
+    name: '司马懿',
+    gender: 'Male',
+    styleName: '仲达',
+    englishName: 'Sima Yi',
+    origin: '华夏三国 · 曹魏',
+    isGlobalLeader: false,
+    factionId: 'wei',
+    homeCity: '洛阳',
+    avatarStyle: {
+      portrait: simayiPortrait,
+      hairColor: '#1e293b',
+      hairStyle: 'Scholar Jade Headdress',
+      armorColor: '#3b82f6',
+      accessory: 'Feather Daoist Fan',
+      expression: 'Cold Sovereign',
+      bgGradient: 'from-blue-950 to-slate-950'
+    },
+    stats: {
+      leadership: 95,
+      force: 63,
+      intelligence: 98,
+      politics: 95,
+      charisma: 84
+    },
+    traits: ['神算 (奇门陷阱与火计策略之成功率、杀伤力大幅增强)', '警惕 (免疫来自后方的伏击和奇袭包夹)'],
+    skills: ['混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)', '铁壁 (短时间内进入物理与计谋免疫的无敌状态)', '神机妙算 (精通奇门遁甲与天象推演，策谋识破率100%)'],
+    biography: '曹魏托孤重臣，深谋远虑、隐忍待时。曾星夜兼程奔袭平定孟达、远征辽东克定襄平，并于渭南坚守拖垮诸葛亮北伐，最终奠定西晋一统之基业。'
+  },
+  {
+    id: 'zhangliao',
+    name: '张辽',
+    gender: 'Male',
+    styleName: '文远',
+    englishName: 'Zhang Liao',
+    origin: '华夏三国 · 曹魏',
+    isGlobalLeader: false,
+    factionId: 'wei',
+    homeCity: '下邳',
+    avatarStyle: {
+      hairColor: '#0f172a',
+      hairStyle: 'Noble Court Crown',
+      armorColor: '#3b82f6',
+      accessory: 'Engraved Commander Sword',
+      expression: 'Stern Loyal Face',
+      bgGradient: 'from-blue-950 to-indigo-950'
+    },
+    stats: {
+      leadership: 95,
+      force: 93,
+      intelligence: 78,
+      politics: 64,
+      charisma: 85
+    },
+    traits: ['威风 (突击攻击时显著削弱周围敌军之防御)', '军神 (以无双霸道震慑周围低统帅敌军并强行开启单挑)'],
+    skills: ['突击 (造成恐怖的近战冲撞伤害)', '奇袭 (穿越丛林灌木发动奔袭，无视城墙防守防线)', '单挑 (开启惊心动魄的1对1武将武艺对决)'],
+    biography: '曹魏五子良将之首。白狼山阵斩蹋顿，逍遥津仅率八百死士破孙权十万大军，威震江东，令吴地小儿闻“张辽”之名而不敢夜啼。'
+  },
+  {
+    id: 'sunce',
+    name: '孙策',
+    gender: 'Male',
+    styleName: '伯符',
+    englishName: 'Sun Ce',
+    origin: '华夏三国 · 孙吴',
+    isGlobalLeader: false,
+    factionId: 'wu',
+    homeCity: '建业',
+    avatarStyle: {
+      portrait: suncePortrait,
+      hairColor: '#171717',
+      hairStyle: 'Topknot Imperial',
+      armorColor: '#ef4444',
+      accessory: 'Ancient Tiger Seal',
+      expression: 'Fierce Roaring',
+      bgGradient: 'from-red-950 to-orange-950'
+    },
+    stats: {
+      leadership: 93,
+      force: 95,
+      intelligence: 74,
+      politics: 72,
+      charisma: 92
+    },
+    traits: ['威风 (突击攻击时显著削弱周围敌军之防御)', '雄心 (提升个人武将统御及兵力募集上限)'],
+    skills: ['突击 (造成恐怖的近战冲撞伤害)', '单挑 (开启惊心动魄的1对1武将武艺对决)', '雷霆远征 (以雷霆万钧之势奔袭敌军核心指挥所)'],
+    biography: '人称“江东小霸王”，孙坚长子、孙权之兄。凭传国玉玺起兵渡江，数载之间席卷江东六郡，与周瑜总角相交，奠定东吴三分天下之根基。'
+  },
+  {
+    id: 'luxun',
+    name: '陆逊',
+    gender: 'Male',
+    styleName: '伯言',
+    englishName: 'Lu Xun',
+    origin: '华夏三国 · 孙吴',
+    isGlobalLeader: false,
+    factionId: 'wu',
+    homeCity: '荆州',
+    avatarStyle: {
+      hairColor: '#1e293b',
+      hairStyle: 'Scholar Jade Headdress',
+      armorColor: '#fb923c',
+      accessory: 'Feather Daoist Fan',
+      expression: 'Brilliant Calm',
+      bgGradient: 'from-rose-950 to-slate-950'
+    },
+    stats: {
+      leadership: 94,
+      force: 67,
+      intelligence: 96,
+      politics: 90,
+      charisma: 88
+    },
+    traits: ['神算 (奇门陷阱与火计策略之成功率、杀伤力大幅增强)', '警惕 (免疫来自后方的伏击和奇袭包夹)'],
+    skills: ['火计 (点燃目标区域地格，火焰随风方向蔓延)', '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)', '铁壁 (短时间内进入物理与计谋免疫的无敌状态)'],
+    biography: '东吴社稷之臣、第四任大都督。协助吕蒙白衣渡江袭取荆州，更于夷陵之战火烧连营七百里大破刘备大军，入相出将，儒雅深沉。'
+  },
+  {
+    id: 'yuanshao',
+    name: '袁绍',
+    gender: 'Male',
+    styleName: '本初',
+    englishName: 'Yuan Shao',
+    origin: '华夏三国 · 河北',
+    isGlobalLeader: false,
+    factionId: 'yuanshao',
+    homeCity: '邺城',
+    avatarStyle: {
+      hairColor: '#171717',
+      hairStyle: 'Noble Court Crown',
+      armorColor: '#eab308',
+      accessory: 'Golden Sovereign Crown',
+      expression: 'Stately Guarded',
+      bgGradient: 'from-amber-950 to-slate-950'
+    },
+    stats: {
+      leadership: 82,
+      force: 66,
+      intelligence: 71,
+      politics: 81,
+      charisma: 91
+    },
+    traits: ['雄心 (提升个人武将统御及兵力募集上限)', '仁德 (提升声望与信赖程度)'],
+    skills: ['齐射 (发动大范围远程箭雨压制)', '治疗 (恢复重伤士兵的编制数并激发高昂士气)', '铁壁 (短时间内进入物理与计谋免疫的无敌状态)'],
+    biography: '汝南袁氏“四世三公”门阀领袖。十八路诸侯讨伐董卓盟主，兼并幽冀青并四州，拥兵数十万虎踞河北邺城，一度为天下最强诸侯。'
   },
   // ====== 世界群雄领袖 (Great Global Leaders) ======
   {
@@ -1654,6 +1894,122 @@ export const FAMOUS_OFFICERS: Officer[] = [
       '混乱 (洞悉战局症结，以奇正交错之辞令令敌阵自乱)'
     ],
     biography: '联合国第九任秘书长、葡萄牙前总理，1949年生于里斯本。早年以优异成绩毕业于里斯本高等技术学院电机工程专业，青年时代投身社会救济与民主化运动。1995年至2002年出任葡萄牙总理，主导融入欧元区并推动澳门平稳回归；2005年至2015年任联合国难民事务高级专员（UNHCR），十年间奔走战乱前线救济千万流民；2017年就任联合国秘书长，连任至今。精通葡、英、法、西四语，在气候危机、地缘冲突与人道救援中充当全球道德良心与最高斡旋者。'
+  },
+  {
+    id: 'churchill',
+    name: '温斯顿·丘吉尔',
+    gender: 'Male',
+    styleName: '不列颠雄狮',
+    englishName: 'Winston Churchill',
+    origin: '大英帝国 · 伦敦',
+    isGlobalLeader: true,
+    factionId: 'europe',
+    homeCity: '伦敦',
+    avatarStyle: {
+      hairColor: '#cbd5e1',
+      hairStyle: 'Noble Court Crown',
+      armorColor: '#0284c7',
+      accessory: 'Commander Baton and Lute',
+      expression: 'Stately Guarded',
+      bgGradient: 'from-slate-900 via-blue-950 to-slate-950'
+    },
+    stats: {
+      leadership: 93,
+      force: 55,
+      intelligence: 91,
+      politics: 95,
+      charisma: 97
+    },
+    traits: ['铁腕意志 (全军在严寒雪地与极地逆境中士气不减)', '雄心 (提升个人武将统御及兵力募集上限)'],
+    skills: ['齐射 (发动大范围远程箭雨压制)', '铁壁 (短时间内进入物理与计谋免疫的无敌状态)', '治疗 (恢复重伤士兵的编制数并激发高昂士气)'],
+    biography: '英国战时首相与诺贝尔文学奖得主。在二战至暗时刻以“我们将在海滩作战”之铁血演说凝聚自由阵线，守卫英伦海峡并率盟军共克强敌。'
+  },
+  {
+    id: 'justinian',
+    name: '查士丁尼一世',
+    gender: 'Male',
+    styleName: '罗马法典复兴者',
+    englishName: 'Justinian I',
+    origin: '东罗马帝国 · 君士坦丁堡',
+    isGlobalLeader: true,
+    factionId: 'rome',
+    homeCity: '君士坦丁堡',
+    avatarStyle: {
+      hairColor: '#1e293b',
+      hairStyle: 'Topknot Imperial',
+      armorColor: '#dc2626',
+      accessory: 'Golden Sovereign Crown',
+      expression: 'Cold Sovereign',
+      bgGradient: 'from-purple-950 via-red-950 to-slate-950'
+    },
+    stats: {
+      leadership: 90,
+      force: 64,
+      intelligence: 92,
+      politics: 98,
+      charisma: 89
+    },
+    traits: ['千古一帝 (扫灭六国，车同轨书同文，集权统御与攻城拔寨战力极度强大)', '帝国方阵 (重装步兵防御与抗骑兵冲击能力显著增强)'],
+    skills: ['罗马龟甲阵 (步兵结成严密封闭盾墙，免疫绝大部分远程箭矢伤害)', '铁壁 (短时间内进入物理与计谋免疫的无敌状态)', '雷霆远征 (以雷霆万钧之势奔袭敌军核心指挥所)'],
+    biography: '拜占庭（东罗马）帝国黄金时代大帝。编纂《民法大全》泽被后世，修建圣索菲亚大教堂，命贝利撒留收复北非与意大利，重现环地中海荣光。'
+  },
+  {
+    id: 'saladin',
+    name: '萨拉丁',
+    gender: 'Male',
+    styleName: '阿尤布雄鹰',
+    englishName: 'Saladin',
+    origin: '近东阿尤布王朝 · 安条克',
+    isGlobalLeader: true,
+    factionId: 'persia',
+    homeCity: '安条克',
+    avatarStyle: {
+      hairColor: '#171717',
+      hairStyle: 'Noble Court Crown',
+      armorColor: '#0d9488',
+      accessory: 'Engraved Commander Sword',
+      expression: 'Brilliant Calm',
+      bgGradient: 'from-teal-950 via-emerald-950 to-slate-950'
+    },
+    stats: {
+      leadership: 96,
+      force: 84,
+      intelligence: 91,
+      politics: 88,
+      charisma: 96
+    },
+    traits: ['仁德 (提升声望与信赖程度)', '征服者 (远征军行军速度与士气大幅提升，攻击异域要塞有额外斩获)'],
+    skills: ['帕提亚回马射 (伪装溃退诱敌深入，突然回身射出致命穿透重箭)', '突击 (造成恐怖的近战冲撞伤害)', '治疗 (恢复重伤士兵的编制数并激发高昂士气)'],
+    biography: '阿尤布王朝缔造者与传奇骑士统帅。以宽容仁厚、严守信义著称东西方世界，在哈丁战役大败十字军并光复圣城，连对手狮心王亦深致敬意。'
+  },
+  {
+    id: 'banchao',
+    name: '班超',
+    gender: 'Male',
+    styleName: '仲升 · 定远侯',
+    englishName: 'Ban Chao',
+    origin: '东汉西域都护 · 疏勒',
+    isGlobalLeader: false,
+    factionId: 'ronin',
+    homeCity: '疏勒',
+    avatarStyle: {
+      hairColor: '#1e293b',
+      hairStyle: 'Long Bound Mane',
+      armorColor: '#d97706',
+      accessory: 'Engraved Commander Sword',
+      expression: 'Stern Loyal Face',
+      bgGradient: 'from-amber-950 via-stone-900 to-slate-950'
+    },
+    stats: {
+      leadership: 95,
+      force: 86,
+      intelligence: 94,
+      politics: 91,
+      charisma: 93
+    },
+    traits: ['征服者 (远征军行军速度与士气大幅提升，攻击异域要塞有额外斩获)', '奇谋定远 (投笔从戎，善于以少胜多并通使西域诸邦)'],
+    skills: ['奇袭 (穿越丛林灌木发动奔袭，无视城墙防守防线)', '混乱 (施展诡诈奇策瘫痪敌军，智力高者成功率更高)', '火计 (点燃目标区域地格，火焰随风方向蔓延)'],
+    biography: '东汉名将、外交家，班固之弟。曾叹“大丈夫当立功异域”，投笔从戎以三十六人夜袭匈奴使营，经略西域三十一年重开丝绸之路，受封定远侯。'
   }
 ];
 
@@ -1754,7 +2110,36 @@ export const FAMOUS_RELATIONSHIPS: RelationshipRelation[] = [
   { fromOfficerId: 'guterres', toOfficerId: 'rutte', type: 'Trust' },
   { fromOfficerId: 'guterres', toOfficerId: 'ashoka', type: 'Confidant' },
   { fromOfficerId: 'guterres', toOfficerId: 'trump', type: 'Rival' },
-  { fromOfficerId: 'guterres', toOfficerId: 'putin', type: 'Rival' }
+  { fromOfficerId: 'guterres', toOfficerId: 'putin', type: 'Rival' },
+  // 新增群雄与名臣羁绊
+  { fromOfficerId: 'liubei', toOfficerId: 'zhangfei', type: 'Sworn Brother' },
+  { fromOfficerId: 'zhangfei', toOfficerId: 'liubei', type: 'Sworn Brother' },
+  { fromOfficerId: 'guanyu', toOfficerId: 'zhangfei', type: 'Sworn Brother' },
+  { fromOfficerId: 'zhangfei', toOfficerId: 'guanyu', type: 'Sworn Brother' },
+  { fromOfficerId: 'liubei', toOfficerId: 'zhaoyun', type: 'Trust' },
+  { fromOfficerId: 'zhaoyun', toOfficerId: 'liubei', type: 'Lord' },
+  { fromOfficerId: 'liubei', toOfficerId: 'machao', type: 'Trust' },
+  { fromOfficerId: 'machao', toOfficerId: 'zhangfei', type: 'Rival' },
+  { fromOfficerId: 'machao', toOfficerId: 'caocao', type: 'Rival' },
+  { fromOfficerId: 'zhugeliang', toOfficerId: 'simayi', type: 'Rival' },
+  { fromOfficerId: 'simayi', toOfficerId: 'zhugeliang', type: 'Rival' },
+  { fromOfficerId: 'caocao', toOfficerId: 'simayi', type: 'Trust' },
+  { fromOfficerId: 'caocao', toOfficerId: 'zhangliao', type: 'Trust' },
+  { fromOfficerId: 'zhangliao', toOfficerId: 'guanyu', type: 'Trust' },
+  { fromOfficerId: 'guanyu', toOfficerId: 'zhangliao', type: 'Trust' },
+  { fromOfficerId: 'sunce', toOfficerId: 'zhouyu', type: 'Sworn Brother' },
+  { fromOfficerId: 'zhouyu', toOfficerId: 'sunce', type: 'Sworn Brother' },
+  { fromOfficerId: 'sunce', toOfficerId: 'daqiao', type: 'Spouse' },
+  { fromOfficerId: 'daqiao', toOfficerId: 'sunce', type: 'Spouse' },
+  { fromOfficerId: 'sunquan', toOfficerId: 'sunce', type: 'Trust' },
+  { fromOfficerId: 'sunquan', toOfficerId: 'luxun', type: 'Trust' },
+  { fromOfficerId: 'luxun', toOfficerId: 'liubei', type: 'Rival' },
+  { fromOfficerId: 'yuanshao', toOfficerId: 'caocao', type: 'Rival' },
+  { fromOfficerId: 'caocao', toOfficerId: 'yuanshao', type: 'Rival' },
+  { fromOfficerId: 'churchill', toOfficerId: 'einstein', type: 'Trust' },
+  { fromOfficerId: 'justinian', toOfficerId: 'caesar', type: 'Trust' },
+  { fromOfficerId: 'saladin', toOfficerId: 'ardashir', type: 'Trust' },
+  { fromOfficerId: 'banchao', toOfficerId: 'kanishka', type: 'Trust' }
 ];
 
 export const SCENARIOS: CampaignScenario[] = [

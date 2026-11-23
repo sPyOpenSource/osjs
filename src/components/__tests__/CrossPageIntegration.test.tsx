@@ -14,7 +14,7 @@ import { createInitialDiplomacyState } from '../../utils/diplomacy';
 import { createInitialMigrationState, MigrationCityRef } from '../../utils/migrations';
 import { createRpgCharacter } from '../../utils/rpg';
 import { ALL_QUESTS } from '../../data/quests';
-import { FACTIONS, SCENARIOS } from '../../data';
+import { FACTIONS, FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS, SCENARIOS } from '../../data';
 import { Officer } from '../../types';
 
 function makeOfficer(id: string, name: string, overrides: Partial<Officer> = {}): Officer {
@@ -769,6 +769,30 @@ describe('ProtagonistProfile & StartMenu Self Information', () => {
   });
 });
 
+describe('Expanded FAMOUS_OFFICERS & FAMOUS_RELATIONSHIPS', () => {
+  test('includes newly added historical and global officers with unique IDs and valid factions/relationships', () => {
+    const ids = FAMOUS_OFFICERS.map(o => o.id);
+    assert.equal(new Set(ids).size, FAMOUS_OFFICERS.length, 'expected all officer IDs to be unique');
+    assert.ok(FAMOUS_OFFICERS.length >= 49, 'expected expanded officer roster (>= 49)');
 
+    const factionIds = new Set(FACTIONS.map(f => f.id));
+    for (const officer of FAMOUS_OFFICERS) {
+      assert.ok(factionIds.has(officer.factionId), `expected valid factionId for ${officer.id}`);
+    }
 
+    const expectedNewIds = [
+      'zhangfei', 'zhaoyun', 'machao', 'simayi', 'zhangliao',
+      'sunce', 'luxun', 'yuanshao', 'churchill', 'justinian',
+      'saladin', 'banchao',
+    ];
+    for (const newId of expectedNewIds) {
+      assert.ok(ids.includes(newId), `expected ${newId} in FAMOUS_OFFICERS`);
+    }
 
+    const officerIdSet = new Set(ids);
+    for (const rel of FAMOUS_RELATIONSHIPS) {
+      assert.ok(officerIdSet.has(rel.fromOfficerId), `expected valid fromOfficerId ${rel.fromOfficerId}`);
+      assert.ok(officerIdSet.has(rel.toOfficerId), `expected valid toOfficerId ${rel.toOfficerId}`);
+    }
+  });
+});

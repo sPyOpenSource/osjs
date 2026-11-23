@@ -144,13 +144,20 @@ describe('Cross-Page Integration (InternalAffairs canonical props)', () => {
   });
 });
 
-describe('DuelArena Left Camp Faction Filter', () => {
-  test('limits left duelist select to playerFactionId while keeping right duelist open to all officers', () => {
+describe('DuelArena Left Camp Faction & Right Nearby City Filters', () => {
+  test('limits left duelist to playerFactionId and right duelist to same city or nearby cities', () => {
+    const cityOfficers: Officer[] = [
+      ...officers,
+      makeOfficer('weiyan', '魏延', { factionId: 'shu', homeCity: '汉中' }),
+      makeOfficer('caoren', '曹仁', { factionId: 'wei', homeCity: '荆州' }),
+      makeOfficer('caesar', '恺撒', { factionId: 'rome', homeCity: '罗马' }),
+    ];
     const html = renderToStaticMarkup(
       <DuelArena
-        officers={officers}
+        officers={cityOfficers}
         playerFactionId="shu"
         playerFactionName="蜀汉"
+        currentCityId="成都"
         soundEnabled={false}
         playClashSound={noop}
         playDrumSound={noop}
@@ -164,29 +171,75 @@ describe('DuelArena Left Camp Faction Filter', () => {
     const leftSelect = leftSelectMatch[0];
     const rightSelect = rightSelectMatch[0];
 
+    // Left camp remains strictly scoped to playerFactionId
     assert.ok(leftSelect.includes('value="liubei"'), 'expected own-faction officer liubei in left select');
     assert.ok(leftSelect.includes('value="guanyu"'), 'expected own-faction officer guanyu in left select');
     assert.ok(!leftSelect.includes('value="caocao"'), 'expected rival officer caocao excluded from left select');
-    assert.ok(rightSelect.includes('value="caocao"'), 'expected rival officer caocao still available in right select');
-    assert.ok(html.includes('麾下 3 位'), 'expected own-faction officer count badge in left camp');
+    assert.ok(!leftSelect.includes('value="caoren"'), 'expected rival officer caoren excluded from left select');
+    assert.ok(html.includes('麾下 4 位'), 'expected own-faction officer count badge in left camp');
+
+    // Right camp includes same city (成都) and nearby cities (汉中, 荆州),
+    // excludes the already selected left officer (guanyu) and distant cities (许昌, 罗马)
+    assert.ok(!rightSelect.includes('value="guanyu"'), 'expected already selected officer guanyu excluded from right select');
+    assert.ok(rightSelect.includes('value="liubei"'), 'expected same-city officer liubei in right select');
+    assert.ok(rightSelect.includes('value="weiyan"'), 'expected nearby-city (汉中) officer weiyan in right select');
+    assert.ok(rightSelect.includes('value="caoren"'), 'expected nearby-city (荆州) officer caoren in right select');
+    assert.ok(!rightSelect.includes('value="caocao"'), 'expected distant-city (许昌) officer caocao excluded from right select');
+    assert.ok(!rightSelect.includes('value="caesar"'), 'expected distant-city (罗马) officer caesar excluded from right select');
+    assert.ok(html.includes('成都及邻近 4 位'), 'expected nearby-city count badge in right camp');
   });
 
-  test('renders empty state in left duelist camp when playerFactionId has no officers', () => {
+  test('includes nearby xuchang and changan rivals in right select when anchored at 洛阳', () => {
+    const regionalOfficers: Officer[] = [
+      ...officers,
+      makeOfficer('wuzetian', '武则天', { factionId: 'wuzhou', origin: '大周神都 · 洛阳' }),
+      makeOfficer('lishimin', '李世民', { factionId: 'tang', origin: '大唐帝国 · 长安' }),
+      makeOfficer('caesar', '恺撒', { factionId: 'rome', origin: '罗马帝国 (大秦)' }),
+    ];
+    const html = renderToStaticMarkup(
+      <DuelArena
+        officers={regionalOfficers}
+        playerFactionId="shu"
+        playerFactionName="蜀汉"
+        currentCityId="洛阳"
+        soundEnabled={false}
+        playClashSound={noop}
+        playDrumSound={noop}
+      />,
+    );
+    const rightSelectMatch = html.match(/<select[^>]*id="select-right-duelist"[\s\S]*?<\/select>/);
+    assert.ok(rightSelectMatch, 'expected select-right-duelist');
+    const rightSelect = rightSelectMatch[0];
+
+    assert.ok(rightSelect.includes('value="wuzetian"'), 'expected same-city (洛阳) officer wuzetian');
+    assert.ok(rightSelect.includes('value="lishimin"'), 'expected nearby-city (长安) officer lishimin');
+    assert.ok(rightSelect.includes('value="caocao"'), 'expected nearby-city (许昌) officer caocao');
+    assert.ok(!rightSelect.includes('value="liubei"'), 'expected distant-city (成都) officer liubei excluded');
+    assert.ok(!rightSelect.includes('value="caesar"'), 'expected distant-city (罗马) officer caesar excluded');
+  });
+
+  test('renders empty states when left camp has no faction officers or right camp has no nearby-city officers', () => {
     const html = renderToStaticMarkup(
       <DuelArena
         officers={officers}
         playerFactionId="wu"
         playerFactionName="东吴"
+        currentCityId="邪马台"
         soundEnabled={false}
         playClashSound={noop}
         playDrumSound={noop}
       />,
     );
     const leftSelectMatch = html.match(/<select[^>]*id="select-left-duelist"[\s\S]*?<\/select>/);
+    const rightSelectMatch = html.match(/<select[^>]*id="select-right-duelist"[\s\S]*?<\/select>/);
     assert.ok(leftSelectMatch, 'expected select-left-duelist');
+    assert.ok(rightSelectMatch, 'expected select-right-duelist');
     assert.ok(leftSelectMatch[0].includes('当前所属阵营暂无可出战武将'));
     assert.ok(!leftSelectMatch[0].includes('value="liubei"'));
     assert.ok(!leftSelectMatch[0].includes('value="caocao"'));
+    assert.ok(rightSelectMatch[0].includes('当前城池及邻近城池暂无可出战武将'));
+    assert.ok(!rightSelectMatch[0].includes('value="liubei"'));
+    assert.ok(!rightSelectMatch[0].includes('value="caocao"'));
   });
 });
 

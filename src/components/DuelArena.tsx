@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Officer } from '../types';
 import AvatarRenderer from './AvatarRenderer';
 import { applySeasonalOfficerModifiers, SEASONS, SeasonId } from '../utils/seasons';
+import { CITIES, getNearbyTargetCities } from './TacticalMap';
 import {
   playHeavyImpactSound,
   playParrySound,
@@ -14,10 +15,100 @@ import {
 import { Swords, Shield, Zap, Sparkles, Trophy, RotateCcw, Swords as SwordIcon, Heart, Play, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+const FACTION_DEFAULT_CITY_NAME: Record<string, string> = {
+  shu: '成都',
+  wei: '许昌',
+  wu: '建业',
+  lubu: '洛阳',
+  yuanshao: '邺城',
+  rome: '罗马',
+  macedon: '佩拉・雅典',
+  persia: '泰西封',
+  kushan: '布路沙布逻',
+  yamatai: '邪马台',
+  carthage: '迦太基',
+  steppe: '漠北龙城',
+  france: '巴黎',
+  russia: '莫斯科',
+  wuzhou: '洛阳',
+  qing: '北平',
+  qin: '长安',
+  tang: '长安',
+  ming: '建业',
+  germany: '巴黎',
+  europe: '罗马',
+  netherlands: '伦敦',
+  america: '纽约',
+};
+
+const ORIGIN_CITY_ALIASES: Array<[string, string]> = [
+  ['咸阳', '长安'],
+  ['紫禁城', '北平'],
+  ['托勒密埃及', '亚历山大港'],
+  ['孔雀帝国', '华氏城'],
+  ['天竺', '华氏城'],
+  ['贵霜', '布路沙布逻'],
+  ['波斯', '泰西封'],
+  ['匈奴', '漠北龙城'],
+  ['塞外草原', '漠北龙城'],
+  ['法兰西', '巴黎'],
+  ['德意志', '巴黎'],
+  ['欧洲联盟', '罗马'],
+  ['葡萄牙', '罗马'],
+  ['尼德兰', '伦敦'],
+  ['大明', '建业'],
+  ['北美合众国', '纽约'],
+  ['纽约', '纽约'],
+];
+
+export function resolveOfficerCityName(officer: Officer): string {
+  const rawHome = officer.homeCity?.trim();
+  if (rawHome) {
+    const matched = CITIES.find(c => c.name === rawHome || c.id === rawHome);
+    return matched ? matched.name : rawHome;
+  }
+
+  const origin = officer.origin ?? '';
+  if (origin) {
+    for (const city of CITIES) {
+      if (origin.includes(city.name)) {
+        return city.name;
+      }
+    }
+    for (const [keyword, cityName] of ORIGIN_CITY_ALIASES) {
+      if (origin.includes(keyword)) {
+        return cityName;
+      }
+    }
+  }
+
+  return FACTION_DEFAULT_CITY_NAME[officer.factionId] ?? '';
+}
+
+export function getAllowedNearbyCityNames(anchorCityInput?: string): {
+  anchorCityName: string;
+  allowedCityNames: Set<string>;
+} {
+  const trimmed = anchorCityInput?.trim() ?? '';
+  if (!trimmed) {
+    return { anchorCityName: '', allowedCityNames: new Set() };
+  }
+  const matchedCity = CITIES.find(c => c.name === trimmed || c.id === trimmed);
+  if (!matchedCity) {
+    return { anchorCityName: trimmed, allowedCityNames: new Set([trimmed]) };
+  }
+  const nearby = getNearbyTargetCities(matchedCity.id, CITIES);
+  return {
+    anchorCityName: matchedCity.name,
+    allowedCityNames: new Set([matchedCity.name, ...nearby.map(c => c.name)]),
+  };
+}
+
 interface DuelArenaProps {
   officers: Officer[];
   playerFactionId?: string;
   playerFactionName?: string;
+  currentCityId?: string;
   soundEnabled: boolean;
   seasonId?: SeasonId;
   onClose?: () => void;
@@ -35,7 +126,7 @@ interface DuelistState {
   shieldValue: number;
 }
 
-export default function DuelArena({ officers, playerFactionId, playerFactionName, soundEnabled, seasonId = 'spring', playClashSound, playDrumSound, onClose }: DuelArenaProps) {
+export default function DuelArena({ officers, playerFactionId, playerFactionName, currentCityId, soundEnabled, seasonId = 'spring', playClashSound, playDrumSound, onClose }: DuelArenaProps) {
   const activeSeason = SEASONS[seasonId];
   const myFactionOfficers = useMemo(
     () =>
@@ -183,16 +274,39 @@ export default function DuelArena({ officers, playerFactionId, playerFactionName
     return guanYu ? guanYu.id : myFactionOfficers[0].id;
   }, [selectedLeftId, myFactionOfficers]);
 
+  const effectiveLeftOfficer = useMemo(
+    () => myFactionOfficers.find(o => o.id === effectiveLeftId) ?? null,
+    [myFactionOfficers, effectiveLeftId],
+  );
+
+  const anchorCityInput = useMemo(() => {
+    if (currentCityId?.trim()) return currentCityId.trim();
+    if (effectiveLeftOfficer) return resolveOfficerCityName(effectiveLeftOfficer);
+    return '';
+  }, [currentCityId, effectiveLeftOfficer]);
+
+  const { anchorCityName, allowedCityNames } = useMemo(
+    () => getAllowedNearbyCityNames(anchorCityInput),
+    [anchorCityInput],
+  );
+
+  const rightCandidates = useMemo(() => {
+    if (allowedCityNames.size === 0) return [];
+    return officers.filter(o => {
+      if (effectiveLeftId && o.id === effectiveLeftId) return false;
+      const cityName = resolveOfficerCityName(o);
+      return cityName !== '' && allowedCityNames.has(cityName);
+    });
+  }, [officers, allowedCityNames, effectiveLeftId]);
+
   const effectiveRightId = useMemo(() => {
-    if (selectedRightId && officers.some(o => o.id === selectedRightId)) {
+    if (selectedRightId && rightCandidates.some(o => o.id === selectedRightId)) {
       return selectedRightId;
     }
-    if (officers.length >= 2) {
-      const luBu = officers.find(o => o.name.includes('吕布'));
-      return luBu ? luBu.id : officers[1].id;
-    }
-    return officers.length === 1 ? officers[0].id : '';
-  }, [selectedRightId, officers]);
+    if (rightCandidates.length === 0) return '';
+    const luBu = rightCandidates.find(o => o.name.includes('吕布'));
+    return luBu ? luBu.id : rightCandidates[0].id;
+  }, [selectedRightId, rightCandidates]);
 
   // Default initial selections (Left camp restricted to player's faction)
   useEffect(() => {
@@ -235,7 +349,7 @@ export default function DuelArena({ officers, playerFactionId, playerFactionName
 
   const loadMatchup = (leftName: string, rightName: string) => {
     const left = myFactionOfficers.find(o => o.name.includes(leftName)) ?? myFactionOfficers[0];
-    const right = officers.find(o => o.name.includes(rightName));
+    const right = rightCandidates.find(o => o.name.includes(rightName));
     if (left) setSelectedLeftId(left.id);
     if (right) setSelectedRightId(right.id);
   };
@@ -282,7 +396,7 @@ export default function DuelArena({ officers, playerFactionId, playerFactionName
   // Combat loop initialization
   const startDuel = () => {
     const rawLeftOfficer = myFactionOfficers.find(o => o.id === effectiveLeftId);
-    const rawRightOfficer = officers.find(o => o.id === effectiveRightId);
+    const rawRightOfficer = rightCandidates.find(o => o.id === effectiveRightId);
 
     if (!rawLeftOfficer || !rawRightOfficer) {
       return;
@@ -820,22 +934,43 @@ export default function DuelArena({ officers, playerFactionId, playerFactionName
 
           {/* Right Selection (Span 5) */}
           <div className="lg:col-span-5 bg-slate-900/40 p-5 rounded-2xl border border-slate-900 flex flex-col gap-4">
-            <label className="text-xs font-mono text-slate-400 uppercase tracking-widest block">【阵前主将 - 右单挑营】</label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-xs font-mono text-slate-400 uppercase tracking-widest block">【阵前主将 - 右单挑营】</label>
+              {anchorCityName && (
+                <span className="text-[11px] font-mono text-slate-500">
+                  {anchorCityName}及邻近 {rightCandidates.length} 位
+                </span>
+              )}
+            </div>
             <select
               id="select-right-duelist"
-              value={selectedRightId}
+              value={effectiveRightId}
+              disabled={rightCandidates.length === 0}
               onChange={(e) => setSelectedRightId(e.target.value)}
-              className="w-full bg-slate-950 text-slate-200 text-xs rounded-xl p-3 border border-slate-800 focus:outline-none focus:border-amber-500 cursor-pointer"
+              className="w-full bg-slate-950 text-slate-200 text-xs rounded-xl p-3 border border-slate-800 focus:outline-none focus:border-amber-500 cursor-pointer disabled:opacity-50"
             >
-              {officers.map(off => (
-                <option key={off.id} value={off.id}>{off.name} (武力: {off.stats.force} | 统帅: {off.stats.leadership})</option>
-              ))}
+              {rightCandidates.length === 0 ? (
+                <option value="">当前城池及邻近城池暂无可出战武将</option>
+              ) : (
+                rightCandidates.map(off => {
+                  const cityLabel = resolveOfficerCityName(off);
+                  return (
+                    <option key={off.id} value={off.id}>
+                      {off.name}{cityLabel ? ` · ${cityLabel}` : ''} (武力: {off.stats.force} | 统帅: {off.stats.leadership})
+                    </option>
+                  );
+                })
+              )}
             </select>
 
             {/* Quick Preview of Right Officer */}
-            {officers.find(o => o.id === selectedRightId) && (
+            {rightCandidates.length === 0 ? (
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-900 text-center text-xs font-mono text-slate-500">
+                当前城池及邻近城池暂无可出战武将。
+              </div>
+            ) : rightCandidates.find(o => o.id === effectiveRightId) && (
               (() => {
-                const off = applySeasonalOfficerModifiers(officers.find(o => o.id === selectedRightId)!, seasonId);
+                const off = applySeasonalOfficerModifiers(rightCandidates.find(o => o.id === effectiveRightId)!, seasonId);
                 return (
                   <div className="flex gap-4 bg-slate-950 p-4 rounded-xl border border-slate-900">
                     <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-800 shrink-0">

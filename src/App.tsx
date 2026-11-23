@@ -1934,6 +1934,7 @@ export default function App() {
                 officers={officers}
                 playerFactionId={myFactionId}
                 playerFactionName={myFactionName}
+                currentCityId={currentCityId}
                 soundEnabled={soundEnabled}
                 seasonId={currentSeason.id}
                 playClashSound={playClashSound}

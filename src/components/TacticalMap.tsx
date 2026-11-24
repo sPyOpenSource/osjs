@@ -537,7 +537,7 @@ export default function TacticalMap({
   onActiveDisasterChange,
   initialBattleVisual
 }: TacticalMapProps) {
-  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026' | '3d-viewer'>('svg-map');
+  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026' | '3d-viewer'>('city-view');
   useEffect(() => {
     if (requestedMapTab) {
       setMapTab(requestedMapTab.tab);
@@ -1848,7 +1848,6 @@ export default function TacticalMap({
         <nav className="map-tabs" aria-label="地图视图">
           <Button id="tab-map-city-view" aria-pressed={mapTab === 'city-view'} onClick={() => setMapTab('city-view')}><Home size={15} />{selectedCity.name}</Button>
           <Button id="tab-map-svg" aria-pressed={mapTab === 'svg-map'} onClick={() => setMapTab('svg-map')}><Compass size={15} />地图</Button>
-          <Button id="tab-map-3d-viewer" aria-pressed={mapTab === '3d-viewer'} onClick={() => setMapTab('3d-viewer')}><Box size={15} />3D沙盘</Button>
           <Button id="tab-global-trade" aria-pressed={mapTab === 'global-trade'} onClick={() => { setTradeFaction(originControllerId); setMapTab('global-trade'); }}><Coins size={15} />商贸</Button>
           {selectedScenario.year === 2026 && (
             <Button id="tab-map-world-2026" aria-pressed={mapTab === 'world-2026'} onClick={() => setMapTab('world-2026')}>

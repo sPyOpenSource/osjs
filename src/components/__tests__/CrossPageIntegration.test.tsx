@@ -243,6 +243,38 @@ describe('DuelArena Left Camp Faction & Right Nearby City Filters', () => {
     assert.ok(!rightSelectMatch[0].includes('value="liubei"'));
     assert.ok(!rightSelectMatch[0].includes('value="caocao"'));
   });
+
+  test('renders Street Fighter-style active arena stage with dismounted articulated fighters and arcade HUD', () => {
+    const sfOfficers: Officer[] = [
+      makeOfficer('guanyu', '关羽', { factionId: 'shu', homeCity: '成都' }),
+      makeOfficer('caoren', '曹仁', { factionId: 'wei', homeCity: '荆州' }),
+    ];
+    const html = renderToStaticMarkup(
+      <DuelArena
+        officers={sfOfficers}
+        playerFactionId="shu"
+        playerFactionName="蜀汉"
+        currentCityId="成都"
+        soundEnabled={false}
+        initialFighting={true}
+        playClashSound={noop}
+        playDrumSound={noop}
+      />,
+    );
+
+    assert.ok(html.includes('id="battle-theater-canvas"'), 'expected #battle-theater-canvas container');
+    assert.ok(html.includes('data-testid="sf-fighter-stage"'), 'expected Street Fighter stage fighter container');
+    assert.ok(html.includes('data-testid="sf-fighter-left"'), 'expected P1 articulated fighter rig');
+    assert.ok(html.includes('data-testid="sf-fighter-right"'), 'expected P2 articulated fighter rig');
+    assert.ok(html.includes('data-testid="sf-arcade-hud"'), 'expected Street Fighter arcade health HUD');
+    assert.ok(html.includes('data-testid="sf-arcade-clock"'), 'expected 99s arcade KO clock');
+    assert.ok(html.includes('data-testid="sf-super-bars"'), 'expected Street Fighter Super Combo bars');
+    assert.ok(!html.includes('🐎'), 'expected mounted horses replaced by dismounted martial artists');
+    assert.ok(html.includes('轻拳抢攻'), 'expected Jab arcade button');
+    assert.ok(html.includes('崩山重脚'), 'expected Heavy Kick arcade button');
+    assert.ok(html.includes('波动气功'), 'expected Hadouken arcade button');
+    assert.ok(html.includes('升龙奥义'), 'expected Shoryuken Super arcade button');
+  });
 });
 
 describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {

@@ -11,6 +11,7 @@ import Alerts, { evaluateWeatherAndDisasterAlert } from '../Alerts';
 import ProtagonistProfile from '../ProtagonistProfile';
 import StartMenu from '../StartMenu';
 import WorldSituation2026 from '../WorldSituation2026';
+import WarMode from '../WarMode';
 import { createInitialDiplomacyState } from '../../utils/diplomacy';
 import { createInitialMigrationState, MigrationCityRef } from '../../utils/migrations';
 import { advanceWorld, campaignTick, createWorldState } from '../../utils/geopolitics';
@@ -904,5 +905,44 @@ describe('WorldSituation2026 Event Visibility', () => {
 
     assert.ok(!html.includes('world2026-events-grid'), 'expected no event cards grid before any event fires');
     assert.ok(html.includes('当前尚无已触发的地缘事件'), 'expected empty state prompt');
+  });
+});
+
+describe('WarMode Clash of Clans Village Raid', () => {
+  test('renders Clash of Clans battlefield column with 3-star HUD, village defenses, and deployable troop/spell deck', () => {
+    const html = renderToStaticMarkup(
+      <WarMode
+        originCity={CITIES[0]}
+        targetCity={CITIES[1]}
+        attackerFaction={FACTIONS[0]}
+        defenderFaction={FACTIONS[1]}
+        attackingOfficer={officers[1]}
+        defendingOfficer={officers[3]}
+        weatherId="sunny"
+        soundEnabled={false}
+        onBattleComplete={noop}
+        onClose={noop}
+      />,
+    );
+
+    assert.ok(html.includes('id="war-mode-panel"'), 'expected #war-mode-panel');
+    assert.ok(html.includes('data-testid="coc-battlefield-column"'), 'expected CoC middle battlefield column');
+    assert.ok(html.includes('data-testid="coc-raid-hud"'), 'expected CoC raid HUD');
+    assert.ok(html.includes('data-testid="coc-stars-meter"'), 'expected 3-star raid meter');
+    assert.ok(html.includes('data-testid="coc-destruction-pct"'), 'expected destruction % readout');
+    assert.ok(html.includes('data-testid="coc-raid-timer"'), 'expected 3:00 raid countdown timer');
+    assert.ok(html.includes('data-testid="coc-village-arena"'), 'expected #war-live-arena CoC village grass map');
+    assert.ok(html.includes('data-testid="coc-building-town_hall"'), 'expected Town Hall building');
+    assert.ok(html.includes('data-testid="coc-building-cannon"'), 'expected Cannon defense');
+    assert.ok(html.includes('data-testid="coc-building-archer_tower"'), 'expected Archer Tower defense');
+    assert.ok(html.includes('data-testid="coc-building-mortar"'), 'expected Mortar defense');
+    assert.ok(html.includes('data-testid="coc-building-wall"'), 'expected Stone Wall blocks');
+    assert.ok(html.includes('data-testid="coc-troop-deck"'), 'expected deployable troop/spell deck');
+    assert.ok(html.includes('data-testid="coc-card-barbarian"'), 'expected Barbarian card');
+    assert.ok(html.includes('data-testid="coc-card-archer"'), 'expected Archer card');
+    assert.ok(html.includes('data-testid="coc-card-giant"'), 'expected Giant card');
+    assert.ok(html.includes('data-testid="coc-card-wall_breaker"'), 'expected Wall Breaker card');
+    assert.ok(html.includes('data-testid="coc-card-rage_spell"'), 'expected Rage Spell card');
+    assert.ok(html.includes('data-testid="coc-card-heal_spell"'), 'expected Heal Spell card');
   });
 });

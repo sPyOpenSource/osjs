@@ -14,6 +14,7 @@ import WorldSituation2026 from '../WorldSituation2026';
 import WarMode from '../WarMode';
 import Scene3DViewer from '../Scene3DViewer';
 import GameNavigation from '../GameNavigation';
+import AdvisorChatPanel from '../AdvisorChatPanel';
 import { createInitialDiplomacyState } from '../../utils/diplomacy';
 import { createInitialMigrationState, MigrationCityRef } from '../../utils/migrations';
 import { advanceWorld, campaignTick, createWorldState } from '../../utils/geopolitics';
@@ -1009,4 +1010,34 @@ describe('Scene3DViewer & 3D Navigation Triggers', () => {
     assert.ok(mapHtml.includes('id="tab-map-3d-viewer"'), 'expected #tab-map-3d-viewer button in TacticalMap');
   });
 });
+
+describe('AdvisorChatPanel War Council Chat', () => {
+  test('renders chat thread, quick-ask prompts, strategy brief trigger, and message composer', () => {
+    const html = renderToStaticMarkup(
+      <AdvisorChatPanel
+        officer={officers[0]}
+        factionName="蜀汉"
+        scenario={SCENARIOS[0]}
+        currentCityName="成都"
+        timestampLabel="公元 190 年 · 1 月 · 上旬"
+        seasonName="春"
+        playerGold={1500}
+        advisorBrief=""
+        isConsultingAdvisor={false}
+        onConsultWarCouncil={noop}
+        renderAdviceMarkdown={text => <p>{text}</p>}
+      />,
+    );
+
+    assert.ok(html.includes('id="advisor-chat-chamber"'), 'expected #advisor-chat-chamber container');
+    assert.ok(html.includes('id="advisor-chat-messages"'), 'expected #advisor-chat-messages log');
+    assert.ok(html.includes('id="form-advisor-chat"'), 'expected #form-advisor-chat form');
+    assert.ok(html.includes('id="input-advisor-chat"'), 'expected #input-advisor-chat input');
+    assert.ok(html.includes('id="btn-send-advisor-chat"'), 'expected #btn-send-advisor-chat button');
+    assert.ok(html.includes('id="btn-evaluate-strategy-brief"'), 'expected #btn-evaluate-strategy-brief button');
+    assert.ok(html.includes('id="btn-advisor-prompt-0"'), 'expected quick starter prompt button');
+    assert.ok(html.includes('成都'), 'expected current city context inside chat panel');
+  });
+});
+
 

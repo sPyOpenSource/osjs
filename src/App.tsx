@@ -19,6 +19,7 @@ import DiplomacyPanel from './components/DiplomacyPanel';
 import RelationshipTree from './components/RelationshipTree';
 import ProtagonistProfile from './components/ProtagonistProfile';
 import Alerts, { AlertActiveDisaster } from './components/Alerts';
+import AdvisorChatPanel from './components/AdvisorChatPanel';
 import {
   createInitialDiplomacyState,
   executeEnvoyMission,
@@ -479,6 +480,7 @@ export default function App() {
   // Strategy Advisor panel states
   const [isConsultingAdvisor, setIsConsultingAdvisor] = useState(false);
   const [advisorBrief, setAdvisorBrief] = useState<string>('');
+  const [advisorError, setAdvisorError] = useState<string | null>(null);
   const [hasServerConnection, setHasServerConnection] = useState<boolean | null>(null);
 
   // Custom Officer Creator form state
@@ -893,17 +895,19 @@ export default function App() {
   // Sync selected advisor details when officer selection changes
   useEffect(() => {
     setAdvisorBrief('');
+    setAdvisorError(null);
   }, [selectedOfficerId, selectedScenario]);
 
   // Handle generating AI strategic feedback
   const handleConsultWarCouncil = async () => {
     setIsConsultingAdvisor(true);
+    setAdvisorError(null);
     try {
       const advice = await requestStrategyAdvisor(selectedOfficer, selectedScenario);
       setAdvisorBrief(advice);
     } catch (err: any) {
       console.warn('[Advisor] Strategy consult notice:', err?.message || err);
-      alert(err.message || '大军师处连接遇阻，请检查您是否已在 Secrets Panel 中设置了 GEMINI_API_KEY，且开发服务器正常就绪。');
+      setAdvisorError(err?.message || '大军师处连接遇阻，请检查您是否已在 Secrets Panel 中设置了 GEMINI_API_KEY，且开发服务器正常就绪。');
     } finally {
       setIsConsultingAdvisor(false);
     }
@@ -2056,49 +2060,21 @@ export default function App() {
               </div>
             </div>
 
-            {/* Section 2: Grand Advisory Chamber */}
-            <div className="p-4 border-t border-slate-800/80 flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full border border-teal-500/30 flex items-center justify-center bg-teal-950/60 text-sm shrink-0">🪶</span>
-                  <div>
-                    <h3 className="text-sm font-serif font-bold text-teal-300 leading-tight">中军帐军机处</h3>
-                    <p className="text-[11px] text-slate-400 font-mono">卧龙孔明参谋简报</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-950/80 rounded-xl p-3.5 border border-slate-800/80 min-h-[170px] max-h-[340px] overflow-y-auto">
-                {isConsultingAdvisor ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-center gap-2.5">
-                    <RefreshCw size={20} className="text-amber-400 animate-spin" />
-                    <p className="text-xs text-slate-300 font-mono">诸葛孔明正夜观星象、研判军机...</p>
-                  </div>
-                ) : advisorBrief ? (
-                  <div className="prose prose-invert prose-xs">
-                    {renderAdviceMarkdown(advisorBrief)}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-center text-slate-500 gap-2">
-                    <MessageCircle size={24} className="text-slate-700" />
-                    <p className="text-xs font-medium text-slate-400">中军帐军机处待命中</p>
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
-                      点击下方按钮，军师将针对 {selectedOfficer.name} 与【{selectedScenario.title}】局势推演战略锦囊。
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <button
-                id="btn-evaluate-strategy-brief"
-                onClick={handleConsultWarCouncil}
-                disabled={isConsultingAdvisor}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs tracking-wider transition duration-200 shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-              >
-                <Compass size={14} className={isConsultingAdvisor ? 'animate-spin' : ''} />
-                {isConsultingAdvisor ? '锦囊研判修纂中...' : `请大军师为 ${selectedOfficer.name} 授计`}
-              </button>
-            </div>
+            {/* Section 2: Grand Advisory Chamber (Interactive Chat) */}
+            <AdvisorChatPanel
+              officer={selectedOfficer}
+              factionName={FACTIONS.find(f => f.id === selectedOfficer.factionId)?.name ?? selectedOfficer.factionId}
+              scenario={selectedScenario}
+              currentCityName={currentCityId}
+              timestampLabel={timestampLabel}
+              seasonName={currentSeason.name}
+              playerGold={playerGold}
+              advisorBrief={advisorBrief}
+              isConsultingAdvisor={isConsultingAdvisor}
+              advisorError={advisorError}
+              onConsultWarCouncil={handleConsultWarCouncil}
+              renderAdviceMarkdown={renderAdviceMarkdown}
+            />
 
             {/* Section 3: Collapsible Strategy Notes */}
             <details className="game-disclosure game-advisor">

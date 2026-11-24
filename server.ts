@@ -52,11 +52,10 @@ async function generateOfficerBio(data: any): Promise<string> {
 请直接输出传记正文，严禁包含任何JSON包裹、无用的“列传：”前缀标签或版权署名说明。用充满英雄气概的古风书写！`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3.8-flash",
+    model: "gemini-4-hydrogen",
     contents: prompt,
     config: {
       systemInstruction: "你是一位专门为光荣特库摩《三国志8》设计武将列传的历史叙事专家与游戏策划。",
-      temperature: 0.85,
     }
   });
 
@@ -87,15 +86,72 @@ async function evaluateStrategyAdvice(data: any): Promise<string> {
 请确保回复内容非常考究，使用典雅的三国军事古风中文，不要掺杂英文游戏名词！`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3.8-flash",
+    model: "gemini-4-hydrogen",
     contents: prompt,
     config: {
       systemInstruction: "你是三国乱世军师帐中的大军师元帅。请交付最专业、最具三国沉浸感、排版完美的 Markdown 战术评测与天下大势分析论述。",
-      temperature: 0.75,
     }
   });
 
   return response.text?.trim() || "军帅殿上无策，未能卜知天意。";
+}
+
+interface AdvisorChatHistoryItem {
+  role: 'user' | 'model';
+  text: string;
+}
+
+async function executeAdvisorChat(data: any): Promise<string> {
+  const rawMessage = typeof data?.message === 'string' ? data.message.trim() : '';
+  if (!rawMessage) {
+    const err = new Error('请输入您想向军师咨询的问题。') as Error & { status?: number };
+    err.status = 400;
+    throw err;
+  }
+
+  const ai = getGeminiClient();
+  const ctx = data?.context ?? {};
+  const officer = ctx.officer ?? {};
+  const scenario = ctx.scenario ?? {};
+
+  const systemInstruction = `你是《三国志·欧亚群雄》中军帐内羽扇纶巾的大军师（诸葛孔明风范），正为主公参赞军机。
+当前战局态势：
+- 当前聚焦武将：${officer.name || '在野名将'}${officer.styleName ? `（字${officer.styleName}）` : ''}，所属势力：${ctx.factionName || officer.factionId || '群雄'}
+- 五维属性：统帅 ${officer.stats?.leadership ?? '-'} / 武力 ${officer.stats?.force ?? '-'} / 智力 ${officer.stats?.intelligence ?? '-'} / 政治 ${officer.stats?.politics ?? '-'} / 魅力 ${officer.stats?.charisma ?? '-'}
+- 战法特质：${Array.isArray(officer.skills) && officer.skills.length ? officer.skills.join('、') : '常规战法'}；${Array.isArray(officer.traits) && officer.traits.length ? officer.traits.join('、') : '无特殊词条'}
+- 剧本与时令：${scenario.title || '群雄割据'}（${ctx.timestampLabel || `${scenario.year || 190}年`} · ${ctx.seasonName || '春'}）
+- 驻跸城池：${ctx.currentCityName || '洛阳'} | 军资库银：${ctx.playerGold ?? 1500} 金
+
+回答准则：
+1. 紧扣当前武将能力、城池据点、季节与战局给出具体可落地的军事/内政/外交/单挑建议。
+2. 保持古风儒雅但不晦涩的军师口吻，篇幅精炼（一般 2-4 段或条理分明的 3 点要点），可直接回答多轮追问。
+3. 不得编造不存在的菜单按钮，结合地图出征、商贸、外交、内政、单挑、迁徙救灾等既有系统给出策略。`;
+
+  const rawHistory: AdvisorChatHistoryItem[] = Array.isArray(data?.history) ? data.history : [];
+  const normalizedHistory = rawHistory
+    .filter(
+      (item): item is AdvisorChatHistoryItem =>
+        Boolean(item) &&
+        (item.role === 'user' || item.role === 'model') &&
+        typeof item.text === 'string' &&
+        item.text.trim().length > 0,
+    )
+    .slice(-16)
+    .map(item => ({
+      role: item.role,
+      parts: [{ text: item.text.trim() }],
+    }));
+
+  const chat = ai.chats.create({
+    model: "gemini-4-hydrogen",
+    history: normalizedHistory,
+    config: {
+      systemInstruction,
+    },
+  });
+
+  const response = await chat.sendMessage({ message: rawMessage });
+  return response.text?.trim() || "军师沉吟良久，暂未言明此策。";
 }
 
 function executeDuelSimulation(off1: Officer, off2: Officer) {
@@ -224,7 +280,17 @@ app.post("/api/evaluate_strategy", async (req: Request, res: Response) => {
     res.json({ advice });
   } catch (err: any) {
     console.warn('[HTTP] Strategy evaluation warning:', err?.message || err);
-    res.status(500).json({ error: err.message || '军师府商议决策失败' });
+    res.status(err?.status || 500).json({ error: err.message || '军师府商议决策失败' });
+  }
+});
+
+app.post("/api/advisor_chat", async (req: Request, res: Response) => {
+  try {
+    const reply = await executeAdvisorChat(req.body);
+    res.json({ reply });
+  } catch (err: any) {
+    console.warn('[HTTP] Advisor chat warning:', err?.message || err);
+    res.status(err?.status || 500).json({ error: err?.message || '军师对话响应异常，请检查 API 密钥或稍后再试。' });
   }
 });
 

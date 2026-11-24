@@ -41,10 +41,10 @@ export default function GameNavigation(props: Props) {
           { id: 'map', label: '地图', icon: Map },
           { id: 'diplomacy', label: '外交', icon: Handshake },
           { id: 'affairs', label: '内政', icon: Building2 },
+          { id: 'viewer3d', label: '3D沙盘', icon: Box },
           { id: 'bonds', label: '关系', icon: Heart },
           { id: 'roster', label: '武将', icon: Users },
           { id: 'duel', label: '单挑', icon: Swords },
-          { id: 'viewer3d', label: '3D沙盘', icon: Box },
         ] as const).map(({ id, label, icon: Icon }) => (
           <Button
             key={id}

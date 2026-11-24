@@ -1031,11 +1031,6 @@ export default function InternalAffairs({
                           {score}分
                         </span>
                       </div>
-                      <div className="flex gap-1 text-[9px] font-mono text-slate-400 mt-0.5">
-                        <span>政:{officer.stats.politics}</span>
-                        <span>统:{officer.stats.leadership}</span>
-                        <span>武:{officer.stats.force}</span>
-                      </div>
                     </div>
                   </button>
                 );

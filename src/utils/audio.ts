@@ -8,7 +8,7 @@ export type BgmTrack = 'menu' | 'campaign' | 'battle';
 
 export interface AudioContextInput {
   showStartMenu: boolean;
-  activeTab: 'roster' | 'creator' | 'bonds' | 'map' | 'duel' | 'affairs' | 'diplomacy';
+  activeTab: 'roster' | 'creator' | 'bonds' | 'map' | 'duel' | 'affairs' | 'diplomacy' | 'viewer3d';
   inSiegeBattle?: boolean;
 }
 

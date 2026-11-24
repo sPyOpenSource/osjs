@@ -7,7 +7,8 @@ import { getCandidateOfficers, getRecruitRefusal, MAX_COMPANIONS } from './utils
 import { completeObjective, isQuestComplete, markQuestCompleted } from './utils/quest';
 import OfficerCard from './components/OfficerCard';
 import AvatarRenderer from './components/AvatarRenderer';
-import TacticalMap from './components/TacticalMap';
+import TacticalMap, { CITIES } from './components/TacticalMap';
+import Scene3DViewer from './components/Scene3DViewer';
 import StartMenu from './components/StartMenu';
 import GameNavigation from './components/GameNavigation';
 import Button from './components/Button';
@@ -97,13 +98,13 @@ export default function App() {
   const [officers, setOfficers] = useState<Officer[]>(FAMOUS_OFFICERS);
   const [relationships, setRelationships] = useState<RelationshipRelation[]>(FAMOUS_RELATIONSHIPS);
   const [selectedScenario, setSelectedScenario] = useState<CampaignScenario>(SCENARIOS[0]);
-  const [activeTab, setActiveTab] = useState<'roster' | 'creator' | 'bonds' | 'map' | 'duel' | 'affairs' | 'diplomacy'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'creator' | 'bonds' | 'map' | 'duel' | 'affairs' | 'diplomacy' | 'viewer3d'>('roster');
   const [advisorOpen, setAdvisorOpen] = useState(true);
   const [playerGold, setPlayerGold] = useState<number>(1500);
   const [diplomacyState, setDiplomacyState] = useState<DiplomacyState>(() => createInitialDiplomacyState(FACTIONS));
   const [activeAlertDisaster, setActiveAlertDisaster] = useState<AlertActiveDisaster | null>(null);
   const [requestedMapTab, setRequestedMapTab] = useState<{
-    tab: 'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026';
+    tab: 'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026' | '3d-viewer';
     nonce: number;
   } | undefined>(undefined);
 
@@ -1940,6 +1941,37 @@ export default function App() {
                 playClashSound={playClashSound}
                 playDrumSound={playDrumSound}
                 onClose={() => setActiveTab('map')}
+              />
+            );
+          })()}
+
+          {/* Tab 5B: Interactive 3D Viewer */}
+          {activeTab === 'viewer3d' && (() => {
+            const matchedCity =
+              CITIES.find(c => c.name === currentCityId) ||
+              CITIES.find(c => c.id === 'luoyang') ||
+              CITIES[0];
+            return (
+              <Scene3DViewer
+                cities={CITIES}
+                factions={FACTIONS}
+                officers={officers}
+                selectedCityId={matchedCity.id}
+                onSelectCity={cityId => {
+                  const next = CITIES.find(c => c.id === cityId);
+                  if (next) setCurrentCityId(next.name);
+                }}
+                onInspectCityDetail={cityId => {
+                  const next = CITIES.find(c => c.id === cityId);
+                  if (next) setCurrentCityId(next.name);
+                  setActiveTab('map');
+                  setRequestedMapTab(prev => ({
+                    tab: 'city-view',
+                    nonce: (prev?.nonce ?? 0) + 1,
+                  }));
+                }}
+                seasonId={currentSeason.id}
+                weatherId={weatherId}
               />
             );
           })()}

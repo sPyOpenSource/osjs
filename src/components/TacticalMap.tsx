@@ -10,6 +10,7 @@ import GlobalTrade from './GlobalTrade';
 import HistoricalDisastersPanel from './HistoricalDisastersPanel';
 import WorldSituation2026 from './WorldSituation2026';
 import PeopleMigrationsPanel from './PeopleMigrationsPanel';
+import Scene3DViewer from './Scene3DViewer';
 import { AlertActiveDisaster } from './Alerts';
 import Button from './Button';
 import {
@@ -74,7 +75,8 @@ import {
   Home,
   Coins,
   Dices,
-  BookOpen
+  BookOpen,
+  Box
 } from 'lucide-react';
 
 export type AsiaTheater = 'all' | 'europe' | 'mideast' | 'silkroad' | 'central' | 'steppe' | 'eastsea' | 'southeast';
@@ -498,7 +500,7 @@ interface TacticalMapProps {
   onWeatherChange?: (weather: WeatherId) => void;
   onBattleActiveChange?: (active: boolean) => void;
   requestedMapTab?: {
-    tab: 'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026';
+    tab: 'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026' | '3d-viewer';
     nonce: number;
   };
   onActiveDisasterChange?: (disaster: AlertActiveDisaster | null) => void;
@@ -535,7 +537,7 @@ export default function TacticalMap({
   onActiveDisasterChange,
   initialBattleVisual
 }: TacticalMapProps) {
-  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026'>('svg-map');
+  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026' | '3d-viewer'>('svg-map');
   useEffect(() => {
     if (requestedMapTab) {
       setMapTab(requestedMapTab.tab);
@@ -922,8 +924,10 @@ export default function TacticalMap({
     }
   };
 
-  const selectedCity = currentCityId
-    ? CITIES.find(c => c.name === currentCityId) || CITIES.find(c => c.id === 'luoyang') || CITIES[0]
+  const [localCityName, setLocalCityName] = useState<string>('洛阳');
+  const activeCityName = currentCityId || localCityName;
+  const selectedCity = activeCityName
+    ? CITIES.find(c => c.name === activeCityName) || CITIES.find(c => c.id === 'luoyang') || CITIES[0]
     : CITIES.find(c => c.id === 'luoyang') || CITIES[0];
   const selectedCityControllerId = cityOwnership[selectedCity.id] || 'ronin';
   const selectedCityController = FACTIONS.find(f => f.id === selectedCityControllerId) || FACTIONS[5];
@@ -1844,6 +1848,7 @@ export default function TacticalMap({
         <nav className="map-tabs" aria-label="地图视图">
           <Button id="tab-map-city-view" aria-pressed={mapTab === 'city-view'} onClick={() => setMapTab('city-view')}><Home size={15} />{selectedCity.name}</Button>
           <Button id="tab-map-svg" aria-pressed={mapTab === 'svg-map'} onClick={() => setMapTab('svg-map')}><Compass size={15} />地图</Button>
+          <Button id="tab-map-3d-viewer" aria-pressed={mapTab === '3d-viewer'} onClick={() => setMapTab('3d-viewer')}><Box size={15} />3D沙盘</Button>
           <Button id="tab-global-trade" aria-pressed={mapTab === 'global-trade'} onClick={() => { setTradeFaction(originControllerId); setMapTab('global-trade'); }}><Coins size={15} />商贸</Button>
           {selectedScenario.year === 2026 && (
             <Button id="tab-map-world-2026" aria-pressed={mapTab === 'world-2026'} onClick={() => setMapTab('world-2026')}>
@@ -3824,6 +3829,32 @@ export default function TacticalMap({
           </div>
 
         </div>
+      ) : mapTab === '3d-viewer' ? (
+        <Scene3DViewer
+          cities={CITIES}
+          factions={FACTIONS}
+          officers={officers}
+          selectedCityId={selectedCity.id}
+          onSelectCity={cityId => {
+            const target = CITIES.find(c => c.id === cityId);
+            if (target) {
+              setLocalCityName(target.name);
+              onSetCurrentCity?.(target.name);
+            }
+          }}
+          onInspectCityDetail={cityId => {
+            const target = CITIES.find(c => c.id === cityId);
+            if (target) {
+              setLocalCityName(target.name);
+              onSetCurrentCity?.(target.name);
+            }
+            setMapTab('city-view');
+          }}
+          cityOwnership={cityOwnership}
+          cityStats={cityStats}
+          seasonId={activeSeasonId}
+          weatherId={weatherId}
+        />
       ) : mapTab === 'war-mode' ? (
         <WarMode
           originCity={CITIES.find(c => c.id === effectiveExpeditionOriginId) || CITIES[0]}

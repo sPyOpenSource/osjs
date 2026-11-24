@@ -12,6 +12,8 @@ import ProtagonistProfile from '../ProtagonistProfile';
 import StartMenu from '../StartMenu';
 import WorldSituation2026 from '../WorldSituation2026';
 import WarMode from '../WarMode';
+import Scene3DViewer from '../Scene3DViewer';
+import GameNavigation from '../GameNavigation';
 import { createInitialDiplomacyState } from '../../utils/diplomacy';
 import { createInitialMigrationState, MigrationCityRef } from '../../utils/migrations';
 import { advanceWorld, campaignTick, createWorldState } from '../../utils/geopolitics';
@@ -946,3 +948,65 @@ describe('WarMode Clash of Clans Village Raid', () => {
     assert.ok(html.includes('data-testid="coc-card-heal_spell"'), 'expected Heal Spell card');
   });
 });
+
+describe('Scene3DViewer & 3D Navigation Triggers', () => {
+  test('renders 3D viewer shell, subject switcher, camera presets, explode slider, atmosphere mood, and collapsible dock in SSR', () => {
+    const html = renderToStaticMarkup(
+      <Scene3DViewer
+        cities={CITIES}
+        factions={FACTIONS}
+        officers={officers}
+        selectedCityId="luoyang"
+        cityOwnership={{ luoyang: 'wei' }}
+        seasonId="autumn"
+        weatherId="sunny"
+      />,
+    );
+
+    assert.ok(html.includes('id="scene-3d-viewer"'), 'expected #scene-3d-viewer root');
+    assert.ok(html.includes('id="btn-3d-subject-citadel"'), 'expected citadel subject button');
+    assert.ok(html.includes('id="btn-3d-subject-sandtable"'), 'expected sandtable subject button');
+    assert.ok(html.includes('id="btn-3d-subject-siege"'), 'expected siege subject button');
+    assert.ok(html.includes('id="select-3d-city"'), 'expected 3D city selector');
+    assert.ok(html.includes('id="btn-3d-cam-overview"'), 'expected camera overview button');
+    assert.ok(html.includes('id="btn-3d-cam-lowAngle"'), 'expected camera lowAngle button');
+    assert.ok(html.includes('id="btn-3d-cam-closeup"'), 'expected camera closeup button');
+    assert.ok(html.includes('id="btn-3d-cam-flank"'), 'expected camera flank button');
+    assert.ok(html.includes('id="range-3d-explode"'), 'expected exploded view range slider');
+    assert.ok(html.includes('id="select-3d-atmosphere"'), 'expected atmosphere selector');
+    assert.ok(html.includes('id="btn-3d-autorotate"'), 'expected auto-rotate toggle');
+    assert.ok(html.includes('id="btn-3d-toggle-dock"'), 'expected dock collapse toggle');
+    assert.ok(html.includes('洛阳'), 'expected active selected city label');
+  });
+
+  test('renders #tab-viewer3d in GameNavigation and #tab-map-3d-viewer in TacticalMap', () => {
+    const navHtml = renderToStaticMarkup(
+      <GameNavigation
+        activeTab="viewer3d"
+        onSelect={noop}
+        year={190}
+        month={1}
+        xun={1}
+        playing={false}
+        onToggleTime={noop}
+        speed="normal"
+        onSpeed={noop}
+        onStep={noop}
+        onMonth={noop}
+      />,
+    );
+    assert.ok(navHtml.includes('id="tab-viewer3d"'), 'expected #tab-viewer3d primary tab button');
+    assert.ok(navHtml.includes('3D沙盘'), 'expected 3D沙盘 label in GameNavigation');
+
+    const mapHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={SCENARIOS[0]}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+      />,
+    );
+    assert.ok(mapHtml.includes('id="tab-map-3d-viewer"'), 'expected #tab-map-3d-viewer button in TacticalMap');
+  });
+});
+

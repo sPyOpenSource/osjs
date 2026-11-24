@@ -1,9 +1,9 @@
 import React from 'react';
-import { Map, Users, Building2, Heart, UserPlus, Swords, Handshake, Pause, Play, SkipForward } from 'lucide-react';
+import { Map, Users, Building2, Heart, UserPlus, Swords, Handshake, Pause, Play, SkipForward, Box } from 'lucide-react';
 import Button from './Button';
 import { SEASONS, SeasonId, SeasonalWeatherId } from '../utils/seasons';
 
-type Tab = 'roster' | 'creator' | 'bonds' | 'map' | 'duel' | 'affairs' | 'diplomacy';
+type Tab = 'roster' | 'creator' | 'bonds' | 'map' | 'duel' | 'affairs' | 'diplomacy' | 'viewer3d';
 interface Props {
   activeTab: Tab;
   onSelect: (tab: Tab) => void;
@@ -44,6 +44,7 @@ export default function GameNavigation(props: Props) {
           { id: 'bonds', label: '关系', icon: Heart },
           { id: 'roster', label: '武将', icon: Users },
           { id: 'duel', label: '单挑', icon: Swords },
+          { id: 'viewer3d', label: '3D沙盘', icon: Box },
         ] as const).map(({ id, label, icon: Icon }) => (
           <Button
             key={id}

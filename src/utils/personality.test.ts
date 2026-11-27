@@ -104,4 +104,31 @@ describe('officer personality & AI chat prompt builder', () => {
     const pickedSpecific = pickNonSelfOfficer(FAMOUS_OFFICERS, 'liubei', 'lubu');
     assert.equal(pickedSpecific?.id, 'lubu');
   });
+
+  test('restricts spotlight candidates and selection strictly to people from the current city', () => {
+    const chengduCandidates = getSpotlightOfficerCandidates(FAMOUS_OFFICERS, 'liubei', '成都');
+    assert.ok(!chengduCandidates.some(o => o.id === 'liubei'), 'expected protagonist liubei excluded');
+    assert.ok(chengduCandidates.some(o => o.id === 'guanyu'), 'expected Chengdu officer guanyu included');
+    assert.ok(chengduCandidates.some(o => o.id === 'zhugeliang'), 'expected Chengdu officer zhugeliang included');
+    assert.ok(!chengduCandidates.some(o => o.id === 'caocao'), 'expected Xuchang officer caocao excluded');
+    assert.ok(!chengduCandidates.some(o => o.id === 'lubu'), 'expected Luoyang officer lubu excluded');
+
+    // Accepts city id as well as Chinese city name
+    const byCityId = getSpotlightOfficerCandidates(FAMOUS_OFFICERS, 'liubei', 'chengdu');
+    assert.deepEqual(
+      byCityId.map(o => o.id),
+      chengduCandidates.map(o => o.id),
+    );
+
+    // Preferred officer from another city must not leak into Chengdu selection
+    const pickedWithCrossCityPreferred = pickNonSelfOfficer(FAMOUS_OFFICERS, 'liubei', 'caocao', '成都');
+    assert.ok(pickedWithCrossCityPreferred);
+    assert.notEqual(pickedWithCrossCityPreferred?.id, 'caocao');
+    assert.notEqual(pickedWithCrossCityPreferred?.id, 'liubei');
+    assert.ok(chengduCandidates.some(o => o.id === pickedWithCrossCityPreferred?.id));
+
+    // Empty city yields empty candidates and undefined pick rather than leaking external officers
+    assert.deepEqual(getSpotlightOfficerCandidates(FAMOUS_OFFICERS, 'liubei', '敦煌'), []);
+    assert.equal(pickNonSelfOfficer(FAMOUS_OFFICERS, 'liubei', 'guanyu', '敦煌'), undefined);
+  });
 });

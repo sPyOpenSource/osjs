@@ -1,4 +1,5 @@
 import { CampaignScenario, Officer, RelationshipRelation } from '../types';
+import { normalizeCityName, resolveOfficerCityName } from './officerCity';
 
 export interface OfficerPersonalityProfile {
   archetypeLabel: string;
@@ -406,17 +407,27 @@ export function deriveOfficerPersonality(officer: Partial<Officer>): OfficerPers
 export function getSpotlightOfficerCandidates(
   officers: Officer[],
   protagonistId: string,
+  currentCityInput?: string,
 ): Officer[] {
-  return officers.filter(o => o.id !== protagonistId);
+  const targetCity = normalizeCityName(currentCityInput);
+  return officers.filter(
+    o =>
+      o.id !== protagonistId &&
+      (!targetCity || resolveOfficerCityName(o) === targetCity),
+  );
 }
 
 export function pickNonSelfOfficer(
   officers: Officer[],
   protagonistId: string,
   preferredOfficerId?: string,
+  currentCityInput?: string,
 ): Officer | undefined {
-  const candidates = getSpotlightOfficerCandidates(officers, protagonistId);
-  if (candidates.length === 0) return officers[0];
+  const targetCity = normalizeCityName(currentCityInput);
+  const candidates = getSpotlightOfficerCandidates(officers, protagonistId, targetCity);
+  if (candidates.length === 0) {
+    return targetCity ? undefined : officers[0];
+  }
   if (preferredOfficerId && preferredOfficerId !== protagonistId) {
     const exact = candidates.find(o => o.id === preferredOfficerId);
     if (exact) return exact;

@@ -22,6 +22,7 @@ import Alerts, { AlertActiveDisaster } from './components/Alerts';
 import AdvisorChatPanel from './components/AdvisorChatPanel';
 import OfficerSpotlight from './components/OfficerSpotlight';
 import { getSpotlightOfficerCandidates, pickNonSelfOfficer } from './utils/personality';
+import { resolveOfficerCityName } from './utils/officerCity';
 import {
   createInitialDiplomacyState,
   executeEnvoyMission,
@@ -472,28 +473,39 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [factionFilter, setFactionFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'global' | 'threekingdoms' | 'custom'>('all');
-  const [selectedOfficerId, setSelectedOfficerId] = useState<string>(
-    () => pickNonSelfOfficer(FAMOUS_OFFICERS, defaultProtagonistId)?.id ?? ''
-  );
-  const [currentCityId, setCurrentCityId] = useState<string>(
-    officers.find((o) => o.id === protagonistId)?.homeCity ?? '成都'
-  );
+  const [currentCityId, setCurrentCityId] = useState<string>(() => {
+    const starter = FAMOUS_OFFICERS.find(o => o.id === defaultProtagonistId) ?? FAMOUS_OFFICERS[0];
+    return starter?.homeCity || resolveOfficerCityName(starter) || '成都';
+  });
+  const [selectedOfficerId, setSelectedOfficerId] = useState<string>(() => {
+    const starter = FAMOUS_OFFICERS.find(o => o.id === defaultProtagonistId) ?? FAMOUS_OFFICERS[0];
+    const starterCity = starter?.homeCity || resolveOfficerCityName(starter) || '成都';
+    return pickNonSelfOfficer(FAMOUS_OFFICERS, defaultProtagonistId, undefined, starterCity)?.id ?? '';
+  });
 
   const spotlightCandidates = useMemo(
-    () => getSpotlightOfficerCandidates(officers, protagonistId),
-    [officers, protagonistId],
+    () => getSpotlightOfficerCandidates(officers, protagonistId, currentCityId),
+    [officers, protagonistId, currentCityId],
+  );
+  const spotlightOfficer = useMemo(
+    () => pickNonSelfOfficer(officers, protagonistId, selectedOfficerId, currentCityId) ?? null,
+    [officers, protagonistId, selectedOfficerId, currentCityId],
   );
   const selectedOfficer = useMemo(
-    () => pickNonSelfOfficer(officers, protagonistId, selectedOfficerId) ?? officers[0] ?? FAMOUS_OFFICERS[0],
-    [officers, protagonistId, selectedOfficerId],
+    () =>
+      spotlightOfficer ??
+      officers.find(o => o.id === protagonistId) ??
+      officers[0] ??
+      FAMOUS_OFFICERS[0],
+    [spotlightOfficer, officers, protagonistId],
   );
 
   useEffect(() => {
-    const next = pickNonSelfOfficer(officers, protagonistId, selectedOfficerId);
-    if (next && next.id !== selectedOfficerId && next.id !== protagonistId) {
-      setSelectedOfficerId(next.id);
+    const nextId = pickNonSelfOfficer(officers, protagonistId, selectedOfficerId, currentCityId)?.id ?? '';
+    if (nextId !== selectedOfficerId) {
+      setSelectedOfficerId(nextId);
     }
-  }, [officers, protagonistId, selectedOfficerId]);
+  }, [officers, protagonistId, selectedOfficerId, currentCityId]);
 
   // Strategy Advisor panel states
   const [isConsultingAdvisor, setIsConsultingAdvisor] = useState(false);
@@ -607,7 +619,7 @@ export default function App() {
         if (isDisposed) return;
         if (offRes && Array.isArray(offRes) && offRes.length > 0) {
           setOfficers(offRes);
-          setSelectedOfficerId(curr => pickNonSelfOfficer(offRes, protagonistId, curr)?.id ?? '');
+          setSelectedOfficerId(curr => pickNonSelfOfficer(offRes, protagonistId, curr, currentCityId)?.id ?? '');
         }
         if (relRes && Array.isArray(relRes)) {
           setRelationships(relRes);
@@ -648,7 +660,7 @@ export default function App() {
                 setRelationships(initialRelationships);
                 if (initialOfficers.length > 0) {
                   setSelectedOfficerId(current =>
-                    pickNonSelfOfficer(initialOfficers, protagonistId, current)?.id ?? ''
+                    pickNonSelfOfficer(initialOfficers, protagonistId, current, currentCityId)?.id ?? ''
                   );
                 }
                 break;
@@ -1054,7 +1066,7 @@ export default function App() {
       setRelationships(prev => prev.filter(r => r.fromOfficerId !== id && r.toOfficerId !== id));
       if (selectedOfficerId === id) {
         const remaining = officers.filter(o => o.id !== id);
-        setSelectedOfficerId(pickNonSelfOfficer(remaining, protagonistId)?.id ?? '');
+        setSelectedOfficerId(pickNonSelfOfficer(remaining, protagonistId, undefined, currentCityId)?.id ?? '');
       }
     }
     fetch(`/api/officers/${id}`, { method: 'DELETE' }).catch(() => {});
@@ -2036,12 +2048,13 @@ export default function App() {
         {/* Right Strategic Advisor Rail (Sticky on desktop, collapsible via header toggle) */}
         {advisorOpen && (
           <aside className="game-advisor-rail" aria-label="军师参谋栏">
-            {/* Section 1: Selected Officer Spotlight (Anyone else except protagonist) */}
+            {/* Section 1: Selected Officer Spotlight (Only people from the current city, excluding protagonist) */}
             <OfficerSpotlight
-              officer={selectedOfficer}
+              officer={spotlightOfficer}
               candidates={spotlightCandidates}
               factions={FACTIONS}
               scenarioYear={selectedScenario.year}
+              currentCityName={currentCityId}
               onSelectOfficerId={setSelectedOfficerId}
               onCollapse={() => setAdvisorOpen(false)}
             />

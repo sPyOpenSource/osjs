@@ -1038,25 +1038,48 @@ describe('AdvisorChatPanel War Council Chat', () => {
     assert.ok(html.includes('下邳'), 'expected current city context inside chat panel');
   });
 
-  test('renders OfficerSpotlight with non-self selector options excluding protagonist', () => {
-    const candidates = getSpotlightOfficerCandidates(FAMOUS_OFFICERS, 'liubei');
-    const focused = pickNonSelfOfficer(FAMOUS_OFFICERS, 'liubei')!;
+  test('renders OfficerSpotlight with only non-self officers from the current city', () => {
+    const candidates = getSpotlightOfficerCandidates(FAMOUS_OFFICERS, 'liubei', '成都');
+    const focused = pickNonSelfOfficer(FAMOUS_OFFICERS, 'liubei', undefined, '成都')!;
     const html = renderToStaticMarkup(
       <OfficerSpotlight
         officer={focused}
         candidates={candidates}
         factions={FACTIONS}
         scenarioYear={190}
+        currentCityName="成都"
         onSelectOfficerId={noop}
         onCollapse={noop}
       />,
     );
 
     assert.ok(html.includes('id="officer-spotlight-card"'), 'expected #officer-spotlight-card');
+    assert.ok(html.includes('成都 同城武将'), 'expected current city label in spotlight header');
     const selectMatch = html.match(/<select[^>]*id="select-spotlight-officer"[\s\S]*?<\/select>/);
     assert.ok(selectMatch, 'expected #select-spotlight-officer select');
     assert.ok(!selectMatch[0].includes('value="liubei"'), 'expected protagonist liubei excluded from spotlight selector');
-    assert.ok(selectMatch[0].includes('value="guanyu"'), 'expected non-self officers in spotlight selector');
+    assert.ok(selectMatch[0].includes('value="guanyu"'), 'expected Chengdu officer guanyu in spotlight selector');
+    assert.ok(!selectMatch[0].includes('value="caocao"'), 'expected non-Chengdu officer caocao excluded');
+    assert.ok(!selectMatch[0].includes('value="lubu"'), 'expected non-Chengdu officer lubu excluded');
+  });
+
+  test('renders disabled empty option in OfficerSpotlight when current city has no other officers', () => {
+    const html = renderToStaticMarkup(
+      <OfficerSpotlight
+        officer={null}
+        candidates={[]}
+        factions={FACTIONS}
+        scenarioYear={190}
+        currentCityName="敦煌"
+        onSelectOfficerId={noop}
+        onCollapse={noop}
+      />,
+    );
+
+    const selectMatch = html.match(/<select[^>]*id="select-spotlight-officer"[\s\S]*?<\/select>/);
+    assert.ok(selectMatch, 'expected #select-spotlight-officer select');
+    assert.ok(selectMatch[0].includes('disabled'), 'expected select disabled when city has no peers');
+    assert.ok(selectMatch[0].includes('敦煌 暂无其他同城武将'), 'expected city-specific empty state option');
   });
 });
 

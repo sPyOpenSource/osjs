@@ -76,11 +76,71 @@ import {
   Coins,
   Dices,
   BookOpen,
-  Box
+  Box,
+  Wheat
 } from 'lucide-react';
 
 export type AsiaTheater = 'all' | 'europe' | 'mideast' | 'silkroad' | 'central' | 'steppe' | 'eastsea' | 'southeast';
 export type EurasiaTheater = AsiaTheater;
+
+export type CityType = 'trade' | 'military' | 'agriculture';
+
+export const CITY_TYPE_META: Record<
+  CityType,
+  {
+    label: string;
+    shortLabel: string;
+    accentColor: string;
+    textClass: string;
+    shapeClass: string;
+    desc: string;
+  }
+> = {
+  trade: {
+    label: '商贸枢纽',
+    shortLabel: '商贸',
+    accentColor: '#fbbf24',
+    textClass: 'text-amber-400',
+    shapeClass: 'rounded-full',
+    desc: '丝路通商或海港巨埠，税赋与商旅往来枢纽',
+  },
+  military: {
+    label: '军事要塞',
+    shortLabel: '兵营',
+    accentColor: '#fb7185',
+    textClass: 'text-rose-400',
+    shapeClass: 'rounded-[3px]',
+    desc: '兵家必争要冲与重兵屯驻军镇，扼守关隘防线',
+  },
+  agriculture: {
+    label: '农桑粮仓',
+    shortLabel: '农仓',
+    accentColor: '#34d399',
+    textClass: 'text-emerald-400',
+    shapeClass: 'rounded-md',
+    desc: '沃野千里屯田粮产核心，全军粮秣与人口后盾',
+  },
+};
+
+export function CityTypeIcon({
+  cityType,
+  size = 11,
+  className = '',
+  style,
+}: {
+  cityType: CityType;
+  size?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  if (cityType === 'trade') {
+    return <Coins size={size} strokeWidth={2.2} className={className} style={style} aria-hidden="true" />;
+  }
+  if (cityType === 'military') {
+    return <Swords size={size} strokeWidth={2.2} className={className} style={style} aria-hidden="true" />;
+  }
+  return <Wheat size={size} strokeWidth={2.2} className={className} style={style} aria-hidden="true" />;
+}
 
 export interface City {
   id: string;
@@ -90,8 +150,86 @@ export interface City {
   y: number; // SVG coordinate y % (0 - 100)
   region: string;
   theater: AsiaTheater;
+  cityType: CityType;
+  basePopulation: number;
   description: string;
   tier?: 'city' | 'metropolis';
+}
+
+export type CitySizeTier = 'frontier' | 'regional' | 'major' | 'metropolis';
+
+export interface CityDotMetrics {
+  population: number;
+  sizeTier: CitySizeTier;
+  sizeLabel: string;
+  dotPx: number;
+  ringPx: number;
+  iconPx: number;
+  labelTopPx: number;
+}
+
+export function getCityDotMetrics(city: City, population?: number): CityDotMetrics {
+  const effectivePopulation = Math.max(
+    40000,
+    Math.round(population ?? city.basePopulation ?? (city.tier === 'metropolis' ? 300000 : 120000)),
+  );
+  const minSqrt = Math.sqrt(60000);
+  const maxSqrt = Math.sqrt(350000);
+  const ratio = Math.min(1.15, Math.max(0, (Math.sqrt(effectivePopulation) - minSqrt) / (maxSqrt - minSqrt)));
+  const dotPx = Math.round((11 + ratio * 10) * 10) / 10;
+  const ringPx = Math.round((dotPx + 6) * 10) / 10;
+  const iconPx = Math.max(7, Math.round(dotPx * 0.56 * 10) / 10);
+  const labelTopPx = Math.round(dotPx / 2 + 4);
+
+  let sizeTier: CitySizeTier = 'frontier';
+  let sizeLabel = '边邑';
+  if (city.tier === 'metropolis' || effectivePopulation >= 270000) {
+    sizeTier = 'metropolis';
+    sizeLabel = '巨都';
+  } else if (effectivePopulation >= 180000) {
+    sizeTier = 'major';
+    sizeLabel = '大城';
+  } else if (effectivePopulation >= 110000) {
+    sizeTier = 'regional';
+    sizeLabel = '名镇';
+  }
+
+  return {
+    population: effectivePopulation,
+    sizeTier,
+    sizeLabel,
+    dotPx,
+    ringPx,
+    iconPx,
+    labelTopPx,
+  };
+}
+
+export interface ActiveMapFactionSummary {
+  faction: Faction;
+  cityCount: number;
+}
+
+export function getActiveMapFactions(
+  cityOwnership: Record<string, string>,
+  factions: Faction[] = FACTIONS,
+  cities: City[] = CITIES,
+): { activeFactions: ActiveMapFactionSummary[]; neutralCount: number } {
+  const counts: Record<string, number> = {};
+  for (const city of cities) {
+    const owner = cityOwnership[city.id] || 'ronin';
+    counts[owner] = (counts[owner] || 0) + 1;
+  }
+
+  const activeFactions = factions
+    .filter(f => f.id !== 'ronin' && (counts[f.id] ?? 0) > 0)
+    .map(faction => ({ faction, cityCount: counts[faction.id] }))
+    .sort((a, b) => b.cityCount - a.cityCount);
+
+  return {
+    activeFactions,
+    neutralCount: counts['ronin'] ?? 0,
+  };
 }
 
 export interface ExpeditionBattleVisual {
@@ -125,50 +263,50 @@ export const ASIA_THEATERS = EURASIA_THEATERS;
 
 export const CITIES: City[] = [
   // 1. 欧洲与环地中海 (Europe & Mediterranean)
-  { id: 'london', name: '伦敦', pinyin: 'London', x: 7.5, y: 20, region: '不列颠', theater: 'europe', tier: 'metropolis', description: '泰晤士河畔不列颠首府，伦蒂尼姆古港。连通北海与大西洋商路之西方巨埠，港口繁盛，雄踞西北海疆。' },
-  { id: 'paris', name: '巴黎', pinyin: 'Paris', x: 11, y: 33, region: '高卢', theater: 'europe', tier: 'metropolis', description: '塞纳河畔高卢核心大都（卢泰西亚）。贯通莱茵防线与地中海之欧陆重镇，文风鼎盛，铁骑与炮阵威震西欧。' },
-  { id: 'rome', name: '罗马', pinyin: 'Rome', x: 14, y: 44, region: '意大利', theater: 'europe', description: '罗马帝国元老院与万神庙之都。重装军团严整如移动铁壁，横扫环地中海，条条大路通罗马。' },
-  { id: 'carthage', name: '迦太基', pinyin: 'Carthage', x: 12, y: 53, region: '北非', theater: 'europe', description: '北非地中海航海大邦。汉尼拔·巴卡统领数万猛犸战象与精骑在此誓师翻越阿尔卑斯山，威震亚平宁。' },
-  { id: 'pella', name: '佩拉・雅典', pinyin: 'Pella & Athens', x: 20, y: 46, region: '希腊', theater: 'europe', description: '马其顿帝国王都佩拉与希腊古典卫城雅典。亚历山大大帝长枪方阵与王家骑兵策源地，东征横扫欧亚非。' },
-  { id: 'constantinople', name: '君士坦丁堡', pinyin: 'Constantinople', x: 23.5, y: 39.5, region: '色雷斯', theater: 'europe', tier: 'metropolis', description: '扼守博斯普鲁斯海峡的千年帝都，三面环海、金角湾坚城如铁，欧亚大陆陆海交汇第一枢纽。' },
-  { id: 'alexandria', name: '亚历山大港', pinyin: 'Alexandria', x: 24, y: 56, region: '埃及', theater: 'europe', description: '尼罗河入海口明珠，托勒密王朝都城与世界灯塔所在。埃及艳后克利奥帕特拉七世在此操盘地中海风云。' },
+  { id: 'london', name: '伦敦', pinyin: 'London', x: 7.5, y: 20, region: '不列颠', theater: 'europe', cityType: 'trade', basePopulation: 300000, tier: 'metropolis', description: '泰晤士河畔不列颠首府，伦蒂尼姆古港。连通北海与大西洋商路之西方巨埠，港口繁盛，雄踞西北海疆。' },
+  { id: 'paris', name: '巴黎', pinyin: 'Paris', x: 11, y: 33, region: '高卢', theater: 'europe', cityType: 'agriculture', basePopulation: 310000, tier: 'metropolis', description: '塞纳河畔高卢核心大都（卢泰西亚）。贯通莱茵防线与地中海之欧陆重镇，文风鼎盛，铁骑与炮阵威震西欧。' },
+  { id: 'rome', name: '罗马', pinyin: 'Rome', x: 14, y: 44, region: '意大利', theater: 'europe', cityType: 'military', basePopulation: 260000, description: '罗马帝国元老院与万神庙之都。重装军团严整如移动铁壁，横扫环地中海，条条大路通罗马。' },
+  { id: 'carthage', name: '迦太基', pinyin: 'Carthage', x: 12, y: 53, region: '北非', theater: 'europe', cityType: 'military', basePopulation: 160000, description: '北非地中海航海大邦。汉尼拔·巴卡统领数万猛犸战象与精骑在此誓师翻越阿尔卑斯山，威震亚平宁。' },
+  { id: 'pella', name: '佩拉・雅典', pinyin: 'Pella & Athens', x: 20, y: 46, region: '希腊', theater: 'europe', cityType: 'military', basePopulation: 150000, description: '马其顿帝国王都佩拉与希腊古典卫城雅典。亚历山大大帝长枪方阵与王家骑兵策源地，东征横扫欧亚非。' },
+  { id: 'constantinople', name: '君士坦丁堡', pinyin: 'Constantinople', x: 23.5, y: 39.5, region: '色雷斯', theater: 'europe', cityType: 'trade', basePopulation: 350000, tier: 'metropolis', description: '扼守博斯普鲁斯海峡的千年帝都，三面环海、金角湾坚城如铁，欧亚大陆陆海交汇第一枢纽。' },
+  { id: 'alexandria', name: '亚历山大港', pinyin: 'Alexandria', x: 24, y: 56, region: '埃及', theater: 'europe', cityType: 'trade', basePopulation: 230000, description: '尼罗河入海口明珠，托勒密王朝都城与世界灯塔所在。埃及艳后克利奥帕特拉七世在此操盘地中海风云。' },
 
   // 2. 近东与萨珊波斯 (Near East & Persian Empires)
-  { id: 'antioch', name: '安条克', pinyin: 'Antioch', x: 28, y: 47, region: '叙利亚', theater: 'mideast', description: '地中海东岸商贸第一重埠，罗马帝国东方省份咽喉，陆上与海上丝绸之路西端终点交汇枢纽。' },
-  { id: 'ctesiphon', name: '泰西封', pinyin: 'Ctesiphon', x: 34, y: 50, region: '美索不达米亚', theater: 'mideast', description: '底格里斯河畔萨珊波斯王朝帝都。阿尔达希尔一世建立琐罗亚斯德拜火圣都，全副具装铁骑震撼东方。' },
-  { id: 'samarkand', name: '撒马尔罕', pinyin: 'Samarkand', x: 40, y: 38, region: '河中', theater: 'mideast', description: '中亚索格底亚那（康居粟特）丝路绿洲翡翠之城。东西方胡商巨贾通汇、琉璃金器商贾云集。' },
+  { id: 'antioch', name: '安条克', pinyin: 'Antioch', x: 28, y: 47, region: '叙利亚', theater: 'mideast', cityType: 'trade', basePopulation: 200000, description: '地中海东岸商贸第一重埠，罗马帝国东方省份咽喉，陆上与海上丝绸之路西端终点交汇枢纽。' },
+  { id: 'ctesiphon', name: '泰西封', pinyin: 'Ctesiphon', x: 34, y: 50, region: '美索不达米亚', theater: 'mideast', cityType: 'military', basePopulation: 205000, description: '底格里斯河畔萨珊波斯王朝帝都。阿尔达希尔一世建立琐罗亚斯德拜火圣都，全副具装铁骑震撼东方。' },
+  { id: 'samarkand', name: '撒马尔罕', pinyin: 'Samarkand', x: 40, y: 38, region: '河中', theater: 'mideast', cityType: 'trade', basePopulation: 165000, description: '中亚索格底亚那（康居粟特）丝路绿洲翡翠之城。东西方胡商巨贾通汇、琉璃金器商贾云集。' },
 
   // 3. 丝路、中亚与南亚身毒 (Silk Road, Central & South Asia)
-  { id: 'purushapura', name: '布路沙布逻', pinyin: 'Purushapura', x: 45, y: 47, region: '犍陀罗', theater: 'silkroad', description: '贵霜帝国冬都（今白沙瓦），迦腻色迦大帝敕造宏伟佛塔之地。希腊佛艺与丝路商道之交汇门户。' },
-  { id: 'pataliputra', name: '华氏城', pinyin: 'Pataliputra', x: 53, y: 56, region: '恒河', theater: 'silkroad', description: '古印度孔雀王朝阿育王所建摩揭陀恒河古都。石刻法敕布施四海，身毒佛教鼎盛圣境，西南丝路通达。' },
-  { id: 'shule', name: '疏勒', pinyin: 'Shule', x: 49, y: 40, region: '西域', theater: 'silkroad', description: '葱岭脚下绿洲重镇（今喀什），东连塔里木大漠，西出大宛与贵霜。商贾云集，丝绸玉石通衢。' },
-  { id: 'dunhuang', name: '敦煌', pinyin: 'Dunhuang', x: 60, y: 40, region: '河西', theater: 'silkroad', description: '河西四郡之门户，玉门关与阳关扼守东西咽喉。丝绸之路商队与骆驼长旅西出之起点，佛窟禅壁耸立。' },
+  { id: 'purushapura', name: '布路沙布逻', pinyin: 'Purushapura', x: 45, y: 47, region: '犍陀罗', theater: 'silkroad', cityType: 'trade', basePopulation: 140000, description: '贵霜帝国冬都（今白沙瓦），迦腻色迦大帝敕造宏伟佛塔之地。希腊佛艺与丝路商道之交汇门户。' },
+  { id: 'pataliputra', name: '华氏城', pinyin: 'Pataliputra', x: 53, y: 56, region: '恒河', theater: 'silkroad', cityType: 'agriculture', basePopulation: 155000, description: '古印度孔雀王朝阿育王所建摩揭陀恒河古都。石刻法敕布施四海，身毒佛教鼎盛圣境，西南丝路通达。' },
+  { id: 'shule', name: '疏勒', pinyin: 'Shule', x: 49, y: 40, region: '西域', theater: 'silkroad', cityType: 'trade', basePopulation: 88000, description: '葱岭脚下绿洲重镇（今喀什），东连塔里木大漠，西出大宛与贵霜。商贾云集，丝绸玉石通衢。' },
+  { id: 'dunhuang', name: '敦煌', pinyin: 'Dunhuang', x: 60, y: 40, region: '河西', theater: 'silkroad', cityType: 'trade', basePopulation: 92000, description: '河西四郡之门户，玉门关与阳关扼守东西咽喉。丝绸之路商队与骆驼长旅西出之起点，佛窟禅壁耸立。' },
 
   // 4. 欧亚北方大草原与游牧汗庭 (Eurasian Steppe & Nomads)
-  { id: 'pontic_steppe', name: '萨尔马提亚', pinyin: 'Sarmatia', x: 28, y: 26, region: '黑海草原', theater: 'steppe', description: '顿河与黑海北岸欧亚大草原西端。斯基泰与萨尔马提亚重铠具装骑兵驰骋的原野，西方游牧控弦诸部集聚之所。' },
-  { id: 'moscow', name: '莫斯科', pinyin: 'Moscow', x: 35, y: 18, region: '罗斯', theater: 'steppe', tier: 'metropolis', description: '莫斯科河畔北疆重都。广袤森林草原拱卫克里姆林坚壁，扼守伏尔加与东欧商道，控引极北冰雪万里疆土。' },
-  { id: 'longcheng', name: '漠北龙城', pinyin: 'Dragon City', x: 65, y: 18, region: '瀚海', theater: 'steppe', description: '匈奴单于祭天大会王庭。冒顿单于统一北方草原控弦三十万，鸣镝号令风卷残云，勒石燕然与漠北决战之地。' },
-  { id: 'xianbei', name: '鲜卑汗庭', pinyin: 'Xianbei', x: 71, y: 19, region: '漠北', theater: 'steppe', description: '北方草原游牧部落联盟核心。檀石槐一统各部后控弦数十万，轲比能雄踞大漠，骑射如风。' },
+  { id: 'pontic_steppe', name: '萨尔马提亚', pinyin: 'Sarmatia', x: 28, y: 26, region: '黑海草原', theater: 'steppe', cityType: 'military', basePopulation: 64000, description: '顿河与黑海北岸欧亚大草原西端。斯基泰与萨尔马提亚重铠具装骑兵驰骋的原野，西方游牧控弦诸部集聚之所。' },
+  { id: 'moscow', name: '莫斯科', pinyin: 'Moscow', x: 35, y: 18, region: '罗斯', theater: 'steppe', cityType: 'military', basePopulation: 290000, tier: 'metropolis', description: '莫斯科河畔北疆重都。广袤森林草原拱卫克里姆林坚壁，扼守伏尔加与东欧商道，控引极北冰雪万里疆土。' },
+  { id: 'longcheng', name: '漠北龙城', pinyin: 'Dragon City', x: 65, y: 18, region: '瀚海', theater: 'steppe', cityType: 'military', basePopulation: 72000, description: '匈奴单于祭天大会王庭。冒顿单于统一北方草原控弦三十万，鸣镝号令风卷残云，勒石燕然与漠北决战之地。' },
+  { id: 'xianbei', name: '鲜卑汗庭', pinyin: 'Xianbei', x: 71, y: 19, region: '漠北', theater: 'steppe', cityType: 'military', basePopulation: 68000, description: '北方草原游牧部落联盟核心。檀石槐一统各部后控弦数十万，轲比能雄踞大漠，骑射如风。' },
 
   // 5. 华夏三国核心要邑 (Central Plains & Three Kingdoms)
-  { id: 'beiping', name: '北平', pinyin: 'Beiping', x: 78, y: 31, region: '幽州', theater: 'central', description: '临近幽燕边陲，盛产战马白马义从之精骑，北方游牧守御要门。' },
-  { id: 'ye', name: '邺城', pinyin: 'Ye', x: 74, y: 37, region: '河北', theater: 'central', description: '冀州核心，河北之咽喉。背靠太行山，面濒漳水，城郭高峻，物资富庶，亦是王霸之基。' },
-  { id: 'changan', name: '长安', pinyin: 'Chang\'an', x: 67, y: 44, region: '关中', theater: 'central', description: '前汉旧都，雄踞关中平原。东有潼关之险，西接丝路。固若金汤，历代帝王龙兴之地。' },
-  { id: 'luoyang', name: '洛阳', pinyin: 'Luoyang', x: 71, y: 43, region: '司隶', theater: 'central', description: '东周、东汉、曹魏之大一统帝都。四面环山，雄关拱卫（虎牢关、函谷关），王气巍峨。' },
-  { id: 'xuchang', name: '许昌', pinyin: 'Xuchang', x: 74, y: 47, region: '中原', theater: 'central', description: '迎天子都许县，中原腹地。农耕屯田之重镇，城池宽敞，群贤毕至。' },
-  { id: 'xiapi', name: '下邳', pinyin: 'Xiapi', x: 78, y: 46, region: '徐州', theater: 'central', description: '徐州军事枢纽，依泗水、沂水之险。吕布殒命白门楼、关羽屯土山约三事之历史舞台。' },
-  { id: 'hanzhong', name: '汉中', pinyin: 'Hanzhong', x: 66, y: 51, region: '秦巴', theater: 'central', description: '汉中盆地，巴蜀之北大门。刘备大败曹操进位汉中王之策源，进可图秦川，退可守蜀川。' },
-  { id: 'chengdu', name: '成都', pinyin: 'Chengdu', x: 64, y: 60, region: '巴蜀', theater: 'central', description: '天府之国都城，沃野千里。益州天险，崇山峻岭环抱。物产极其繁盛，蜀汉开国之基石。' },
-  { id: 'jingzhou', name: '荆州', pinyin: 'Jingzhou', x: 73, y: 56, region: '荆襄', theater: 'central', description: '江陵要塞，天下之枢纽。北连中原，南通岭表，东接江东。刘备借荆州、关羽水淹七军之争地。' },
-  { id: 'jianye', name: '建业', pinyin: 'Jianye', x: 80, y: 52, region: '江东', theater: 'central', description: '东吴帝都。虎踞龙盘，依凭长江天堑。江南经济与水军航运中枢，虎视中原。' },
+  { id: 'beiping', name: '北平', pinyin: 'Beiping', x: 78, y: 31, region: '幽州', theater: 'central', cityType: 'military', basePopulation: 135000, description: '临近幽燕边陲，盛产战马白马义从之精骑，北方游牧守御要门。' },
+  { id: 'ye', name: '邺城', pinyin: 'Ye', x: 74, y: 37, region: '河北', theater: 'central', cityType: 'agriculture', basePopulation: 195000, description: '冀州核心，河北之咽喉。背靠太行山，面濒漳水，城郭高峻，物资富庶，亦是王霸之基。' },
+  { id: 'changan', name: '长安', pinyin: 'Chang\'an', x: 67, y: 44, region: '关中', theater: 'central', cityType: 'military', basePopulation: 240000, description: '前汉旧都，雄踞关中平原。东有潼关之险，西接丝路。固若金汤，历代帝王龙兴之地。' },
+  { id: 'luoyang', name: '洛阳', pinyin: 'Luoyang', x: 71, y: 43, region: '司隶', theater: 'central', cityType: 'military', basePopulation: 250000, description: '东周、东汉、曹魏之大一统帝都。四面环山，雄关拱卫（虎牢关、函谷关），王气巍峨。' },
+  { id: 'xuchang', name: '许昌', pinyin: 'Xuchang', x: 74, y: 47, region: '中原', theater: 'central', cityType: 'agriculture', basePopulation: 190000, description: '迎天子都许县，中原腹地。农耕屯田之重镇，城池宽敞，群贤毕至。' },
+  { id: 'xiapi', name: '下邳', pinyin: 'Xiapi', x: 78, y: 46, region: '徐州', theater: 'central', cityType: 'military', basePopulation: 130000, description: '徐州军事枢纽，依泗水、沂水之险。吕布殒命白门楼、关羽屯土山约三事之历史舞台。' },
+  { id: 'hanzhong', name: '汉中', pinyin: 'Hanzhong', x: 66, y: 51, region: '秦巴', theater: 'central', cityType: 'military', basePopulation: 125000, description: '汉中盆地，巴蜀之北大门。刘备大败曹操进位汉中王之策源，进可图秦川，退可守蜀川。' },
+  { id: 'chengdu', name: '成都', pinyin: 'Chengdu', x: 64, y: 60, region: '巴蜀', theater: 'central', cityType: 'agriculture', basePopulation: 220000, description: '天府之国都城，沃野千里。益州天险，崇山峻岭环抱。物产极其繁盛，蜀汉开国之基石。' },
+  { id: 'jingzhou', name: '荆州', pinyin: 'Jingzhou', x: 73, y: 56, region: '荆襄', theater: 'central', cityType: 'military', basePopulation: 185000, description: '江陵要塞，天下之枢纽。北连中原，南通岭表，东接江东。刘备借荆州、关羽水淹七军之争地。' },
+  { id: 'jianye', name: '建业', pinyin: 'Jianye', x: 80, y: 52, region: '江东', theater: 'central', cityType: 'trade', basePopulation: 215000, description: '东吴帝都。虎踞龙盘，依凭长江天堑。江南经济与水军航运中枢，虎视中原。' },
 
   // 6. 东北与东海瀛洲 (East Sea & Yamatai)
-  { id: 'xiangping', name: '襄平', pinyin: 'Xiangping', x: 83, y: 28, region: '辽东', theater: 'eastsea', description: '辽东公孙氏三世割据之都城。雄踞辽东半岛，通航高句丽、濊貊与倭国海路，后为司马懿率魏军平定。' },
-  { id: 'yamatai', name: '邪马台', pinyin: 'Yamatai', x: 94, y: 40, region: '瀛洲', theater: 'eastsea', description: '东海日本列岛古国，由卑弥呼女王统治。景初二年（239年）遣使泛海朝贡，魏明帝特赐金印紫绶封为「亲魏倭王」。' },
+  { id: 'xiangping', name: '襄平', pinyin: 'Xiangping', x: 83, y: 28, region: '辽东', theater: 'eastsea', cityType: 'military', basePopulation: 85000, description: '辽东公孙氏三世割据之都城。雄踞辽东半岛，通航高句丽、濊貊与倭国海路，后为司马懿率魏军平定。' },
+  { id: 'yamatai', name: '邪马台', pinyin: 'Yamatai', x: 94, y: 40, region: '瀛洲', theater: 'eastsea', cityType: 'agriculture', basePopulation: 78000, description: '东海日本列岛古国，由卑弥呼女王统治。景初二年（239年）遣使泛海朝贡，魏明帝特赐金印紫绶封为「亲魏倭王」。' },
 
   // 7. 岭南交州 (Southeast Asia)
-  { id: 'guangzhou', name: '广州', pinyin: 'Guangzhou', x: 78, y: 64, region: '岭南', theater: 'southeast', tier: 'metropolis', description: '番禺南海大都会，海上丝绸之路东方起点。珠江入海门户，商船云集、人口殷盛，沟通江南与南洋诸邦。' },
-  { id: 'jiaozhi', name: '交趾', pinyin: 'Jiaozhi', x: 72, y: 75, region: '交广', theater: 'southeast', description: '汉末士燮割据岭南交州之治所（今越南红河三角洲龙编）。百越通海第一大港，输出象牙、翡翠与南珠，后归孙吴。' }
+  { id: 'guangzhou', name: '广州', pinyin: 'Guangzhou', x: 78, y: 64, region: '岭南', theater: 'southeast', cityType: 'trade', basePopulation: 320000, tier: 'metropolis', description: '番禺南海大都会，海上丝绸之路东方起点。珠江入海门户，商船云集、人口殷盛，沟通江南与南洋诸邦。' },
+  { id: 'jiaozhi', name: '交趾', pinyin: 'Jiaozhi', x: 72, y: 75, region: '交广', theater: 'southeast', cityType: 'trade', basePopulation: 115000, description: '汉末士燮割据岭南交州之治所（今越南红河三角洲龙编）。百越通海第一大港，输出象牙、翡翠与南珠，后归孙吴。' }
 ];
 
 const NEARBY_CITY_RADIUS = 12;
@@ -537,7 +675,9 @@ export default function TacticalMap({
   onActiveDisasterChange,
   initialBattleVisual
 }: TacticalMapProps) {
-  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026' | '3d-viewer'>('city-view');
+  const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026' | '3d-viewer'>(
+    () => requestedMapTab?.tab ?? 'city-view'
+  );
   useEffect(() => {
     if (requestedMapTab) {
       setMapTab(requestedMapTab.tab);
@@ -562,6 +702,9 @@ export default function TacticalMap({
     }
   };
   const [selectedTheater, setSelectedTheater] = useState<AsiaTheater>('all');
+  const [selectedCityTypeFilter, setSelectedCityTypeFilter] = useState<'all' | CityType>('all');
+  const [showFactionLegend, setShowFactionLegend] = useState(true);
+  const [selectedFactionFilter, setSelectedFactionFilter] = useState<string>('all');
   const [show190Border, setShow190Border] = useState(false);
   const [showTradeRoutes, setShowTradeRoutes] = useState(false);
   const [showMigrations, setShowMigrations] = useState(true);
@@ -586,6 +729,20 @@ export default function TacticalMap({
   const [cityOwnership, setCityOwnership] = useState<Record<string, string>>(() => 
     getScenarioDefaultOwnership(selectedScenario.id)
   );
+  const { activeFactions: activeMapFactions, neutralCount: neutralMapCityCount } = useMemo(
+    () => getActiveMapFactions(cityOwnership, FACTIONS, CITIES),
+    [cityOwnership],
+  );
+  useEffect(() => {
+    if (selectedFactionFilter === 'all') return;
+    const stillHasCities =
+      selectedFactionFilter === 'ronin'
+        ? neutralMapCityCount > 0
+        : activeMapFactions.some(entry => entry.faction.id === selectedFactionFilter);
+    if (!stillHasCities) {
+      setSelectedFactionFilter('all');
+    }
+  }, [selectedFactionFilter, activeMapFactions, neutralMapCityCount]);
 
   // City View / Interior Facility states
   const [selectedFacility, setSelectedFacility] = useState<'palace' | 'market' | 'tavern' | 'barracks' | 'gate'>('palace');
@@ -594,19 +751,13 @@ export default function TacticalMap({
     const stats: Record<string, { prosperity: number; defense: number; grain: number; population: number }> = {};
     CITIES.forEach(c => {
       const isMetropolis = c.tier === 'metropolis';
-      stats[c.id] = isMetropolis
-        ? {
-            prosperity: 82 + Math.floor(Math.random() * 14),
-            defense: 80 + Math.floor(Math.random() * 14),
-            grain: 2600 + Math.floor(Math.random() * 1800),
-            population: 240000 + Math.floor(Math.random() * 140000),
-          }
-        : {
-            prosperity: 65 + Math.floor(Math.random() * 20),
-            defense: 70 + Math.floor(Math.random() * 20),
-            grain: 1200 + Math.floor(Math.random() * 2000),
-            population: 82000 + Math.floor(Math.random() * 110000),
-          };
+      const isMajor = c.basePopulation >= 180000;
+      stats[c.id] = {
+        prosperity: isMetropolis ? 88 : isMajor ? 78 : 68,
+        defense: isMetropolis ? 86 : isMajor ? 78 : 70,
+        grain: Math.round(c.basePopulation / 90),
+        population: c.basePopulation,
+      };
     });
     return stats;
   });
@@ -1938,6 +2089,7 @@ export default function TacticalMap({
             <div className="map-filter-bar">
               <label>战区<select aria-label="战区" value={selectedTheater} onChange={event => setSelectedTheater(event.target.value as AsiaTheater)}>{ASIA_THEATERS.map(th => <option key={th.id} value={th.id}>{th.name} · {th.id === 'all' ? CITIES.length : CITIES.filter(city => city.theater === th.id).length}</option>)}</select></label>
               <details className="game-disclosure game-disclosure-popover"><summary>地图设置</summary><div className="game-settings-body">
+                <label className="game-check"><input id="toggle-faction-legend" type="checkbox" checked={showFactionLegend} onChange={event => { const next = event.target.checked; setShowFactionLegend(next); if (!next) setSelectedFactionFilter('all'); }} />势力图例</label>
                 <label className="game-check"><input id="toggle-190-border" type="checkbox" checked={show190Border} onChange={event => setShow190Border(event.target.checked)} />汉境国界</label>
                 <label className="game-check"><input id="toggle-trade-routes" type="checkbox" checked={showTradeRoutes} onChange={event => setShowTradeRoutes(event.target.checked)} />丝路航线</label>
                 <label className="game-check"><input id="toggle-migrations" type="checkbox" checked={showMigrations} onChange={event => setShowMigrations(event.target.checked)} />人口迁徙图</label>
@@ -1951,20 +2103,123 @@ export default function TacticalMap({
           
           {/* SVG Interactive Map */}
           <div className={`${isWideView ? 'w-full' : 'lg:col-span-8'} bg-slate-950 p-3.5 rounded-2xl border border-slate-900 flex flex-col justify-between relative overflow-hidden min-h-[460px]`}>
-            <div className="flex items-center justify-between gap-2 mb-2.5 z-10">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                {FACTIONS.filter(f => f.id !== 'ronin').map(f => (
-                  <div key={f.id} className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: f.color }} />
-                    <span className="text-[10.5px] text-slate-400 font-sans">{f.name.slice(0, 2)}</span>
-                  </div>
-                ))}
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-slate-500 shrink-0" />
-                  <span className="text-[10.5px] text-slate-500 font-sans">中立</span>
-                </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 z-10">
+              <div id="map-faction-legend" className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                {showFactionLegend ? (
+                  <>
+                    {activeMapFactions.map(({ faction: f, cityCount }) => {
+                      const isFactionSelected = selectedFactionFilter === f.id;
+                      return (
+                        <button
+                          key={f.id}
+                          id={`btn-map-faction-${f.id}`}
+                          type="button"
+                          aria-pressed={isFactionSelected}
+                          title={`${f.name} · 当前占据 ${cityCount} 城（点击高亮）`}
+                          onClick={() => setSelectedFactionFilter(prev => (prev === f.id ? 'all' : f.id))}
+                          className={`inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[10.5px] font-sans whitespace-nowrap shrink-0 ${
+                            isFactionSelected
+                              ? 'bg-slate-800 text-slate-100 ring-1 ring-amber-400/60'
+                              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/70'
+                          }`}
+                        >
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: f.color }} />
+                          <span>{f.name.slice(0, 2)}</span>
+                          <span className="font-mono text-[9.5px] text-slate-500 tabular-nums">{cityCount}</span>
+                        </button>
+                      );
+                    })}
+                    {neutralMapCityCount > 0 && (
+                      <button
+                        id="btn-map-faction-ronin"
+                        type="button"
+                        aria-pressed={selectedFactionFilter === 'ronin'}
+                        title={`中立 / 在野城池 · 共 ${neutralMapCityCount} 城（点击高亮）`}
+                        onClick={() => setSelectedFactionFilter(prev => (prev === 'ronin' ? 'all' : 'ronin'))}
+                        className={`inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[10.5px] font-sans whitespace-nowrap shrink-0 ${
+                          selectedFactionFilter === 'ronin'
+                            ? 'bg-slate-800 text-slate-100 ring-1 ring-amber-400/60'
+                            : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900/70'
+                        }`}
+                      >
+                        <span className="w-2 h-2 rounded-full bg-slate-500 shrink-0" />
+                        <span>中立</span>
+                        <span className="font-mono text-[9.5px] text-slate-600 tabular-nums">{neutralMapCityCount}</span>
+                      </button>
+                    )}
+                    <button
+                      id="btn-toggle-faction-legend"
+                      type="button"
+                      onClick={() => {
+                        setShowFactionLegend(false);
+                        setSelectedFactionFilter('all');
+                      }}
+                      title="隐藏势力图例"
+                      className="text-[10px] font-mono text-slate-500 hover:text-slate-300 px-1.5 py-0.5 rounded hover:bg-slate-900 cursor-pointer whitespace-nowrap shrink-0"
+                    >
+                      隐藏
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    id="btn-toggle-faction-legend"
+                    type="button"
+                    onClick={() => setShowFactionLegend(true)}
+                    title="展开当前在图势力图例"
+                    className="inline-flex items-center gap-1.5 text-[10.5px] font-sans text-slate-400 hover:text-slate-200 bg-slate-900/80 border border-slate-800 px-2 py-0.5 rounded-md cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <Eye size={11} />
+                    <span>显示势力 ({activeMapFactions.length})</span>
+                  </button>
+                )}
               </div>
-              <span className="text-[10px] font-mono text-slate-600 hidden sm:inline">双击缩放</span>
+
+              <div id="city-type-legend" className="flex flex-wrap items-center gap-1.5">
+                {(['trade', 'military', 'agriculture'] as CityType[]).map(typeKey => {
+                  const meta = CITY_TYPE_META[typeKey];
+                  const isActive = selectedCityTypeFilter === typeKey;
+                  const count = CITIES.filter(c => c.cityType === typeKey).length;
+                  return (
+                    <button
+                      key={typeKey}
+                      id={`btn-city-type-${typeKey}`}
+                      type="button"
+                      aria-pressed={isActive}
+                      title={`${meta.label} (${count}) · ${meta.desc}`}
+                      onClick={() => setSelectedCityTypeFilter(prev => (prev === typeKey ? 'all' : typeKey))}
+                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[10.5px] font-sans transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                        isActive
+                          ? 'bg-slate-800 border-amber-400/70 text-slate-100'
+                          : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                      }`}
+                    >
+                      <span
+                        className={`inline-flex items-center justify-center h-4 w-4 bg-slate-950 border ${meta.shapeClass}`}
+                        style={{ borderColor: meta.accentColor }}
+                      >
+                        <CityTypeIcon cityType={typeKey} size={10} style={{ color: meta.accentColor }} />
+                      </span>
+                      <span>{meta.label}</span>
+                      <span className="font-mono text-[9.5px] text-slate-500 tabular-nums">{count}</span>
+                    </button>
+                  );
+                })}
+                <div id="city-size-legend" className="hidden xl:flex items-center gap-2 pl-2 ml-0.5 border-l border-slate-800/80 text-[10px] text-slate-500">
+                  <span className="inline-flex items-center gap-1" title="边邑 (< 11万)">
+                    <span className="w-2 h-2 rounded-full border border-slate-500 bg-slate-950" />边邑
+                  </span>
+                  <span className="inline-flex items-center gap-1" title="名镇 (11万–18万)">
+                    <span className="w-3 h-3 rounded-full border border-slate-400 bg-slate-950" />名镇
+                  </span>
+                  <span className="inline-flex items-center gap-1" title="大城 (18万–27万)">
+                    <span className="w-3.5 h-3.5 rounded-full border border-slate-300 bg-slate-950" />大城
+                  </span>
+                  <span className="inline-flex items-center gap-1" title="巨都 (≥ 27万)">
+                    <span className="w-4 h-4 rounded-full border border-amber-400/80 bg-slate-950" />巨都
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-slate-600 hidden sm:inline ml-1">双击缩放</span>
+              </div>
             </div>
 
             {/* Interactive SVG Canvas */}
@@ -2548,30 +2803,38 @@ export default function TacticalMap({
                 )}
               </svg>
 
-              {/* Render All Strategic City Nodes (including 5 larger metropolis hubs) */}
+              {/* Render All Strategic City Nodes (proportional dot sizes, metropolis halos & distinct city-type icons) */}
               {CITIES.map(city => {
                 const controllerId = cityOwnership[city.id] || 'ronin';
                 const faction = FACTIONS.find(f => f.id === controllerId) || FACTIONS[5];
                 const isSelected = selectedCity.id === city.id;
                 const isMetropolis = city.tier === 'metropolis';
+                const typeMeta = CITY_TYPE_META[city.cityType];
+                const sizeMeta = getCityDotMetrics(city, cityStats[city.id]?.population);
                 
                 const isOrig = effectiveExpeditionOriginId === city.id;
                 const isTarg = effectiveExpeditionTargetId === city.id;
                 
                 const isStationedNum = officers.filter(o => o.factionId === controllerId).length;
                 const isFocusedTheater = selectedTheater === 'all' || city.theater === selectedTheater;
+                const isFocusedType = selectedCityTypeFilter === 'all' || city.cityType === selectedCityTypeFilter;
+                const isFocusedFaction = selectedFactionFilter === 'all' || controllerId === selectedFactionFilter;
+                const isHighlighted = isFocusedTheater && isFocusedType && isFocusedFaction;
 
                 return (
                   <div 
                     id={`city-node-${city.id}`}
                     data-city-tier={isMetropolis ? 'metropolis' : 'city'}
+                    data-city-type={city.cityType}
+                    data-city-size-tier={sizeMeta.sizeTier}
+                    data-city-dot-px={sizeMeta.dotPx}
                     key={city.id}
                     style={{ left: `${city.x}%`, top: `${city.y}%` }}
-                    title={`${isMetropolis ? '大都城 · ' : ''}${city.name} · ${city.region} · ${faction.name}${isStationedNum > 0 ? ` (${isStationedNum}将)` : ''}`}
+                    title={`${isMetropolis ? '大都城 · ' : ''}${sizeMeta.sizeLabel} · ${typeMeta.label} · ${city.name} (${sizeMeta.population.toLocaleString()}人) · ${city.region} · ${faction.name}${isStationedNum > 0 ? ` (${isStationedNum}将)` : ''}`}
                     className={`absolute -translate-x-1/2 -translate-y-1/2 group cursor-pointer transition-all duration-200 ${
-                      isSelected || isOrig || isTarg ? 'z-30' : isMetropolis ? 'z-25 hover:z-30' : 'z-20 hover:z-30'
+                      isSelected || isOrig || isTarg ? 'z-30' : isMetropolis || sizeMeta.sizeTier === 'major' ? 'z-25 hover:z-30' : 'z-20 hover:z-30'
                     } ${
-                      isFocusedTheater ? 'opacity-100 scale-100' : 'opacity-35 hover:opacity-95 scale-90'
+                      isHighlighted ? 'opacity-100 scale-100' : 'opacity-35 hover:opacity-95 scale-90'
                     }`}
                     onClick={() => {
                       onSetCurrentCity?.(city.name);
@@ -2581,10 +2844,12 @@ export default function TacticalMap({
                     <div className="relative flex items-center justify-center">
                       {(isSelected || isOrig || isTarg || isMetropolis) && (
                         <span
-                          className={`absolute inline-flex rounded-full pointer-events-none ${
+                          className={`absolute inline-flex pointer-events-none ${typeMeta.shapeClass} ${
                             isMetropolis ? 'h-6 w-6' : 'h-5 w-5'
                           } ${isSelected || isOrig || isTarg ? 'opacity-85' : 'opacity-45 group-hover:opacity-80'}`}
                           style={{
+                            width: `${sizeMeta.ringPx}px`,
+                            height: `${sizeMeta.ringPx}px`,
                             border: `1.5px solid ${
                               isOrig ? '#10b981' : isTarg ? '#f43f5e' : isSelected ? '#fbbf24' : faction.color
                             }`,
@@ -2592,33 +2857,43 @@ export default function TacticalMap({
                         />
                       )}
 
-                      {/* Core Point Circle representing City */}
-                      <div 
-                        className={`rounded-full border transition-transform duration-200 ${
-                          isMetropolis ? 'h-4 w-4 ring-1 ring-white/25' : 'h-2.5 w-2.5'
+                      {/* Typed City Emblem Marker scaled proportionally by city population/size */}
+                      <div
+                        data-testid={`city-icon-${city.cityType}-${city.id}`}
+                        className={`flex items-center justify-center bg-slate-950/95 border-2 transition-transform duration-200 shadow-sm ${typeMeta.shapeClass} ${
+                          isMetropolis ? 'h-4 w-4 ring-1 ring-white/25' : ''
                         } ${
                           isSelected ? 'ring-2 ring-amber-400 scale-125' : 'group-hover:scale-125'
                         }`}
-                        style={{ 
-                          backgroundColor: faction.color,
-                          borderColor: isSelected ? '#fbbf24' : '#0f172a'
-                        }} 
-                      />
+                        style={{
+                          width: `${sizeMeta.dotPx}px`,
+                          height: `${sizeMeta.dotPx}px`,
+                          borderColor: isSelected ? '#fbbf24' : faction.color,
+                        }}
+                      >
+                        <CityTypeIcon
+                          cityType={city.cityType}
+                          size={sizeMeta.iconPx}
+                          style={{ color: typeMeta.accentColor }}
+                        />
+                      </div>
 
-                      {/* Clean Single-Line City Label */}
-                      <span className={`absolute left-1/2 -translate-x-1/2 rounded font-serif leading-tight whitespace-nowrap border transition-colors ${
-                        isMetropolis ? 'top-3.5 px-2 py-0.5 text-[10.5px] font-bold' : 'top-3 px-1.5 py-px text-[9.5px]'
-                      } ${
-                        isSelected 
-                          ? 'bg-amber-400 text-slate-950 border-amber-400 font-bold' 
-                          : isOrig
-                            ? 'bg-emerald-950/95 text-emerald-300 border-emerald-500/60 font-semibold'
-                            : isTarg
-                              ? 'bg-rose-950/95 text-rose-300 border-rose-500/60 font-semibold'
-                              : isMetropolis
-                                ? 'bg-slate-950/95 text-slate-100 border-slate-700 group-hover:text-amber-300 group-hover:border-amber-500/60'
-                                : 'bg-slate-950/85 text-slate-300 border-slate-800/80 group-hover:text-amber-300 group-hover:border-slate-600'
-                      }`}>
+                      {/* Clean Single-Line City Label positioned cleanly below dot */}
+                      <span
+                        style={{ top: `${sizeMeta.labelTopPx}px` }}
+                        className={`absolute left-1/2 -translate-x-1/2 rounded font-serif leading-tight whitespace-nowrap border transition-colors ${
+                          isMetropolis ? 'px-2 py-0.5 text-[10.5px] font-bold' : sizeMeta.sizeTier === 'major' ? 'px-1.5 py-px text-[10px] font-semibold' : 'px-1.5 py-px text-[9.5px]'
+                        } ${
+                          isSelected 
+                            ? 'bg-amber-400 text-slate-950 border-amber-400 font-bold' 
+                            : isOrig
+                              ? 'bg-emerald-950/95 text-emerald-300 border-emerald-500/60 font-semibold'
+                              : isTarg
+                                ? 'bg-rose-950/95 text-rose-300 border-rose-500/60 font-semibold'
+                                : isMetropolis
+                                  ? 'bg-slate-950/95 text-slate-100 border-slate-700 group-hover:text-amber-300 group-hover:border-amber-500/60'
+                                  : 'bg-slate-950/85 text-slate-300 border-slate-800/80 group-hover:text-amber-300 group-hover:border-slate-600'
+                        }`}>
                         {city.name}
                       </span>
                     </div>
@@ -2943,7 +3218,7 @@ export default function TacticalMap({
             <div className="bg-slate-950 border border-slate-900 rounded-2xl p-5 space-y-4">
               <div className="flex justify-between items-start border-b border-slate-900 pb-3">
                 <div>
-                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 flex-wrap">
                     <span className="font-bold" style={{ color: selectedCityController.color }}>
                       {selectedCity.region}
                     </span>
@@ -2951,11 +3226,25 @@ export default function TacticalMap({
                     <span>
                       {ASIA_THEATERS.find(t => t.id === selectedCity.theater)?.name || selectedCity.theater}
                     </span>
+                    <span aria-hidden="true">·</span>
+                    <span className={`inline-flex items-center gap-1 font-medium ${CITY_TYPE_META[selectedCity.cityType].textClass}`}>
+                      <CityTypeIcon cityType={selectedCity.cityType} size={11} />
+                      {CITY_TYPE_META[selectedCity.cityType].label}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span className="text-slate-300">
+                      {getCityDotMetrics(selectedCity, cityStats[selectedCity.id]?.population).sizeLabel}
+                    </span>
                   </div>
                   <h3
                     title={selectedCity.description}
                     className="text-xl font-serif font-black text-slate-100 mt-1 flex items-center gap-2"
                   >
+                    <CityTypeIcon
+                      cityType={selectedCity.cityType}
+                      size={18}
+                      style={{ color: CITY_TYPE_META[selectedCity.cityType].accentColor }}
+                    />
                     {selectedCity.name}
                   </h3>
                 </div>
@@ -3995,16 +4284,25 @@ export default function TacticalMap({
                 <div>
                   <div className="flex justify-between items-start gap-2">
                     <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9.5px] px-1.5 py-0.5 bg-slate-900 text-slate-400 border border-slate-800 rounded font-bold font-mono">
-                          {city.region}
-                        </span>
-                        <span className={`text-[9.5px] px-1.5 py-0.5 rounded font-mono border ${defenseClass}`}>
+                      <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400">
+                        <span className="text-slate-300 font-bold">{city.region}</span>
+                        <span aria-hidden="true">·</span>
+                        <span className={defenseClass.split(' ').find(c => c.startsWith('text-')) ?? 'text-slate-300'}>
                           {tag}
                         </span>
+                        <span aria-hidden="true">·</span>
+                        <span className={`inline-flex items-center gap-1 ${CITY_TYPE_META[city.cityType].textClass}`}>
+                          <CityTypeIcon cityType={city.cityType} size={10} />
+                          {CITY_TYPE_META[city.cityType].label}
+                        </span>
                       </div>
-                      <h4 className="text-base font-serif font-black text-slate-200 mt-2 flex items-center gap-1.5">
-                        🏯 {city.name}
+                      <h4 className="text-base font-serif font-black text-slate-200 mt-1.5 flex items-center gap-1.5">
+                        <CityTypeIcon
+                          cityType={city.cityType}
+                          size={15}
+                          style={{ color: CITY_TYPE_META[city.cityType].accentColor }}
+                        />
+                        {city.name}
                         <span className="text-[10px] font-mono text-slate-500 font-light uppercase">
                           {city.pinyin}
                         </span>

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
 import InternalAffairs from '../InternalAffairs';
 import DuelArena from '../DuelArena';
-import TacticalMap, { CITIES, getNearbyTargetCities } from '../TacticalMap';
+import TacticalMap, { CITIES, getActiveMapFactions, getCityDotMetrics, getNearbyTargetCities } from '../TacticalMap';
 import RelationshipTree from '../RelationshipTree';
 import DiplomacyPanel from '../DiplomacyPanel';
 import PeopleMigrationsPanel from '../PeopleMigrationsPanel';
@@ -461,6 +461,137 @@ describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {
     );
     assert.ok(resolvedHtml.includes('蜀汉 破城') || resolvedHtml.includes('蜀 破城'), 'expected victory resolution badge');
     assert.ok(!resolvedHtml.includes('id="faction-war-volleys"'), 'expected volleys to stop after resolution');
+  });
+
+  test('renders distinct visual icons and legend filters for trading hubs, military barracks, and agricultural centers on svg-map', () => {
+    for (const city of CITIES) {
+      assert.ok(
+        city.cityType === 'trade' || city.cityType === 'military' || city.cityType === 'agriculture',
+        `expected valid cityType on ${city.id}`,
+      );
+    }
+
+    const chibiScenario = SCENARIOS.find(s => s.id === 'chibi') ?? SCENARIOS[1];
+    const mapHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+        requestedMapTab={{ tab: 'svg-map', nonce: 1 }}
+      />,
+    );
+
+    assert.ok(mapHtml.includes('id="city-type-legend"'), 'expected #city-type-legend key on svg-map');
+    assert.ok(mapHtml.includes('id="btn-city-type-trade"'), 'expected trade legend filter button');
+    assert.ok(mapHtml.includes('id="btn-city-type-military"'), 'expected military legend filter button');
+    assert.ok(mapHtml.includes('id="btn-city-type-agriculture"'), 'expected agriculture legend filter button');
+
+    // Distinct marker wrappers & data attributes per city specialization
+    assert.ok(mapHtml.includes('data-city-type="trade"'), 'expected trade city marker');
+    assert.ok(mapHtml.includes('data-testid="city-icon-trade-dunhuang"'), 'expected dunhuang trading hub icon');
+    assert.ok(mapHtml.includes('data-city-type="military"'), 'expected military barracks marker');
+    assert.ok(mapHtml.includes('data-testid="city-icon-military-luoyang"'), 'expected luoyang military barracks icon');
+    assert.ok(mapHtml.includes('data-city-type="agriculture"'), 'expected agricultural center marker');
+    assert.ok(mapHtml.includes('data-testid="city-icon-agriculture-chengdu"'), 'expected chengdu agricultural center icon');
+
+    // Distinct vector SVG icon classes from lucide-react (Coins, Swords, Wheat)
+    assert.ok(mapHtml.includes('lucide-coins'), 'expected Coins SVG icon for trading hubs');
+    assert.ok(mapHtml.includes('lucide-swords'), 'expected Swords SVG icon for military barracks');
+    assert.ok(mapHtml.includes('lucide-wheat'), 'expected Wheat SVG icon for agricultural centers');
+  });
+
+  test('scales city dot diameter proportionally according to city size on svg-map', () => {
+    const constantinople = CITIES.find(c => c.id === 'constantinople')!;
+    const luoyang = CITIES.find(c => c.id === 'luoyang')!;
+    const beiping = CITIES.find(c => c.id === 'beiping')!;
+    const dunhuang = CITIES.find(c => c.id === 'dunhuang')!;
+
+    const metroMetrics = getCityDotMetrics(constantinople);
+    const majorMetrics = getCityDotMetrics(luoyang);
+    const regionalMetrics = getCityDotMetrics(beiping);
+    const frontierMetrics = getCityDotMetrics(dunhuang);
+
+    assert.equal(metroMetrics.sizeTier, 'metropolis');
+    assert.equal(majorMetrics.sizeTier, 'major');
+    assert.equal(regionalMetrics.sizeTier, 'regional');
+    assert.equal(frontierMetrics.sizeTier, 'frontier');
+
+    assert.ok(
+      metroMetrics.dotPx > majorMetrics.dotPx &&
+        majorMetrics.dotPx > regionalMetrics.dotPx &&
+        regionalMetrics.dotPx > frontierMetrics.dotPx,
+      'expected dot size strictly increasing with city population tier',
+    );
+    assert.ok(
+      getCityDotMetrics(dunhuang, 320000).dotPx > frontierMetrics.dotPx,
+      'expected live population growth to enlarge the city dot',
+    );
+
+    const chibiScenario = SCENARIOS.find(s => s.id === 'chibi') ?? SCENARIOS[1];
+    const mapHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+        requestedMapTab={{ tab: 'svg-map', nonce: 1 }}
+      />,
+    );
+
+    assert.ok(mapHtml.includes('id="city-size-legend"'), 'expected #city-size-legend scale key');
+    const getRenderedDotPx = (cityId: string): number => {
+      const m = mapHtml.match(new RegExp(`id="city-node-${cityId}"[^>]*data-city-dot-px="([0-9.]+)"`));
+      assert.ok(m, `expected data-city-dot-px on #city-node-${cityId}`);
+      return Number(m[1]);
+    };
+
+    assert.ok(getRenderedDotPx('constantinople') > getRenderedDotPx('luoyang'));
+    assert.ok(getRenderedDotPx('luoyang') > getRenderedDotPx('beiping'));
+    assert.ok(getRenderedDotPx('beiping') > getRenderedDotPx('dunhuang'));
+    assert.ok(mapHtml.includes(`width:${metroMetrics.dotPx}px;height:${metroMetrics.dotPx}px`), 'expected inline dot sizing for metropolis');
+    assert.ok(mapHtml.includes(`width:${frontierMetrics.dotPx}px;height:${frontierMetrics.dotPx}px`), 'expected inline dot sizing for frontier city');
+  });
+
+  test('dynamically shows only active factions holding cities and supports legend hide/show toggle', () => {
+    // Only shu and wei own cities in custom ownership -> all other factions are removed dynamically
+    const customOwnership: Record<string, string> = {};
+    for (const c of CITIES) {
+      customOwnership[c.id] = c.id === 'chengdu' ? 'shu' : 'wei';
+    }
+    const { activeFactions, neutralCount } = getActiveMapFactions(customOwnership, FACTIONS, CITIES);
+    assert.deepEqual(
+      activeFactions.map(e => [e.faction.id, e.cityCount]),
+      [
+        ['wei', CITIES.length - 1],
+        ['shu', 1],
+      ],
+    );
+    assert.equal(neutralCount, 0);
+
+    const chibiScenario = SCENARIOS.find(s => s.id === 'chibi') ?? SCENARIOS[1];
+    const mapHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+        requestedMapTab={{ tab: 'svg-map', nonce: 1 }}
+      />,
+    );
+
+    assert.ok(mapHtml.includes('id="map-faction-legend"'), 'expected #map-faction-legend');
+    assert.ok(mapHtml.includes('id="btn-toggle-faction-legend"'), 'expected toggle button to hide/show factions');
+    assert.ok(mapHtml.includes('id="toggle-faction-legend"'), 'expected map settings checkbox for faction legend');
+    // Active factions in 208 AD Chibi scenario are present
+    assert.ok(mapHtml.includes('id="btn-map-faction-wei"'), 'expected active wei faction in 208 AD');
+    assert.ok(mapHtml.includes('id="btn-map-faction-shu"'), 'expected active shu faction in 208 AD');
+    assert.ok(mapHtml.includes('id="btn-map-faction-wu"'), 'expected active wu faction in 208 AD');
+    assert.ok(mapHtml.includes('id="btn-map-faction-rome"'), 'expected active rome faction in 208 AD');
+    // Factions owning 0 cities in 208 AD are dynamically removed
+    assert.ok(!mapHtml.includes('id="btn-map-faction-lubu"'), 'expected zero-city lubu omitted in 208 AD');
+    assert.ok(!mapHtml.includes('id="btn-map-faction-america"'), 'expected zero-city america omitted in 208 AD');
+    assert.ok(!mapHtml.includes('id="btn-map-faction-qing"'), 'expected zero-city qing omitted in 208 AD');
   });
 });
 

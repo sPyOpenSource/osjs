@@ -6,6 +6,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from "@google/genai";
 import { FAMOUS_OFFICERS, FAMOUS_RELATIONSHIPS } from './src/data';
 import { Officer, RelationshipRelation } from './src/types';
+import { buildCharacterChatSystemInstruction } from './src/utils/personality';
 
 const app = express();
 app.use(express.json());
@@ -104,17 +105,27 @@ interface AdvisorChatHistoryItem {
 async function executeAdvisorChat(data: any): Promise<string> {
   const rawMessage = typeof data?.message === 'string' ? data.message.trim() : '';
   if (!rawMessage) {
-    const err = new Error('请输入您想向军师咨询的问题。') as Error & { status?: number };
+    const err = new Error('请输入您想发送给武将或军师的消息。') as Error & { status?: number };
     err.status = 400;
     throw err;
   }
 
   const ai = getGeminiClient();
   const ctx = data?.context ?? {};
-  const officer = ctx.officer ?? {};
+  const clientOfficer = ctx.officer ?? {};
+  const matchedServerOfficer =
+    typeof clientOfficer.id === 'string'
+      ? serverOfficers.find(o => o.id === clientOfficer.id)
+      : undefined;
+  const officer = matchedServerOfficer
+    ? { ...matchedServerOfficer, ...clientOfficer }
+    : clientOfficer;
   const scenario = ctx.scenario ?? {};
+  const mode = data?.mode === 'strategist' ? 'strategist' : 'character';
 
-  const systemInstruction = `你是《三国志·欧亚群雄》中军帐内羽扇纶巾的大军师（诸葛孔明风范），正为主公参赞军机。
+  const systemInstruction =
+    mode === 'strategist'
+      ? `你是《三国志·欧亚群雄》中军帐内羽扇纶巾的大军师（诸葛孔明风范），正为主公参赞军机。
 当前战局态势：
 - 当前聚焦武将：${officer.name || '在野名将'}${officer.styleName ? `（字${officer.styleName}）` : ''}，所属势力：${ctx.factionName || officer.factionId || '群雄'}
 - 五维属性：统帅 ${officer.stats?.leadership ?? '-'} / 武力 ${officer.stats?.force ?? '-'} / 智力 ${officer.stats?.intelligence ?? '-'} / 政治 ${officer.stats?.politics ?? '-'} / 魅力 ${officer.stats?.charisma ?? '-'}
@@ -125,7 +136,20 @@ async function executeAdvisorChat(data: any): Promise<string> {
 回答准则：
 1. 紧扣当前武将能力、城池据点、季节与战局给出具体可落地的军事/内政/外交/单挑建议。
 2. 保持古风儒雅但不晦涩的军师口吻，篇幅精炼（一般 2-4 段或条理分明的 3 点要点），可直接回答多轮追问。
-3. 不得编造不存在的菜单按钮，结合地图出征、商贸、外交、内政、单挑、迁徙救灾等既有系统给出策略。`;
+3. 不得编造不存在的菜单按钮，结合地图出征、商贸、外交、内政、单挑、迁徙救灾等既有系统给出策略。`
+      : buildCharacterChatSystemInstruction({
+          officer,
+          factionName: ctx.factionName,
+          scenario,
+          currentCityName: ctx.currentCityName,
+          timestampLabel: ctx.timestampLabel,
+          seasonName: ctx.seasonName,
+          playerGold: ctx.playerGold,
+          protagonistName: ctx.protagonistName,
+          relationshipsSummary: Array.isArray(ctx.relationshipsSummary)
+            ? ctx.relationshipsSummary
+            : [],
+        });
 
   const rawHistory: AdvisorChatHistoryItem[] = Array.isArray(data?.history) ? data.history : [];
   const normalizedHistory = rawHistory
@@ -151,7 +175,7 @@ async function executeAdvisorChat(data: any): Promise<string> {
   });
 
   const response = await chat.sendMessage({ message: rawMessage });
-  return response.text?.trim() || "军师沉吟良久，暂未言明此策。";
+  return response.text?.trim() || `${officer.name || '军师'}沉吟片刻，暂未应答。`;
 }
 
 function executeDuelSimulation(off1: Officer, off2: Officer) {

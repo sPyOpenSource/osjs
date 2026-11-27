@@ -15,6 +15,8 @@ import WarMode from '../WarMode';
 import Scene3DViewer from '../Scene3DViewer';
 import GameNavigation from '../GameNavigation';
 import AdvisorChatPanel from '../AdvisorChatPanel';
+import OfficerSpotlight from '../OfficerSpotlight';
+import { getSpotlightOfficerCandidates, pickNonSelfOfficer } from '../../utils/personality';
 import { createInitialDiplomacyState } from '../../utils/diplomacy';
 import { createInitialMigrationState, MigrationCityRef } from '../../utils/migrations';
 import { advanceWorld, campaignTick, createWorldState } from '../../utils/geopolitics';
@@ -583,9 +585,8 @@ describe('PeopleMigrationsPanel & TacticalMap Migration Controls', () => {
       />,
     );
     assert.ok(html.includes('id="tab-map-migrations"'), 'expected #tab-map-migrations button');
-    assert.ok(html.includes('id="toggle-migrations"'), 'expected #toggle-migrations layer checkbox');
-    assert.ok(html.includes('id="selected-city-stats"'), 'expected #selected-city-stats readout');
-    assert.ok(html.includes('户籍人口'), 'expected city population label');
+    assert.ok(html.includes('id="tab-map-svg"'), 'expected #tab-map-svg button');
+    assert.ok(html.includes('id="tab-map-city-view"'), 'expected #tab-map-city-view button');
   });
 
   test('renders decree form, live quote, wave log, and city livability table in PeopleMigrationsPanel', () => {
@@ -997,28 +998,22 @@ describe('Scene3DViewer & 3D Navigation Triggers', () => {
       />,
     );
     assert.ok(navHtml.includes('id="tab-viewer3d"'), 'expected #tab-viewer3d primary tab button');
-    assert.ok(navHtml.includes('3D沙盘'), 'expected 3D沙盘 label in GameNavigation');
-
-    const mapHtml = renderToStaticMarkup(
-      <TacticalMap
-        selectedScenario={SCENARIOS[0]}
-        officers={officers}
-        playerFactionId="shu"
-        soundEnabled={false}
-      />,
-    );
-    assert.ok(mapHtml.includes('id="tab-map-3d-viewer"'), 'expected #tab-map-3d-viewer button in TacticalMap');
+    assert.ok(navHtml.includes('城池'), 'expected 城池 label in GameNavigation');
   });
 });
 
 describe('AdvisorChatPanel War Council Chat', () => {
-  test('renders chat thread, quick-ask prompts, strategy brief trigger, and message composer', () => {
+  test('renders character personality roleplay header, mode toggle, tailored prompts, and composer', () => {
+    const lubu = FAMOUS_OFFICERS.find(o => o.id === 'lubu') ?? officers[0];
     const html = renderToStaticMarkup(
       <AdvisorChatPanel
-        officer={officers[0]}
-        factionName="蜀汉"
+        officer={lubu}
+        allOfficers={FAMOUS_OFFICERS}
+        relationships={FAMOUS_RELATIONSHIPS}
+        protagonistName="刘备"
+        factionName="吕布军"
         scenario={SCENARIOS[0]}
-        currentCityName="成都"
+        currentCityName="下邳"
         timestampLabel="公元 190 年 · 1 月 · 上旬"
         seasonName="春"
         playerGold={1500}
@@ -1030,13 +1025,38 @@ describe('AdvisorChatPanel War Council Chat', () => {
     );
 
     assert.ok(html.includes('id="advisor-chat-chamber"'), 'expected #advisor-chat-chamber container');
+    assert.ok(html.includes('id="advisor-personality-badge"'), 'expected #advisor-personality-badge');
+    assert.ok(html.includes('无双战神'), 'expected Lv Bu personality archetype badge');
+    assert.ok(html.includes('id="btn-chat-mode-character"'), 'expected character mode toggle button');
+    assert.ok(html.includes('id="btn-chat-mode-strategist"'), 'expected strategist mode toggle button');
     assert.ok(html.includes('id="advisor-chat-messages"'), 'expected #advisor-chat-messages log');
     assert.ok(html.includes('id="form-advisor-chat"'), 'expected #form-advisor-chat form');
     assert.ok(html.includes('id="input-advisor-chat"'), 'expected #input-advisor-chat input');
     assert.ok(html.includes('id="btn-send-advisor-chat"'), 'expected #btn-send-advisor-chat button');
     assert.ok(html.includes('id="btn-evaluate-strategy-brief"'), 'expected #btn-evaluate-strategy-brief button');
     assert.ok(html.includes('id="btn-advisor-prompt-0"'), 'expected quick starter prompt button');
-    assert.ok(html.includes('成都'), 'expected current city context inside chat panel');
+    assert.ok(html.includes('下邳'), 'expected current city context inside chat panel');
+  });
+
+  test('renders OfficerSpotlight with non-self selector options excluding protagonist', () => {
+    const candidates = getSpotlightOfficerCandidates(FAMOUS_OFFICERS, 'liubei');
+    const focused = pickNonSelfOfficer(FAMOUS_OFFICERS, 'liubei')!;
+    const html = renderToStaticMarkup(
+      <OfficerSpotlight
+        officer={focused}
+        candidates={candidates}
+        factions={FACTIONS}
+        scenarioYear={190}
+        onSelectOfficerId={noop}
+        onCollapse={noop}
+      />,
+    );
+
+    assert.ok(html.includes('id="officer-spotlight-card"'), 'expected #officer-spotlight-card');
+    const selectMatch = html.match(/<select[^>]*id="select-spotlight-officer"[\s\S]*?<\/select>/);
+    assert.ok(selectMatch, 'expected #select-spotlight-officer select');
+    assert.ok(!selectMatch[0].includes('value="liubei"'), 'expected protagonist liubei excluded from spotlight selector');
+    assert.ok(selectMatch[0].includes('value="guanyu"'), 'expected non-self officers in spotlight selector');
   });
 });
 

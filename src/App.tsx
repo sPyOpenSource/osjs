@@ -20,6 +20,8 @@ import RelationshipTree from './components/RelationshipTree';
 import ProtagonistProfile from './components/ProtagonistProfile';
 import Alerts, { AlertActiveDisaster } from './components/Alerts';
 import AdvisorChatPanel from './components/AdvisorChatPanel';
+import OfficerSpotlight from './components/OfficerSpotlight';
+import { getSpotlightOfficerCandidates, pickNonSelfOfficer } from './utils/personality';
 import {
   createInitialDiplomacyState,
   executeEnvoyMission,
@@ -470,12 +472,28 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [factionFilter, setFactionFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'global' | 'threekingdoms' | 'custom'>('all');
-  const [selectedOfficerId, setSelectedOfficerId] = useState<string>(defaultProtagonistId);
+  const [selectedOfficerId, setSelectedOfficerId] = useState<string>(
+    () => pickNonSelfOfficer(FAMOUS_OFFICERS, defaultProtagonistId)?.id ?? ''
+  );
   const [currentCityId, setCurrentCityId] = useState<string>(
     officers.find((o) => o.id === protagonistId)?.homeCity ?? '成都'
   );
 
-  const selectedOfficer = officers.find((o) => o.id === selectedOfficerId) ?? officers[0] ?? FAMOUS_OFFICERS[0];
+  const spotlightCandidates = useMemo(
+    () => getSpotlightOfficerCandidates(officers, protagonistId),
+    [officers, protagonistId],
+  );
+  const selectedOfficer = useMemo(
+    () => pickNonSelfOfficer(officers, protagonistId, selectedOfficerId) ?? officers[0] ?? FAMOUS_OFFICERS[0],
+    [officers, protagonistId, selectedOfficerId],
+  );
+
+  useEffect(() => {
+    const next = pickNonSelfOfficer(officers, protagonistId, selectedOfficerId);
+    if (next && next.id !== selectedOfficerId && next.id !== protagonistId) {
+      setSelectedOfficerId(next.id);
+    }
+  }, [officers, protagonistId, selectedOfficerId]);
 
   // Strategy Advisor panel states
   const [isConsultingAdvisor, setIsConsultingAdvisor] = useState(false);
@@ -589,7 +607,7 @@ export default function App() {
         if (isDisposed) return;
         if (offRes && Array.isArray(offRes) && offRes.length > 0) {
           setOfficers(offRes);
-          setSelectedOfficerId(curr => offRes.some(o => o.id === curr) ? curr : offRes[0]?.id ?? '');
+          setSelectedOfficerId(curr => pickNonSelfOfficer(offRes, protagonistId, curr)?.id ?? '');
         }
         if (relRes && Array.isArray(relRes)) {
           setRelationships(relRes);
@@ -629,12 +647,9 @@ export default function App() {
                 setOfficers(initialOfficers);
                 setRelationships(initialRelationships);
                 if (initialOfficers.length > 0) {
-                  setSelectedOfficerId(current => {
-                    if (!initialOfficers.some(o => o.id === current)) {
-                      return initialOfficers[0]?.id ?? '';
-                    }
-                    return current;
-                  });
+                  setSelectedOfficerId(current =>
+                    pickNonSelfOfficer(initialOfficers, protagonistId, current)?.id ?? ''
+                  );
                 }
                 break;
               }
@@ -1038,7 +1053,8 @@ export default function App() {
       setOfficers(prev => prev.filter(o => o.id !== id));
       setRelationships(prev => prev.filter(r => r.fromOfficerId !== id && r.toOfficerId !== id));
       if (selectedOfficerId === id) {
-        setSelectedOfficerId(FAMOUS_OFFICERS[0]?.id ?? '');
+        const remaining = officers.filter(o => o.id !== id);
+        setSelectedOfficerId(pickNonSelfOfficer(remaining, protagonistId)?.id ?? '');
       }
     }
     fetch(`/api/officers/${id}`, { method: 'DELETE' }).catch(() => {});
@@ -1266,8 +1282,6 @@ export default function App() {
                 id="btn-header-self-profile"
                 type="button"
                 onClick={() => {
-                  const self = officers.find(o => o.id === protagonistId) ?? selectedOfficer;
-                  setSelectedOfficerId(self.id);
                   setActiveTab('roster');
                 }}
                 className="underline decoration-amber-500/40 hover:text-amber-300 cursor-pointer transition-colors"
@@ -2022,47 +2036,22 @@ export default function App() {
         {/* Right Strategic Advisor Rail (Sticky on desktop, collapsible via header toggle) */}
         {advisorOpen && (
           <aside className="game-advisor-rail" aria-label="军师参谋栏">
-            {/* Section 1: Selected Officer Spotlight */}
-            <div className="p-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-mono font-semibold text-slate-400">当前聚焦武将</span>
-                <button
-                  type="button"
-                  onClick={() => setAdvisorOpen(false)}
-                  className="text-xs font-mono text-slate-400 hover:text-slate-200 cursor-pointer"
-                  aria-label="收起军师栏"
-                >
-                  收起
-                </button>
-              </div>
-              <div className="flex items-center gap-3.5">
-                <AvatarRenderer style={selectedOfficer.avatarStyle} size={64} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-1.5 flex-wrap">
-                    <h3 className="font-serif text-base font-bold text-slate-100 leading-snug">
-                      {selectedOfficer.name}
-                    </h3>
-                    {selectedOfficer.styleName && (
-                      <span className="text-xs text-slate-400 font-mono">字{selectedOfficer.styleName}</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400 mt-0.5 truncate">
-                    {FACTIONS.find(f => f.id === selectedOfficer.factionId)?.name ?? selectedOfficer.factionId} · {selectedScenario.year} 年
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-5 gap-1.5 pt-2 border-t border-slate-800/70 text-center font-mono text-[11px] tabular-nums">
-                <div><span className="text-slate-500 block">统</span><strong className="text-teal-400">{selectedOfficer.stats.leadership}</strong></div>
-                <div><span className="text-slate-500 block">武</span><strong className="text-amber-400">{selectedOfficer.stats.force}</strong></div>
-                <div><span className="text-slate-500 block">智</span><strong className="text-sky-400">{selectedOfficer.stats.intelligence}</strong></div>
-                <div><span className="text-slate-500 block">政</span><strong className="text-emerald-400">{selectedOfficer.stats.politics}</strong></div>
-                <div><span className="text-slate-500 block">魅</span><strong className="text-rose-300">{selectedOfficer.stats.charisma}</strong></div>
-              </div>
-            </div>
+            {/* Section 1: Selected Officer Spotlight (Anyone else except protagonist) */}
+            <OfficerSpotlight
+              officer={selectedOfficer}
+              candidates={spotlightCandidates}
+              factions={FACTIONS}
+              scenarioYear={selectedScenario.year}
+              onSelectOfficerId={setSelectedOfficerId}
+              onCollapse={() => setAdvisorOpen(false)}
+            />
 
-            {/* Section 2: Grand Advisory Chamber (Interactive Chat) */}
+            {/* Section 2: Grand Advisory Chamber (Interactive Personality AI Chat) */}
             <AdvisorChatPanel
               officer={selectedOfficer}
+              allOfficers={officers}
+              relationships={relationships}
+              protagonistName={officers.find(o => o.id === protagonistId)?.name}
               factionName={FACTIONS.find(f => f.id === selectedOfficer.factionId)?.name ?? selectedOfficer.factionId}
               scenario={selectedScenario}
               currentCityName={currentCityId}

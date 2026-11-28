@@ -380,3 +380,124 @@ export function evaluateWarSiegeOutcome({
   }
   return { finished: false, winner: null, reason: 'ongoing' };
 }
+
+export interface AiCounterAttackPlan {
+  aggrievedFactionId: string;
+  targetFactionId: string;
+  originCityId: string;
+  targetCityId: string;
+  attackingOfficerId: string | null;
+  defendingOfficerId: string | null;
+}
+
+/**
+ * Plan a targeted computer AI counter-attack when a faction is attacked or couped:
+ * - Picks the aggrieved AI faction's nearest staging city and strongest commander
+ * - Targets the aggressor's contested/exposed city (or closest enemy-held city)
+ */
+export function planAiCounterAttack({
+  cityOwnership,
+  cities,
+  officers,
+  aggrievedFactionId,
+  targetFactionId,
+  preferredTargetCityId,
+}: {
+  cityOwnership: Record<string, string>;
+  cities: { id: string; x: number; y: number }[];
+  officers: Officer[];
+  aggrievedFactionId: string;
+  targetFactionId: string;
+  preferredTargetCityId?: string;
+}): AiCounterAttackPlan | null {
+  if (
+    !aggrievedFactionId ||
+    aggrievedFactionId === 'ronin' ||
+    !targetFactionId ||
+    targetFactionId === 'ronin' ||
+    aggrievedFactionId === targetFactionId
+  ) {
+    return null;
+  }
+
+  const stagingCities = cities.filter(
+    c => (cityOwnership[c.id] || 'ronin') === aggrievedFactionId,
+  );
+  const targetCities = cities.filter(
+    c => (cityOwnership[c.id] || 'ronin') === targetFactionId,
+  );
+  if (stagingCities.length === 0 || targetCities.length === 0) {
+    return null;
+  }
+
+  const preferredTarget = preferredTargetCityId
+    ? targetCities.find(c => c.id === preferredTargetCityId)
+    : undefined;
+
+  let chosenOrigin = stagingCities[0];
+  let chosenTarget = preferredTarget ?? targetCities[0];
+  let bestDist = Infinity;
+
+  const candidateTargets = preferredTarget ? [preferredTarget] : targetCities;
+  for (const origin of stagingCities) {
+    for (const target of candidateTargets) {
+      const dist = Math.hypot(origin.x - target.x, origin.y - target.y);
+      if (dist < bestDist) {
+        bestDist = dist;
+        chosenOrigin = origin;
+        chosenTarget = target;
+      }
+    }
+  }
+
+  const combatScore = (o: Officer) =>
+    o.stats.leadership * 0.4 + o.stats.force * 0.35 + o.stats.intelligence * 0.25;
+
+  const attackingOfficer =
+    officers
+      .filter(o => o.factionId === aggrievedFactionId)
+      .sort((a, b) => combatScore(b) - combatScore(a))[0] ?? null;
+
+  const defendingOfficer =
+    officers
+      .filter(o => o.factionId === targetFactionId)
+      .sort((a, b) => combatScore(b) - combatScore(a))[0] ?? null;
+
+  return {
+    aggrievedFactionId,
+    targetFactionId,
+    originCityId: chosenOrigin.id,
+    targetCityId: chosenTarget.id,
+    attackingOfficerId: attackingOfficer?.id ?? null,
+    defendingOfficerId: defendingOfficer?.id ?? null,
+  };
+}
+
+/**
+ * Determine whether the human player controls at least one side of a battle.
+ * WarMode should only open when the player is an active combatant (attacker or defender).
+ */
+export function isPlayerFactionInBattle({
+  attackerFactionId,
+  defenderFactionId,
+  playerFactionId,
+  playerFactions = [],
+}: {
+  attackerFactionId: string;
+  defenderFactionId: string;
+  playerFactionId?: string;
+  playerFactions?: string[];
+}): boolean {
+  const playerIds = new Set<string>();
+  if (playerFactionId && playerFactionId !== 'ronin') {
+    playerIds.add(playerFactionId);
+  }
+  for (const id of playerFactions) {
+    if (id && id !== 'ronin') {
+      playerIds.add(id);
+    }
+  }
+  if (playerIds.size === 0) return false;
+  return playerIds.has(attackerFactionId) || playerIds.has(defenderFactionId);
+}
+

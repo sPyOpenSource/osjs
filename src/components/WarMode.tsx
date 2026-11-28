@@ -47,6 +47,7 @@ interface WarModeProps {
   soundEnabled: boolean;
   initialPhase?: 'fighting' | 'victory' | 'defeat';
   autoDeploy?: boolean;
+  isCounterAttack?: boolean;
   battleNonce?: number;
   onBattleComplete: (
     winner: 'attacker' | 'defender',
@@ -185,6 +186,7 @@ interface RaidSim {
   destructionPct: number;
   stars: number; // 0..3
   townHallDestroyed: boolean;
+  counterAttackTriggered: boolean;
   lootGold: number;
   phase: 'fighting' | 'victory' | 'defeat';
 }
@@ -203,6 +205,7 @@ interface RaidSnapshot {
   destructionPct: number;
   stars: number;
   townHallDestroyed: boolean;
+  counterAttackTriggered: boolean;
   lootGold: number;
 }
 
@@ -645,6 +648,7 @@ function createInitialSim(
     destructionPct: 0,
     stars: 0,
     townHallDestroyed: false,
+    counterAttackTriggered: false,
     lootGold: 0,
     phase: initialPhase,
   };
@@ -665,6 +669,7 @@ function toSnapshot(sim: RaidSim): RaidSnapshot {
     destructionPct: sim.destructionPct,
     stars: sim.stars,
     townHallDestroyed: sim.townHallDestroyed,
+    counterAttackTriggered: sim.counterAttackTriggered,
     lootGold: sim.lootGold,
   };
 }
@@ -683,6 +688,7 @@ export default function WarMode({
   soundEnabled,
   initialPhase = 'fighting',
   autoDeploy = false,
+  isCounterAttack = false,
   battleNonce = 0,
   onBattleComplete,
   onClose,
@@ -761,6 +767,22 @@ export default function WarMode({
   const lastBattleKeyRef = useRef<string>(battleKey);
   const weatherIdRef = useRef(weatherId);
   weatherIdRef.current = weatherId;
+  const defenderFactionIdRef = useRef(defenderFaction.id);
+  defenderFactionIdRef.current = defenderFaction.id;
+  const clampedDefense = Math.max(20, Math.min(100, targetCityDefense));
+  const defScaleVal = 0.72 + (clampedDefense / 100) * 0.68;
+  const defLdrVal = seasonalDefender?.stats.leadership ?? 70;
+  const officerDefModVal = seasonalDefender
+    ? Math.max(0.9, 1 + (defLdrVal - 70) * 0.008)
+    : 0.85;
+  const counterAttackConfigRef = useRef({
+    defScale: defScaleVal,
+    mult: defScaleVal * officerDefModVal,
+  });
+  counterAttackConfigRef.current = {
+    defScale: defScaleVal,
+    mult: defScaleVal * officerDefModVal,
+  };
 
   const resetRaid = () => {
     const fresh = createInitialSim(
@@ -1256,7 +1278,7 @@ export default function WarMode({
         if (g.attackFlash > 0) g.attackFlash -= 1;
 
         let bestTroop: TroopUnit | null = null;
-        let bestDist = 28;
+        let bestDist = g.id.startsWith('dg_ca_') ? 140 : 28;
         for (const tr of activeAttackers) {
           if (tr.hp <= 0) continue;
           const d = Math.hypot(tr.x - g.x, tr.y - g.y);
@@ -1396,6 +1418,39 @@ export default function WarMode({
       sim.stars = (newPct >= 50 ? 1 : 0) + (thDown ? 1 : 0) + (newPct >= 100 ? 1 : 0);
       sim.lootGold = Math.round(newPct * 8 + (thDown ? 240 : 0));
 
+      if (
+        defenderFactionIdRef.current !== 'ronin' &&
+        !sim.counterAttackTriggered &&
+        sim.troops.length > 0 &&
+        (newPct >= 30 || (th && th.hp < th.maxHp * 0.85))
+      ) {
+        sim.counterAttackTriggered = true;
+        const { defScale, mult } = counterAttackConfigRef.current;
+        const sortieHp = Math.round(135 * defScale);
+        const sortieDps = Math.round(16 * mult);
+        for (let i = 0; i < 2; i++) {
+          sim.defenders.push({
+            id: `dg_ca_${idCounter.current++}`,
+            kind: 'guard',
+            name: '反击伏兵',
+            icon: '🐎',
+            x: 80,
+            y: i === 0 ? 28 : 72,
+            hp: sortieHp,
+            maxHp: sortieHp,
+            dps: sortieDps,
+            speed: 1.0,
+            range: 6,
+            cooldown: 4,
+            maxCooldown: 15,
+            facing: -1,
+            attackFlash: 0,
+          });
+        }
+        spawnFloatingBadge(54, 46, '🔥 敌军反击伏兵!', 'boom');
+        addLog(`🔥 【AI 反击】[${defenderFaction.name}] 派出东门伏兵从侧翼反扑我军！`);
+      }
+
       const siegeResult = evaluateWarSiegeOutcome({
         destructionPct: newPct,
         townHallDestroyed: thDown,
@@ -1468,10 +1523,18 @@ export default function WarMode({
             <Sword size={20} className="animate-pulse" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-mono tracking-wider text-amber-300 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-700/40 font-bold">
                 CLASH SIEGE
               </span>
+              {isCounterAttack && (
+                <span
+                  data-testid="war-counterattack-badge"
+                  className="text-[10px] font-mono tracking-wider text-rose-200 bg-rose-950/70 px-2 py-0.5 rounded border border-rose-500/50 font-bold animate-pulse"
+                >
+                  🚨 电脑 AI 反击战
+                </span>
+              )}
               <span className="text-xs font-serif font-black tracking-tight text-amber-400">
                 {originCity.name} ⚔️ {targetCity.name} 部落掠夺攻城战
               </span>

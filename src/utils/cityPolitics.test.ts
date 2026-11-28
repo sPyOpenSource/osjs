@@ -8,6 +8,8 @@ import {
   evaluateWarSiegeOutcome,
   getCityControllerActionState,
   isOfficerFactionLeader,
+  isPlayerFactionInBattle,
+  planAiCounterAttack,
   resolveCoupOutcome,
   resolveWarBattleOwnership,
   selectCoupDuelists,
@@ -272,4 +274,109 @@ test('evaluateWarSiegeOutcome requires Town Hall fall or 100% destruction for at
   assert.equal(totalSweep.finished, true);
   assert.equal(totalSweep.winner, 'attacker');
   assert.equal(totalSweep.reason, 'total_destruction');
+});
+
+test('planAiCounterAttack retaliates from nearest AI base against preferred or closest aggressor city', () => {
+  const cities = [
+    { id: 'xuchang', x: 52, y: 40 },
+    { id: 'luoyang', x: 46, y: 38 },
+    { id: 'ye', x: 54, y: 28 },
+    { id: 'jingzhou', x: 48, y: 55 },
+    { id: 'chengdu', x: 34, y: 54 },
+  ];
+  const ownership = {
+    xuchang: 'shu', // player just captured Xuchang from Wei!
+    luoyang: 'wei',
+    ye: 'wei',
+    jingzhou: 'shu',
+    chengdu: 'shu',
+  };
+
+  const plan = planAiCounterAttack({
+    cityOwnership: ownership,
+    cities,
+    officers: FAMOUS_OFFICERS,
+    aggrievedFactionId: 'wei',
+    targetFactionId: 'shu',
+    preferredTargetCityId: 'xuchang',
+  });
+
+  assert.ok(plan, 'expected Wei counter-attack plan');
+  assert.equal(plan?.aggrievedFactionId, 'wei');
+  assert.equal(plan?.targetFactionId, 'shu');
+  assert.equal(plan?.originCityId, 'luoyang'); // closer to Xuchang than Ye
+  assert.equal(plan?.targetCityId, 'xuchang'); // aims to retake contested Xuchang
+  assert.ok(plan?.attackingOfficerId, 'expected AI commander chosen');
+  assert.ok(plan?.defendingOfficerId, 'expected defending commander chosen');
+
+  // If aggrieved faction is neutral ronin or wiped out (0 remaining cities), returns null
+  assert.equal(
+    planAiCounterAttack({
+      cityOwnership: ownership,
+      cities,
+      officers: FAMOUS_OFFICERS,
+      aggrievedFactionId: 'ronin',
+      targetFactionId: 'shu',
+    }),
+    null,
+  );
+  assert.equal(
+    planAiCounterAttack({
+      cityOwnership: { xuchang: 'shu', jingzhou: 'shu' },
+      cities,
+      officers: FAMOUS_OFFICERS,
+      aggrievedFactionId: 'wei',
+      targetFactionId: 'shu',
+    }),
+    null,
+  );
+});
+
+test('isPlayerFactionInBattle returns true only when player controls attacker or defender faction', () => {
+  // Player attacks AI
+  assert.equal(
+    isPlayerFactionInBattle({
+      attackerFactionId: 'shu',
+      defenderFactionId: 'wei',
+      playerFactionId: 'shu',
+    }),
+    true,
+  );
+  // AI attacks Player
+  assert.equal(
+    isPlayerFactionInBattle({
+      attackerFactionId: 'wei',
+      defenderFactionId: 'shu',
+      playerFactionId: 'shu',
+    }),
+    true,
+  );
+  // AI vs AI (player is shu, clash is wei vs wu) -> false!
+  assert.equal(
+    isPlayerFactionInBattle({
+      attackerFactionId: 'wei',
+      defenderFactionId: 'wu',
+      playerFactionId: 'shu',
+    }),
+    false,
+  );
+  // Ronin / dissolved player cannot enter player WarMode
+  assert.equal(
+    isPlayerFactionInBattle({
+      attackerFactionId: 'wei',
+      defenderFactionId: 'ronin',
+      playerFactionId: 'ronin',
+    }),
+    false,
+  );
+  // Multiplayer allows any controlled player faction
+  assert.equal(
+    isPlayerFactionInBattle({
+      attackerFactionId: 'wu',
+      defenderFactionId: 'wei',
+      playerFactionId: 'shu',
+      playerFactions: ['shu', 'wu'],
+    }),
+    true,
+  );
 });

@@ -1264,6 +1264,83 @@ describe('WarMode Clash of Clans Village Raid', () => {
       defeatHtml.includes('敌军来犯！护住【主城大本营】不失即守城胜利'),
       'expected player defense banner when defending own city',
     );
+    assert.ok(
+      mapHtml.includes('id="btn-ai-counterattack"'),
+      'expected #btn-ai-counterattack toggle inside TacticalMap controls',
+    );
+
+    const counterAttackWarHtml = renderToStaticMarkup(
+      <WarMode
+        originCity={CITIES[0]}
+        targetCity={CITIES[1]}
+        attackerFaction={FACTIONS[1]}
+        defenderFaction={FACTIONS[0]}
+        attackingOfficer={officers[3]}
+        defendingOfficer={officers[1]}
+        playerFactionId={FACTIONS[0].id}
+        weatherId="sunny"
+        soundEnabled={false}
+        isCounterAttack={true}
+        onBattleComplete={noop}
+        onClose={noop}
+      />,
+    );
+    assert.ok(
+      counterAttackWarHtml.includes('data-testid="war-counterattack-badge"') &&
+        counterAttackWarHtml.includes('电脑 AI 反击战'),
+      'expected AI counter-attack header badge when isCounterAttack is true',
+    );
+
+    const nonPlayerWarHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={SCENARIOS[0]}
+        officers={officers}
+        playerFactionId="ronin"
+        soundEnabled={false}
+        requestedMapTab={{ tab: 'war-mode', nonce: 3 }}
+      />,
+    );
+    assert.ok(
+      nonPlayerWarHtml.includes('id="war-mode-blocked"') &&
+        !nonPlayerWarHtml.includes('id="war-mode-panel"'),
+      'expected WarMode blocked when player is not a combatant faction',
+    );
+    const warTabBtn = nonPlayerWarHtml.match(/<button[^>]*id="tab-map-war-mode"[^>]*>/)?.[0] ?? '';
+    assert.ok(warTabBtn.includes('disabled'), 'expected #tab-map-war-mode disabled when player is not a combatant');
+
+    const aiWarAnimHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+        requestedMapTab={{ tab: 'svg-map', nonce: 4 }}
+        initialBattleVisual={{
+          origId: 'xuchang',
+          targId: 'jianye',
+          attackerFactionId: 'wei',
+          defenderFactionId: 'wu',
+          attackerFactionName: '曹魏',
+          defenderFactionName: '东吴',
+          attackerColor: '#3b82f6',
+          defenderColor: '#ef4444',
+          attackerGeneralName: '曹操',
+          defenderGeneralName: '孙权',
+          isSiege: true,
+          siegeWin: false,
+          successRate: 52,
+          step: 3,
+        }}
+      />,
+    );
+    assert.ok(
+      aiWarAnimHtml.includes('id="faction-war-clash-svg"') &&
+        aiWarAnimHtml.includes('id="faction-war-volleys"') &&
+        aiWarAnimHtml.includes('id="faction-war-hud-overlay"') &&
+        aiWarAnimHtml.includes('两军激战') &&
+        !aiWarAnimHtml.includes('id="war-mode-panel"'),
+      'expected AI-vs-AI war to play full animated clash on svg-map without opening WarMode',
+    );
   });
 });
 

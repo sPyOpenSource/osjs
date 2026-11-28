@@ -26,11 +26,14 @@ import { executeTrade } from '../utils/trade';
 import { createCountryDebts, changeCountryDebt } from '../utils/debt';
 import { DiplomacyState, hasTradePact } from '../utils/diplomacy';
 import {
+  AiCounterAttackPlan,
   applyClaimCity,
   CoupChallenge,
   CoupResolution,
   applyDissolveFaction,
   getCityControllerActionState,
+  isPlayerFactionInBattle,
+  planAiCounterAttack,
   resolveWarBattleOwnership,
   selectCoupDuelists,
 } from '../utils/cityPolitics';
@@ -267,7 +270,7 @@ export interface ActiveWarBattle {
   attackingOfficerId: string | null;
   defendingOfficerId: string | null;
   autoDeploy: boolean;
-  triggerSource: 'manual' | 'autoplay' | 'rivals';
+  triggerSource: 'manual' | 'autoplay' | 'rivals' | 'counterattack';
 }
 
 export const EURASIA_THEATERS: { id: AsiaTheater; name: string; title: string; desc: string; icon: string }[] = [
@@ -642,6 +645,7 @@ interface TacticalMapProps {
   gameMonth?: number;
   gameXun?: number;
   isAutoTime?: boolean;
+  multiplayerEnabled?: boolean;
   playerFactions?: string[];
   playerFactionId?: string;
   protagonistId?: string;
@@ -679,6 +683,7 @@ export default function TacticalMap({
   gameMonth,
   gameXun,
   isAutoTime = true,
+  multiplayerEnabled = false,
   playerFactions: initialPlayerFactions,
   playerFactionId,
   protagonistId,
@@ -711,9 +716,6 @@ export default function TacticalMap({
       setMapTab(requestedMapTab.tab);
     }
   }, [requestedMapTab?.nonce, requestedMapTab?.tab]);
-  useEffect(() => {
-    onBattleActiveChange?.(mapTab === 'war-mode');
-  }, [mapTab, onBattleActiveChange]);
   const [tradeFaction, setTradeFaction] = useState('ronin');
   const [tradeLogs, setTradeLogs] = useState<string[]>([]);
   const [disasterState, setDisasterState] = useState<DisasterState>(() => createInitialDisasterState());
@@ -778,6 +780,11 @@ export default function TacticalMap({
   const lastAppliedCoupNonceRef = useRef<number>(0);
   const [activeWarBattle, setActiveWarBattle] = useState<ActiveWarBattle | null>(null);
   const warBattleNonceRef = useRef<number>(0);
+  const [aiCounterAttackOn, setAiCounterAttackOn] = useState(true);
+  const [pendingCounterAttack, setPendingCounterAttack] = useState<{
+    plan: AiCounterAttackPlan;
+    reasonLabel: string;
+  } | null>(null);
 
   // City View / Interior Facility states
   const [selectedFacility, setSelectedFacility] = useState<'palace' | 'market' | 'tavern' | 'barracks' | 'gate'>('palace');
@@ -891,7 +898,7 @@ export default function TacticalMap({
     setExpeditionLogs([]);
     setExpeditionStep(-1);
     setExpeditionBattleVisual(null);
-    setRivalBattleVisual(null);
+    clearRivalAnimation();
     setDisasterState(createInitialDisasterState());
     setMigrationState(createInitialMigrationState());
     setWorldState(createWorldState(FACTIONS));
@@ -899,6 +906,7 @@ export default function TacticalMap({
     setPoliticsNotice(null);
     setInlineCoupChallenge(null);
     setActiveWarBattle(null);
+    setPendingCounterAttack(null);
     lastDisasterTickKeyRef.current = '';
     lastWorldTickKeyRef.current = '';
     lastMigrationTickKeyRef.current = '';
@@ -1191,11 +1199,47 @@ export default function TacticalMap({
     }
   }, [effectiveExpeditionTargetId, expeditionTargetId]);
 
+  const playerCombatantFactions = useMemo(() => {
+    if (multiplayerEnabled && initialPlayerFactions && initialPlayerFactions.length > 0) {
+      return initialPlayerFactions.filter(
+        id => id && id !== 'ronin' && !dissolvedFactionIds.includes(id),
+      );
+    }
+    return ownFactionId && ownFactionId !== 'ronin' ? [ownFactionId] : [];
+  }, [multiplayerEnabled, initialPlayerFactions, dissolvedFactionIds, ownFactionId]);
+
   // Potential expeditions leaders available at Origin city's owner faction
   const originControllerId = effectiveExpeditionOriginId
     ? (cityOwnership[effectiveExpeditionOriginId] || 'ronin')
     : (ownFactionId || 'ronin');
   const leadersAvailable = officers.filter(o => o.factionId === originControllerId);
+
+  useEffect(() => {
+    const battleAttacker = activeWarBattle?.attackerFactionId ?? originControllerId;
+    const battleDefender =
+      activeWarBattle?.defenderFactionId ?? (cityOwnership[effectiveExpeditionTargetId] || 'ronin');
+    const activePlayerWar =
+      mapTab === 'war-mode' &&
+      battleAttacker !== battleDefender &&
+      (Boolean(activeWarBattle) || ownCities.length > 0) &&
+      isPlayerFactionInBattle({
+        attackerFactionId: battleAttacker,
+        defenderFactionId: battleDefender,
+        playerFactionId: ownFactionId,
+        playerFactions: playerCombatantFactions,
+      });
+    onBattleActiveChange?.(activePlayerWar);
+  }, [
+    mapTab,
+    activeWarBattle,
+    originControllerId,
+    effectiveExpeditionTargetId,
+    cityOwnership,
+    ownCities.length,
+    ownFactionId,
+    playerCombatantFactions,
+    onBattleActiveChange,
+  ]);
 
   const handleCountryDebt = (amount: number, action: 'borrow' | 'repay') => {
     const result = changeCountryDebt(countryDebts, tradeFaction, playerGold, amount, action);
@@ -1252,7 +1296,10 @@ export default function TacticalMap({
       setAutoStatus('AI 已停止托管');
       return;
     }
-    const faction = cityOwnership[expeditionOriginId] || 'ronin';
+    const faction =
+      ownFactionId && ownFactionId !== 'ronin'
+        ? ownFactionId
+        : (cityOwnership[expeditionOriginId] || 'ronin');
     setAutoFaction(faction);
     setAutoPlay(true);
     const fName = FACTIONS.find(f => f.id === faction)?.name || faction;
@@ -1322,13 +1369,115 @@ export default function TacticalMap({
 
   // ===== Computer rivals: other factions attack on their own =====
   const [rivalsOn, setRivalsOn] = useState(false);
-  const [controlledFactions, setControlledFactions] = useState<string[]>(initialPlayerFactions || []);
+  const [controlledFactions, setControlledFactions] = useState<string[]>(() =>
+    playerCombatantFactions.length ? playerCombatantFactions : (initialPlayerFactions || []),
+  );
   const [rivalLogs, setRivalLogs] = useState<string[]>([]);
+  const rivalAnimTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const isRivalAnimPlayingRef = useRef(false);
+
+  const clearRivalAnimation = () => {
+    for (const t of rivalAnimTimersRef.current) clearTimeout(t);
+    rivalAnimTimersRef.current = [];
+    isRivalAnimPlayingRef.current = false;
+    setRivalBattleVisual(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      for (const t of rivalAnimTimersRef.current) clearTimeout(t);
+      rivalAnimTimersRef.current = [];
+    };
+  }, []);
+
+  const playRivalWarAnimation = ({
+    origId,
+    targId,
+    attackerFactionId,
+    defenderFactionId,
+    attWins,
+    successRate,
+    attGeneralName,
+    defGeneralName,
+    onResolveOwnership,
+  }: {
+    origId: string;
+    targId: string;
+    attackerFactionId: string;
+    defenderFactionId: string;
+    attWins: boolean;
+    successRate: number;
+    attGeneralName?: string;
+    defGeneralName?: string;
+    onResolveOwnership?: () => void;
+  }) => {
+    clearRivalAnimation();
+    isRivalAnimPlayingRef.current = true;
+    const attFaction = FACTIONS.find(f => f.id === attackerFactionId);
+    const defFaction = FACTIONS.find(f => f.id === defenderFactionId);
+    const an = attFaction?.name || attackerFactionId;
+    const dn = defenderFactionId === 'ronin' ? '在野义军' : defFaction?.name || defenderFactionId;
+    const origName = CITIES.find(c => c.id === origId)?.name || origId;
+    const targName = CITIES.find(c => c.id === targId)?.name || targId;
+
+    const baseVisual: ExpeditionBattleVisual = {
+      origId,
+      targId,
+      attackerFactionId,
+      defenderFactionId,
+      attackerFactionName: an,
+      defenderFactionName: dn,
+      attackerColor: attFaction?.color || '#ef4444',
+      defenderColor: defFaction?.color || '#64748b',
+      attackerGeneralName: attGeneralName || `${an}主将`,
+      defenderGeneralName: defGeneralName || `${dn}守将`,
+      isSiege: true,
+      siegeWin: attWins,
+      successRate,
+    };
+
+    if (soundEnabled) playDrumSound();
+    setRivalBattleVisual({ ...baseVisual, step: 1 });
+    setRivalLogs(prev => [
+      `⚔️ 【${an}】自 ${origName} 发兵进逼 ${targName}（${dn}），大地图两军列阵激战！`,
+      ...prev,
+    ].slice(0, 8));
+
+    const clashTimer = setTimeout(() => {
+      if (soundEnabled) playClashSound();
+      setRivalBattleVisual({ ...baseVisual, step: 3 });
+    }, 650);
+
+    const resolveTimer = setTimeout(() => {
+      onResolveOwnership?.();
+      setRivalBattleVisual({ ...baseVisual, step: 4 });
+      setRivalLogs(prev => [
+        attWins
+          ? `🏆 【${an}】远征攻克 ${targName}（原属 ${dn}），城池易帜！`
+          : `🛡️ 【${an}】攻打 ${targName} 被【${dn}】击退！`,
+        ...prev,
+      ].slice(0, 8));
+    }, 2900);
+
+    const endTimer = setTimeout(() => {
+      isRivalAnimPlayingRef.current = false;
+      setRivalBattleVisual(null);
+    }, 4600);
+
+    rivalAnimTimersRef.current = [clashTimer, resolveTimer, endTimer];
+  };
 
   const toggleRivals = () => {
-    if (rivalsOn) { setRivalsOn(false); return; }
-    const pf = cityOwnership[expeditionOriginId] || 'ronin';
-    const next = (initialPlayerFactions && initialPlayerFactions.length) ? initialPlayerFactions : [pf];
+    if (rivalsOn) {
+      setRivalsOn(false);
+      clearRivalAnimation();
+      return;
+    }
+    const pf =
+      ownFactionId && ownFactionId !== 'ronin'
+        ? ownFactionId
+        : (cityOwnership[expeditionOriginId] || 'ronin');
+    const next = playerCombatantFactions.length ? playerCombatantFactions : [pf];
     setControlledFactions(next);
     setRivalsOn(true);
     const n = next.map(id => FACTIONS.find(f => f.id === id)?.name || id).join('、');
@@ -1339,9 +1488,14 @@ export default function TacticalMap({
     if (!rivalsOn) return;
     if (mapTab === 'war-mode') return;
     if (isExpeditionRunning && expeditionStep !== 4) return;
+    if (isRivalAnimPlayingRef.current) return;
     const timer = setTimeout(() => {
+      if (isRivalAnimPlayingRef.current) return;
+      const activeHumanFactions = playerCombatantFactions.length
+        ? playerCombatantFactions
+        : controlledFactions.filter(f => f && f !== 'ronin');
       const rivals = Array.from(new Set(CITIES.map(c => cityOwnership[c.id]).filter(
-        f => f && f !== 'ronin' && !controlledFactions.includes(f) && officers.some(o => o.factionId === f)
+        f => f && f !== 'ronin' && !activeHumanFactions.includes(f) && officers.some(o => o.factionId === f)
       ))) as string[];
       if (!rivals.length) return;
       const att = rivals[Math.floor(Math.random() * rivals.length)];
@@ -1349,7 +1503,7 @@ export default function TacticalMap({
       const targets = CITIES.filter(c => (cityOwnership[c.id] || 'ronin') !== att);
       let best: { o: City; t: City; s: number } | null = null;
       for (const o of owned) for (const t of targets) {
-        const s = Math.hypot(o.x - t.x, o.y - t.y) * (controlledFactions.includes(cityOwnership[t.id]) ? 0.8 : 1) + Math.random() * 4;
+        const s = Math.hypot(o.x - t.x, o.y - t.y) * (activeHumanFactions.includes(cityOwnership[t.id]) ? 0.8 : 1) + Math.random() * 4;
         if (!best || s < best.s) best = { o, t, s };
       }
       if (!best) return;
@@ -1360,26 +1514,74 @@ export default function TacticalMap({
       const dn = def === 'ronin' ? '在野义军' : defFaction?.name || def;
       const attGeneral = officers.find(g => g.factionId === att) ?? null;
       const defGeneral = officers.find(g => g.factionId === def) ?? null;
-      const mine = controlledFactions.includes(def) ? '🚨 ' : '';
-
-      setRivalLogs(prev => [
-        `${mine}⚔️ 【${an}】自 ${best.o.name} 发兵攻打 ${best.t.name}（${dn}），进入合战决胜负！`,
-        ...prev,
-      ].slice(0, 8));
-
-      openWarModeForBattle({
-        originCityId: best.o.id,
-        targetCityId: best.t.id,
+      const playerInvolved = isPlayerFactionInBattle({
         attackerFactionId: att,
         defenderFactionId: def,
-        attackingOfficerId: attGeneral?.id ?? null,
-        defendingOfficerId: defGeneral?.id ?? null,
-        autoDeploy: true,
-        triggerSource: 'rivals',
+        playerFactionId: ownFactionId,
+        playerFactions: activeHumanFactions,
+      });
+
+      if (playerInvolved) {
+        setRivalLogs(prev => [
+          `🚨 ⚔️ 【${an}】自 ${best.o.name} 发兵进犯我方【${best.t.name}】（${dn}），进入会战迎敌！`,
+          ...prev,
+        ].slice(0, 8));
+
+        openWarModeForBattle({
+          originCityId: best.o.id,
+          targetCityId: best.t.id,
+          attackerFactionId: att,
+          defenderFactionId: def,
+          attackingOfficerId: attGeneral?.id ?? null,
+          defendingOfficerId: defGeneral?.id ?? null,
+          autoDeploy: true,
+          triggerSource: 'rivals',
+        });
+        return;
+      }
+
+      // AI vs AI / neutral clash: play animated battle on the tactical map without opening WarMode
+      const attScore = attGeneral
+        ? attGeneral.stats.leadership * 0.4 + attGeneral.stats.force * 0.35 + attGeneral.stats.intelligence * 0.25
+        : 62;
+      const defScore = defGeneral
+        ? defGeneral.stats.leadership * 0.4 + defGeneral.stats.force * 0.35 + defGeneral.stats.intelligence * 0.25
+        : (def === 'ronin' ? 45 : 62);
+      const cityDef = cityStats[best.t.id]?.defense ?? 70;
+      const attWins = attScore + Math.random() * 24 > defScore * 0.72 + cityDef * 0.38 + Math.random() * 16;
+      const successRate = Math.round((attScore / Math.max(1, attScore + defScore)) * 100);
+      const targetCityId = best.t.id;
+
+      playRivalWarAnimation({
+        origId: best.o.id,
+        targId: targetCityId,
+        attackerFactionId: att,
+        defenderFactionId: def,
+        attWins,
+        successRate,
+        attGeneralName: attGeneral?.name,
+        defGeneralName: defGeneral?.name,
+        onResolveOwnership: () => {
+          setCityOwnership(prev =>
+            resolveWarBattleOwnership(
+              prev,
+              targetCityId,
+              attWins ? 'attacker' : 'defender',
+              att,
+              def,
+            ).nextOwnership,
+          );
+          if (attWins) {
+            setCityStats(prev => {
+              const cur = prev[targetCityId];
+              return cur ? { ...prev, [targetCityId]: { ...cur, defense: Math.max(25, cur.defense - 8) } } : prev;
+            });
+          }
+        },
       });
     }, 6000);
     return () => clearTimeout(timer);
-  }, [rivalsOn, controlledFactions, cityOwnership, isExpeditionRunning, expeditionStep, officers, mapTab]);
+  }, [rivalsOn, controlledFactions, playerCombatantFactions, ownFactionId, cityOwnership, cityStats, isExpeditionRunning, expeditionStep, officers, mapTab, soundEnabled]);
 
   // Handle faction revision by user (used by directory table picker)
   const handleModifyController = (cityId: string, factionId: string) => {
@@ -1401,14 +1603,72 @@ export default function TacticalMap({
     setInteriorLogs(prev => [`【宣称占领】${msg}`, ...prev].slice(0, 40));
   };
 
+  const scheduleAiCounterAttack = ({
+    ownershipMap,
+    aggrievedFactionId,
+    aggressorFactionId,
+    preferredTargetCityId,
+    reasonLabel,
+  }: {
+    ownershipMap: Record<string, string>;
+    aggrievedFactionId: string;
+    aggressorFactionId: string;
+    preferredTargetCityId?: string;
+    reasonLabel: string;
+  }) => {
+    if (!aiCounterAttackOn) return;
+    const plan = planAiCounterAttack({
+      cityOwnership: ownershipMap,
+      cities: CITIES,
+      officers,
+      aggrievedFactionId,
+      targetFactionId: aggressorFactionId,
+      preferredTargetCityId,
+    });
+    if (!plan) return;
+    const aggrievedName =
+      FACTIONS.find(f => f.id === plan.aggrievedFactionId)?.name ?? plan.aggrievedFactionId;
+    const originName = CITIES.find(c => c.id === plan.originCityId)?.name ?? plan.originCityId;
+    const targetName = CITIES.find(c => c.id === plan.targetCityId)?.name ?? plan.targetCityId;
+    const cmdName =
+      (plan.attackingOfficerId && officers.find(o => o.id === plan.attackingOfficerId)?.name) ||
+      '守将';
+    const alertMsg = `🚨 【AI 发起反击】${aggrievedName} 不甘${reasonLabel}，已点齐 ${originName} 兵马（${cmdName} 挂帅），即刻反扑【${targetName}】！`;
+    setPendingCounterAttack({ plan, reasonLabel });
+    setPoliticsNotice({ kind: 'coup', text: alertMsg });
+    setInteriorLogs(prev => [alertMsg, ...prev].slice(0, 40));
+    setRivalLogs(prev => [alertMsg, ...prev].slice(0, 8));
+  };
+
+  useEffect(() => {
+    if (!aiCounterAttackOn || !pendingCounterAttack) return;
+    if (mapTab === 'war-mode') return;
+    const timer = setTimeout(() => {
+      const { plan } = pendingCounterAttack;
+      setPendingCounterAttack(null);
+      openWarModeForBattle({
+        originCityId: plan.originCityId,
+        targetCityId: plan.targetCityId,
+        attackerFactionId: plan.aggrievedFactionId,
+        defenderFactionId: plan.targetFactionId,
+        attackingOfficerId: plan.attackingOfficerId,
+        defendingOfficerId: plan.defendingOfficerId,
+        autoDeploy: true,
+        triggerSource: 'counterattack',
+      });
+    }, 2400);
+    return () => clearTimeout(timer);
+  }, [aiCounterAttackOn, pendingCounterAttack, mapTab]);
+
   const applyResolvedCoupResult = (res: CoupResolution) => {
     if (lastAppliedCoupNonceRef.current === res.nonce) return;
     lastAppliedCoupNonceRef.current = res.nonce;
 
-    setCityOwnership(prev => ({
-      ...prev,
+    const nextOwnership = {
+      ...cityOwnership,
       [res.cityId]: res.winnerFactionId,
-    }));
+    };
+    setCityOwnership(nextOwnership);
 
     const winnerFactionName =
       FACTIONS.find(f => f.id === res.winnerFactionId)?.name ?? res.winnerFactionId;
@@ -1434,6 +1694,20 @@ export default function TacticalMap({
       const msg = `【守城平乱】${res.winnerOfficerName} 阵前击退 ${res.loserOfficerName} 政变奇袭，【${res.cityName}】仍由 ${winnerFactionName} 掌控！`;
       setPoliticsNotice({ kind: 'coup', text: msg });
       setInteriorLogs(prev => [msg, ...prev].slice(0, 40));
+    }
+
+    if (
+      aiCounterAttackOn &&
+      res.defenderFactionId !== 'ronin' &&
+      res.defenderFactionId !== res.attackerFactionId
+    ) {
+      scheduleAiCounterAttack({
+        ownershipMap: nextOwnership,
+        aggrievedFactionId: res.defenderFactionId,
+        aggressorFactionId: res.attackerFactionId,
+        preferredTargetCityId: res.winnerSide === 'left' ? res.cityId : undefined,
+        reasonLabel: res.winnerSide === 'left' ? `痛失【${res.cityName}】` : `【${res.cityName}】遭政变袭扰`,
+      });
     }
   };
 
@@ -1521,9 +1795,65 @@ export default function TacticalMap({
     autoDeploy = false,
     triggerSource = 'manual',
   }: Omit<ActiveWarBattle, 'nonce'>) => {
+    const playerInvolved = isPlayerFactionInBattle({
+      attackerFactionId,
+      defenderFactionId,
+      playerFactionId: ownFactionId,
+      playerFactions: playerCombatantFactions,
+    });
+    if (!playerInvolved || attackerFactionId === defenderFactionId) {
+      if (attackerFactionId !== defenderFactionId) {
+        const attOfficer =
+          (attackingOfficerId && officers.find(o => o.id === attackingOfficerId)) ||
+          officers.find(o => o.factionId === attackerFactionId) ||
+          null;
+        const defOfficer =
+          (defendingOfficerId && officers.find(o => o.id === defendingOfficerId)) ||
+          officers.find(o => o.factionId === defenderFactionId) ||
+          null;
+        const attScore = attOfficer
+          ? attOfficer.stats.leadership * 0.4 + attOfficer.stats.force * 0.35 + attOfficer.stats.intelligence * 0.25
+          : 62;
+        const defScore = defOfficer
+          ? defOfficer.stats.leadership * 0.4 + defOfficer.stats.force * 0.35 + defOfficer.stats.intelligence * 0.25
+          : (defenderFactionId === 'ronin' ? 45 : 62);
+        const cityDef = cityStats[targetCityId]?.defense ?? 70;
+        const attWins = attScore + Math.random() * 24 > defScore * 0.72 + cityDef * 0.38 + Math.random() * 16;
+        const successRate = Math.round((attScore / Math.max(1, attScore + defScore)) * 100);
+        playRivalWarAnimation({
+          origId: originCityId,
+          targId: targetCityId,
+          attackerFactionId,
+          defenderFactionId,
+          attWins,
+          successRate,
+          attGeneralName: attOfficer?.name,
+          defGeneralName: defOfficer?.name,
+          onResolveOwnership: () => {
+            setCityOwnership(prev =>
+              resolveWarBattleOwnership(
+                prev,
+                targetCityId,
+                attWins ? 'attacker' : 'defender',
+                attackerFactionId,
+                defenderFactionId,
+              ).nextOwnership,
+            );
+          },
+        });
+        setMapTab('svg-map');
+      } else {
+        setInteriorLogs(prev => [
+          '【会战限制】仅当玩家势力为参战方之一时，方会开启会战模式。',
+          ...prev,
+        ].slice(0, 40));
+      }
+      return;
+    }
     setIsExpeditionRunning(false);
     setExpeditionBattleVisual(null);
-    setRivalBattleVisual(null);
+    clearRivalAnimation();
+    setPendingCounterAttack(null);
     setActiveWarBattle({
       nonce: ++warBattleNonceRef.current,
       originCityId,
@@ -1648,6 +1978,25 @@ export default function TacticalMap({
     }
     setActiveWarBattle(null);
     setMapTab('svg-map');
+
+    const playerSideForCounter = activePlayerSide !== 'ronin' ? activePlayerSide : attackerFactionId;
+    if (
+      aiCounterAttackOn &&
+      battleCtx?.triggerSource !== 'counterattack' &&
+      battleCtx?.triggerSource !== 'rivals' &&
+      defenderFactionId !== 'ronin' &&
+      defenderFactionId !== attackerFactionId &&
+      attackerFactionId === playerSideForCounter
+    ) {
+      const preferredCity = winner === 'attacker' ? resolvedCityId : battleCtx?.originCityId;
+      scheduleAiCounterAttack({
+        ownershipMap: nextOwnership,
+        aggrievedFactionId: defenderFactionId,
+        aggressorFactionId: attackerFactionId,
+        preferredTargetCityId: preferredCity,
+        reasonLabel: winner === 'attacker' ? `【${targetCityName}】失守` : `【${targetCityName}】遭兵临城下`,
+      });
+    }
 
     // Award combat XP to the party (applied in App).
     onBattleXp?.(xpAmount);
@@ -1910,7 +2259,13 @@ export default function TacticalMap({
     const targetFaction = FACTIONS.find(f => f.id === targetControllerId) || FACTIONS[FACTIONS.length - 1];
 
     const isSiege = origOwner !== targetControllerId;
-    if (isSiege) {
+    const playerInvolvedInSiege = isPlayerFactionInBattle({
+      attackerFactionId: origOwner,
+      defenderFactionId: targetControllerId,
+      playerFactionId: ownFactionId,
+      playerFactions: playerCombatantFactions,
+    });
+    if (isSiege && playerInvolvedInSiege) {
       const defenderOfficer = officers.find(o => o.factionId === targetControllerId) ?? null;
       openWarModeForBattle({
         originCityId: origId,
@@ -2280,6 +2635,8 @@ export default function TacticalMap({
     setExpeditionLogs([]);
     setExpeditionStep(-1);
     setIsExpeditionRunning(false);
+    setExpeditionBattleVisual(null);
+    clearRivalAnimation();
     setMapZoom(1);
     setZoomOrigin({ x: 50, y: 50 });
     setWorldState(createWorldState(FACTIONS));
@@ -2288,6 +2645,7 @@ export default function TacticalMap({
     setPoliticsNotice(null);
     setInlineCoupChallenge(null);
     setActiveWarBattle(null);
+    setPendingCounterAttack(null);
     lastWorldTickKeyRef.current = '';
     lastMigrationTickKeyRef.current = '';
   };
@@ -2307,12 +2665,52 @@ export default function TacticalMap({
           )}
           <Button id="tab-map-disasters" aria-pressed={mapTab === 'disasters'} onClick={() => setMapTab('disasters')}><AlertTriangle size={15} />灾疫{unresolvedActiveDisasters.length > 0 ? ` (${unresolvedActiveDisasters.length})` : ''}</Button>
           <Button id="tab-map-migrations" aria-pressed={mapTab === 'migrations'} onClick={() => setMapTab('migrations')}><Users size={15} />迁徙{migrationState.waves.length > 0 ? ` (${migrationState.waves.length})` : ''}</Button>
-          <Button id="tab-map-war-mode" aria-pressed={mapTab === 'war-mode'} onClick={() => setMapTab('war-mode')}><Sword size={15} />会战</Button>
+          {(() => {
+            const tabAttacker = activeWarBattle?.attackerFactionId ?? originControllerId;
+            const tabDefender =
+              activeWarBattle?.defenderFactionId ?? (cityOwnership[effectiveExpeditionTargetId] || 'ronin');
+            const canOpenWarTab =
+              Boolean(activeWarBattle) ||
+              (ownCities.length > 0 &&
+                Boolean(effectiveExpeditionTargetId) &&
+                tabAttacker !== tabDefender &&
+                isPlayerFactionInBattle({
+                  attackerFactionId: tabAttacker,
+                  defenderFactionId: tabDefender,
+                  playerFactionId: ownFactionId,
+                  playerFactions: playerCombatantFactions,
+                }));
+            return (
+              <Button
+                id="tab-map-war-mode"
+                aria-pressed={mapTab === 'war-mode'}
+                disabled={!canOpenWarTab}
+                title={canOpenWarTab ? '进入会战攻城' : '仅当玩家势力参战时才可进入会战'}
+                onClick={() => {
+                  if (canOpenWarTab) setMapTab('war-mode');
+                }}
+              >
+                <Sword size={15} />会战
+              </Button>
+            );
+          })()}
         </nav>
 
         <details className="game-disclosure game-disclosure-popover"><summary>电脑玩家与重置</summary><div className="game-settings-body">
           <Button id="btn-ai-autoplay" onClick={toggleAutoPlay} aria-pressed={autoPlay}>{autoPlay ? '停止 AI 托管' : 'AI 托管'}</Button>
           <Button id="btn-rivals" onClick={toggleRivals} aria-pressed={rivalsOn}>{rivalsOn ? '停止电脑对手' : '电脑对手'}</Button>
+          <Button
+            id="btn-ai-counterattack"
+            onClick={() => {
+              setAiCounterAttackOn(prev => {
+                if (prev) setPendingCounterAttack(null);
+                return !prev;
+              });
+            }}
+            aria-pressed={aiCounterAttackOn}
+          >
+            {aiCounterAttackOn ? '停止 AI 反击' : 'AI 自动反击'}
+          </Button>
           <Button id="btn-reset-map" onClick={handleResetMap}><RefreshCw size={14} />重置地图</Button>
         </div></details>
       </div>
@@ -2337,6 +2735,62 @@ export default function TacticalMap({
           <Button id="btn-jump-disasters" onClick={() => setMapTab('disasters')}>前往应急救灾</Button>
         </div>
       )}
+
+      {pendingCounterAttack && mapTab !== 'war-mode' && (() => {
+        const { plan, reasonLabel } = pendingCounterAttack;
+        const aggrievedName = FACTIONS.find(f => f.id === plan.aggrievedFactionId)?.name ?? plan.aggrievedFactionId;
+        const originName = CITIES.find(c => c.id === plan.originCityId)?.name ?? plan.originCityId;
+        const targetName = CITIES.find(c => c.id === plan.targetCityId)?.name ?? plan.targetCityId;
+        return (
+          <div id="ai-counterattack-banner" className="disaster-alert-banner" role="status">
+            <span>
+              <Swords size={15} /> <strong>电脑 AI 发起反击：</strong>
+              {aggrievedName} 因{reasonLabel}，正从【{originName}】反扑【{targetName}】！
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                id="btn-launch-counterattack"
+                onClick={() => {
+                  setPendingCounterAttack(null);
+                  openWarModeForBattle({
+                    originCityId: plan.originCityId,
+                    targetCityId: plan.targetCityId,
+                    attackerFactionId: plan.aggrievedFactionId,
+                    defenderFactionId: plan.targetFactionId,
+                    attackingOfficerId: plan.attackingOfficerId,
+                    defendingOfficerId: plan.defendingOfficerId,
+                    autoDeploy: true,
+                    triggerSource: 'counterattack',
+                  });
+                }}
+              >
+                ⚔️ 立即迎战反击
+              </Button>
+              <Button onClick={() => setPendingCounterAttack(null)}>暂缓</Button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {(() => {
+        const liveRivalAnim =
+          rivalBattleVisual ??
+          (isExpeditionRunning && expeditionBattleVisual?.isSiege ? expeditionBattleVisual : null);
+        if (!liveRivalAnim || mapTab === 'svg-map' || mapTab === 'war-mode') return null;
+        const origCityName = CITIES.find(c => c.id === liveRivalAnim.origId)?.name ?? liveRivalAnim.origId;
+        const targCityName = CITIES.find(c => c.id === liveRivalAnim.targId)?.name ?? liveRivalAnim.targId;
+        return (
+          <div id="rival-war-watch-banner" className="world2026-alert-banner" role="status">
+            <span>
+              <Swords size={15} /> <strong>诸侯交战实况：</strong>
+              {liveRivalAnim.attackerFactionName} 正攻打 {liveRivalAnim.defenderFactionName}（{origCityName} ⚔️ {targCityName}）
+            </span>
+            <Button id="btn-watch-rival-war" onClick={() => setMapTab('svg-map')}>
+              🗺️ 前往观战
+            </Button>
+          </div>
+        );
+      })()}
 
       {mapTab === 'world-2026' && selectedScenario.year === 2026 ? (
         <WorldSituation2026
@@ -4508,6 +4962,35 @@ export default function TacticalMap({
           activeWarBattle?.defenderFactionId ?? (cityOwnership[battleTargetId] || 'ronin');
         const battleAttackingOfficerId = activeWarBattle?.attackingOfficerId ?? selectedGeneralId;
         const battleDefendingOfficerId = activeWarBattle?.defendingOfficerId ?? null;
+        const playerIsCombatant =
+          battleAttackerFactionId !== battleDefenderFactionId &&
+          (Boolean(activeWarBattle) || ownCities.length > 0) &&
+          isPlayerFactionInBattle({
+            attackerFactionId: battleAttackerFactionId,
+            defenderFactionId: battleDefenderFactionId,
+            playerFactionId: ownFactionId,
+            playerFactions: playerCombatantFactions,
+          });
+        if (!playerIsCombatant) {
+          return (
+            <div
+              id="war-mode-blocked"
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-3"
+            >
+              <h3 className="text-base font-serif font-bold text-amber-400">
+                ⚔️ 仅玩家参战时开启会战模式
+              </h3>
+              <p className="text-xs text-slate-400">
+                电脑势力彼此交锋将在大地图自动推演，不会强行切换进入会战；仅当玩家所属势力为攻方或守方时才会开启会战模式。
+              </p>
+              <div className="flex justify-center">
+                <Button id="btn-war-return-map" onClick={() => setMapTab('svg-map')}>
+                  返回战略地图
+                </Button>
+              </div>
+            </div>
+          );
+        }
         return (
           <WarMode
             originCity={CITIES.find(c => c.id === battleOriginId) || CITIES[0]}
@@ -4526,6 +5009,7 @@ export default function TacticalMap({
             seasonId={activeSeasonId}
             soundEnabled={soundEnabled}
             autoDeploy={Boolean(activeWarBattle?.autoDeploy)}
+            isCounterAttack={activeWarBattle?.triggerSource === 'counterattack'}
             battleNonce={activeWarBattle?.nonce ?? 0}
             onBattleComplete={handleBattleComplete}
             onClose={() => {
@@ -5028,7 +5512,13 @@ export default function TacticalMap({
                   {isExpeditionRunning ? '推演中...' : isHostileTarget ? '发兵会战' : '内部调兵'}
                 </button>
 
-                {isHostileTarget && (
+                {isHostileTarget &&
+                  isPlayerFactionInBattle({
+                    attackerFactionId: originControllerId,
+                    defenderFactionId: cityOwnership[effectiveExpeditionTargetId] || 'ronin',
+                    playerFactionId: ownFactionId,
+                    playerFactions: playerCombatantFactions,
+                  }) && (
                   <button
                     id="btn-launch-war-mode-direct"
                     type="button"

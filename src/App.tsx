@@ -1922,6 +1922,7 @@ export default function App() {
                   gameMonth={gameMonth}
                   gameXun={gameXun}
                   isAutoTime={isAutoTime}
+                  multiplayerEnabled={multiplayerEnabled}
                   playerFactions={playerFactions}
                   playerFactionId={myFactionId}
                   protagonistId={protagonistId}

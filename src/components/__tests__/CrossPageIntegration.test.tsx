@@ -1173,6 +1173,8 @@ describe('WarMode Clash of Clans Village Raid', () => {
     assert.ok(html.includes('data-testid="coc-building-archer_tower"'), 'expected Archer Tower defense');
     assert.ok(html.includes('data-testid="coc-building-mortar"'), 'expected Mortar defense');
     assert.ok(html.includes('data-testid="coc-building-wall"'), 'expected Stone Wall blocks');
+    assert.ok(html.includes('data-testid="coc-defender-unit"'), 'expected defending garrison units in #war-live-arena');
+    assert.ok(html.includes('摧毁主城大本营（破城关键）'), 'expected Town Hall capture win requirement');
     assert.ok(html.includes('data-testid="coc-troop-deck"'), 'expected deployable troop/spell deck');
     assert.ok(html.includes('data-testid="coc-card-barbarian"'), 'expected Barbarian card');
     assert.ok(html.includes('data-testid="coc-card-archer"'), 'expected Archer card');
@@ -1242,6 +1244,7 @@ describe('WarMode Clash of Clans Village Raid', () => {
         defenderFaction={FACTIONS[1]}
         attackingOfficer={officers[1]}
         defendingOfficer={officers[3]}
+        playerFactionId={FACTIONS[1].id}
         weatherId="sunny"
         soundEnabled={false}
         initialPhase="defeat"
@@ -1252,6 +1255,14 @@ describe('WarMode Clash of Clans Village Raid', () => {
     assert.ok(
       defeatHtml.includes(`城池仍由【${FACTIONS[1].name}】坚守`),
       'expected defeat overlay to retain target city for defender faction',
+    );
+    assert.ok(
+      defeatHtml.includes('主城大本营未破 · 守方获胜'),
+      'expected defeat banner to state Town Hall held -> defender victory',
+    );
+    assert.ok(
+      defeatHtml.includes('敌军来犯！护住【主城大本营】不失即守城胜利'),
+      'expected player defense banner when defending own city',
     );
   });
 });

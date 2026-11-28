@@ -1262,6 +1262,7 @@ export default function TacticalMap({
   // Plan the next move whenever idle
   useEffect(() => {
     if (!autoPlay || autoPending) return;
+    if (mapTab === 'war-mode') return;
     if (isExpeditionRunning && expeditionStep !== 4) return;
     const timer = setTimeout(() => {
       const owned = CITIES.filter(c => cityOwnership[c.id] === autoFaction);
@@ -1297,7 +1298,7 @@ export default function TacticalMap({
       setAutoStatus(`🤖 AI 决策：自 [${best.o.name}] 发兵攻打 [${best.t.name}]${top ? `，由 ${top.name} 挂帅` : ''}`);
     }, 2500);
     return () => clearTimeout(timer);
-  }, [autoPlay, autoPending, isExpeditionRunning, expeditionStep, cityOwnership, autoFaction, officers]);
+  }, [autoPlay, autoPending, isExpeditionRunning, expeditionStep, cityOwnership, autoFaction, officers, mapTab]);
 
   // Launch once selections have settled
   useEffect(() => {
@@ -1538,7 +1539,6 @@ export default function TacticalMap({
   };
 
   const handleBattleComplete = (winner: 'attacker' | 'defender', goldReward: number, epicRelic?: string, conqueredCityId?: string) => {
-    const xpAmount = winner === 'attacker' ? 120 : 40;
     const battleCtx = activeWarBattle;
     const resolvedCityId =
       conqueredCityId || battleCtx?.targetCityId || effectiveExpeditionTargetId;
@@ -1546,6 +1546,17 @@ export default function TacticalMap({
       battleCtx?.attackerFactionId ?? (cityOwnership[effectiveExpeditionOriginId] || 'ronin');
     const defenderFactionId =
       battleCtx?.defenderFactionId ?? (cityOwnership[resolvedCityId] || 'ronin');
+
+    const activePlayerSide = ownFactionId || playerFactionId || 'ronin';
+    const playerInvolvedAsAttacker =
+      activePlayerSide !== 'ronin' && attackerFactionId === activePlayerSide;
+    const playerInvolvedAsDefender =
+      activePlayerSide !== 'ronin' && defenderFactionId === activePlayerSide;
+    const playerWon =
+      (winner === 'attacker' && playerInvolvedAsAttacker) ||
+      (winner === 'defender' && playerInvolvedAsDefender) ||
+      (!battleCtx && winner === 'attacker');
+    const xpAmount = playerWon ? 120 : 40;
 
     const attackerName =
       FACTIONS.find(f => f.id === attackerFactionId)?.name ?? attackerFactionId;
@@ -1567,16 +1578,27 @@ export default function TacticalMap({
 
     if (winner === 'attacker') {
       setDissolvedFactionIds(prev => prev.filter(id => id !== attackerFactionId));
+      setCityStats(prev => {
+        const cur = prev[resolvedCityId];
+        if (!cur) return prev;
+        return {
+          ...prev,
+          [resolvedCityId]: {
+            ...cur,
+            defense: Math.max(25, cur.defense - 10),
+          },
+        };
+      });
       // Conquering a city advances any quest anchored there.
-      const cityQuests = (initialQuests ?? []).filter(q => q.cityId === resolvedCityId && q.objectives.length);
-      for (const q of cityQuests) {
-        const st = questStates.find(s => s.questId === q.id);
-        if (st && st.status !== 'completed') {
-          const next = nextIncompleteObjective(q, st);
-          if (next) onCompleteQuestObjective?.(q.id, next.id);
+      if (playerInvolvedAsAttacker || !battleCtx) {
+        const cityQuests = (initialQuests ?? []).filter(q => q.cityId === resolvedCityId && q.objectives.length);
+        for (const q of cityQuests) {
+          const st = questStates.find(s => s.questId === q.id);
+          if (st && st.status !== 'completed') {
+            const next = nextIncompleteObjective(q, st);
+            if (next) onCompleteQuestObjective?.(q.id, next.id);
+          }
         }
-      }
-      if (!battleCtx || battleCtx.triggerSource !== 'rivals') {
         setPlayerGold(prev => prev + goldReward);
         if (epicRelic) {
           setPlayerInventory(prev => {
@@ -1588,7 +1610,9 @@ export default function TacticalMap({
       const msg = `🏆 【会战破城】${attackerName} 大军攻克【${targetCityName}】（原属 ${defenderName}），城池正式归入 ${attackerName}！`;
       setPoliticsNotice({ kind: 'coup', text: msg });
       setInteriorLogs(prev => [
-        `${msg} 缴获犒赏军饷黄金 ${goldReward}，夺取宝物 [${epicRelic || '名门铁券'}]！`,
+        playerInvolvedAsAttacker || !battleCtx
+          ? `${msg} 缴获犒赏军饷黄金 ${goldReward}，夺取宝物 [${epicRelic || '名门铁券'}]！`
+          : msg,
         ...prev,
       ]);
       if (battleCtx?.triggerSource === 'rivals') {
@@ -1596,13 +1620,26 @@ export default function TacticalMap({
       }
     } else {
       const absoluteLoss = Math.abs(goldReward);
-      if (!battleCtx || battleCtx.triggerSource !== 'rivals') {
+      setCityStats(prev => {
+        const cur = prev[resolvedCityId];
+        if (!cur) return prev;
+        return {
+          ...prev,
+          [resolvedCityId]: {
+            ...cur,
+            defense: Math.min(100, cur.defense + 4),
+          },
+        };
+      });
+      if (playerInvolvedAsAttacker || !battleCtx) {
         setPlayerGold(prev => Math.max(0, prev - absoluteLoss));
       }
       const msg = `🛡️ 【守城获胜】${defenderName} 击退 ${attackerName} 攻城大军，守住【${targetCityName}】！`;
       setPoliticsNotice({ kind: 'coup', text: msg });
       setInteriorLogs(prev => [
-        `${msg} 攻方撤军，折耗军资黄金 ${absoluteLoss}。`,
+        playerInvolvedAsAttacker || !battleCtx
+          ? `${msg} 我军攻城失利撤军，折耗军资黄金 ${absoluteLoss}。`
+          : msg,
         ...prev,
       ]);
       if (battleCtx?.triggerSource === 'rivals') {
@@ -1612,11 +1649,10 @@ export default function TacticalMap({
     setActiveWarBattle(null);
     setMapTab('svg-map');
 
-    // Award combat XP to the party (applied in App). A defeat still grants a
-    // smaller amount for the attempt.
+    // Award combat XP to the party (applied in App).
     onBattleXp?.(xpAmount);
     setInteriorLogs(prev => [
-      `【战斗经验】队伍获得 ${xpAmount} 经验${winner === 'attacker' ? '，胜利！' : '，尽力了！'}`,
+      `【战斗经验】队伍获得 ${xpAmount} 经验${playerWon ? '，胜利！' : '，再接再厉！'}`,
       ...prev
     ]);
   };
@@ -4484,6 +4520,8 @@ export default function TacticalMap({
                 ? officers.find(o => o.id === battleDefendingOfficerId)
                 : officers.filter(o => o.factionId === battleDefenderFactionId)[0]) || null
             }
+            targetCityDefense={cityStats[battleTargetId]?.defense ?? 70}
+            playerFactionId={ownFactionId || playerFactionId}
             weatherId={weatherId}
             seasonId={activeSeasonId}
             soundEnabled={soundEnabled}

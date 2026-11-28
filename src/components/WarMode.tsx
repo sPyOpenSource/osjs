@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Officer, Faction } from '../types';
 import { applySeasonalOfficerModifiers, SEASONS, SeasonId } from '../utils/seasons';
+import { evaluateWarSiegeOutcome } from '../utils/cityPolitics';
 import {
   playMoveSound as playUnifiedMoveSound,
   playClashSound as playUnifiedClashSound,
@@ -39,6 +40,8 @@ interface WarModeProps {
   defenderFaction: Faction;
   attackingOfficer: Officer | null;
   defendingOfficer: Officer | null;
+  targetCityDefense?: number;
+  playerFactionId?: string;
   weatherId: 'sunny' | 'rainy' | 'heavy_rain' | 'windy' | 'foggy' | 'dense_fog' | 'snow';
   seasonId?: SeasonId;
   soundEnabled: boolean;
@@ -149,8 +152,27 @@ interface FloatingBadge {
   tone: 'dmg' | 'heal' | 'boom' | 'loot';
 }
 
+interface DefenderUnit {
+  id: string;
+  kind: 'hero' | 'guard';
+  name: string;
+  icon: string;
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  dps: number;
+  speed: number;
+  range: number;
+  cooldown: number;
+  maxCooldown: number;
+  facing: 1 | -1;
+  attackFlash: number;
+}
+
 interface RaidSim {
   troops: TroopUnit[];
+  defenders: DefenderUnit[];
   buildings: DefenseBuilding[];
   spells: SpellZone[];
   projectiles: RaidProjectile[];
@@ -169,6 +191,7 @@ interface RaidSim {
 
 interface RaidSnapshot {
   troops: TroopUnit[];
+  defenders: DefenderUnit[];
   buildings: DefenseBuilding[];
   spells: SpellZone[];
   projectiles: RaidProjectile[];
@@ -258,14 +281,18 @@ function createVillageBuildings(
   targetCityName: string,
   defendingOfficer: Officer | null,
   seasonDefenseBonus: number,
+  targetCityDefense = 70,
 ): DefenseBuilding[] {
-  const defMod = defendingOfficer
-    ? Math.max(0.85, 1 + (defendingOfficer.stats.leadership - 65) * 0.006)
-    : 1;
-  const wallMod = 1 + seasonDefenseBonus * 0.015;
+  const clampedDefense = Math.max(20, Math.min(100, targetCityDefense));
+  const defScale = 0.72 + (clampedDefense / 100) * 0.68;
+  const officerDefMod = defendingOfficer
+    ? Math.max(0.9, 1 + (defendingOfficer.stats.leadership - 70) * 0.008)
+    : 0.85;
+  const mult = defScale * officerDefMod;
+  const wallMod = defScale * (1 + seasonDefenseBonus * 0.015);
 
   return [
-    // Center Town Hall (50% star + TH star)
+    // Center Town Hall (Core City Capture Objective)
     {
       id: 'b_th',
       kind: 'town_hall',
@@ -274,8 +301,8 @@ function createVillageBuildings(
       x: 54,
       y: 50,
       size: 56,
-      hp: Math.round(1250 * defMod * wallMod),
-      maxHp: Math.round(1250 * defMod * wallMod),
+      hp: Math.round(1450 * mult),
+      maxHp: Math.round(1450 * mult),
       isDefense: false,
       isWall: false,
       dps: 0,
@@ -295,15 +322,15 @@ function createVillageBuildings(
       x: 37,
       y: 34,
       size: 40,
-      hp: Math.round(440 * defMod),
-      maxHp: Math.round(440 * defMod),
+      hp: Math.round(480 * mult),
+      maxHp: Math.round(480 * mult),
       isDefense: true,
       isWall: false,
-      dps: 22,
-      range: 28,
+      dps: Math.round(30 * mult),
+      range: 30,
       splashRadius: 0,
-      cooldown: 10,
-      maxCooldown: 24,
+      cooldown: 8,
+      maxCooldown: 20,
       hitFlash: 0,
       turretAngle: 180,
     },
@@ -315,15 +342,15 @@ function createVillageBuildings(
       x: 37,
       y: 66,
       size: 40,
-      hp: Math.round(440 * defMod),
-      maxHp: Math.round(440 * defMod),
+      hp: Math.round(480 * mult),
+      maxHp: Math.round(480 * mult),
       isDefense: true,
       isWall: false,
-      dps: 22,
-      range: 28,
+      dps: Math.round(30 * mult),
+      range: 30,
       splashRadius: 0,
-      cooldown: 14,
-      maxCooldown: 24,
+      cooldown: 12,
+      maxCooldown: 20,
       hitFlash: 0,
       turretAngle: 180,
     },
@@ -336,15 +363,15 @@ function createVillageBuildings(
       x: 68,
       y: 26,
       size: 40,
-      hp: Math.round(400 * defMod),
-      maxHp: Math.round(400 * defMod),
+      hp: Math.round(430 * mult),
+      maxHp: Math.round(430 * mult),
       isDefense: true,
       isWall: false,
-      dps: 15,
-      range: 36,
+      dps: Math.round(21 * mult),
+      range: 38,
       splashRadius: 0,
       cooldown: 6,
-      maxCooldown: 14,
+      maxCooldown: 13,
       hitFlash: 0,
       turretAngle: 180,
     },
@@ -356,15 +383,15 @@ function createVillageBuildings(
       x: 68,
       y: 74,
       size: 40,
-      hp: Math.round(400 * defMod),
-      maxHp: Math.round(400 * defMod),
+      hp: Math.round(430 * mult),
+      maxHp: Math.round(430 * mult),
       isDefense: true,
       isWall: false,
-      dps: 15,
-      range: 36,
+      dps: Math.round(21 * mult),
+      range: 38,
       splashRadius: 0,
       cooldown: 9,
-      maxCooldown: 14,
+      maxCooldown: 13,
       hitFlash: 0,
       turretAngle: 180,
     },
@@ -377,15 +404,15 @@ function createVillageBuildings(
       x: 78,
       y: 50,
       size: 44,
-      hp: Math.round(460 * defMod),
-      maxHp: Math.round(460 * defMod),
+      hp: Math.round(500 * mult),
+      maxHp: Math.round(500 * mult),
       isDefense: true,
       isWall: false,
-      dps: 46,
-      range: 46,
+      dps: Math.round(58 * mult),
+      range: 48,
       splashRadius: 11,
-      cooldown: 24,
-      maxCooldown: 48,
+      cooldown: 20,
+      maxCooldown: 42,
       hitFlash: 0,
       turretAngle: 180,
     },
@@ -398,8 +425,8 @@ function createVillageBuildings(
       x: 52,
       y: 20,
       size: 38,
-      hp: 360,
-      maxHp: 360,
+      hp: Math.round(380 * mult),
+      maxHp: Math.round(380 * mult),
       isDefense: false,
       isWall: false,
       dps: 0,
@@ -418,8 +445,8 @@ function createVillageBuildings(
       x: 52,
       y: 80,
       size: 38,
-      hp: 360,
-      maxHp: 360,
+      hp: Math.round(380 * mult),
+      maxHp: Math.round(380 * mult),
       isDefense: false,
       isWall: false,
       dps: 0,
@@ -439,8 +466,8 @@ function createVillageBuildings(
       x: 27,
       y: 38,
       size: 28,
-      hp: Math.round(460 * wallMod),
-      maxHp: Math.round(460 * wallMod),
+      hp: Math.round(500 * wallMod),
+      maxHp: Math.round(500 * wallMod),
       isDefense: false,
       isWall: true,
       dps: 0,
@@ -459,8 +486,8 @@ function createVillageBuildings(
       x: 27,
       y: 50,
       size: 28,
-      hp: Math.round(460 * wallMod),
-      maxHp: Math.round(460 * wallMod),
+      hp: Math.round(500 * wallMod),
+      maxHp: Math.round(500 * wallMod),
       isDefense: false,
       isWall: true,
       dps: 0,
@@ -479,8 +506,8 @@ function createVillageBuildings(
       x: 27,
       y: 62,
       size: 28,
-      hp: Math.round(460 * wallMod),
-      maxHp: Math.round(460 * wallMod),
+      hp: Math.round(500 * wallMod),
+      maxHp: Math.round(500 * wallMod),
       isDefense: false,
       isWall: true,
       dps: 0,
@@ -499,8 +526,8 @@ function createVillageBuildings(
       x: 45,
       y: 50,
       size: 28,
-      hp: Math.round(460 * wallMod),
-      maxHp: Math.round(460 * wallMod),
+      hp: Math.round(500 * wallMod),
+      maxHp: Math.round(500 * wallMod),
       isDefense: false,
       isWall: true,
       dps: 0,
@@ -514,20 +541,96 @@ function createVillageBuildings(
   ];
 }
 
+function createDefenderGarrison(
+  defendingOfficer: Officer | null,
+  defenderFactionId: string,
+  targetCityDefense = 70,
+): DefenderUnit[] {
+  const clampedDefense = Math.max(20, Math.min(100, targetCityDefense));
+  const defScale = 0.72 + (clampedDefense / 100) * 0.68;
+  const defLdr = defendingOfficer?.stats.leadership ?? 70;
+  const officerDefMod = defendingOfficer
+    ? Math.max(0.9, 1 + (defLdr - 70) * 0.008)
+    : 0.85;
+  const mult = defScale * officerDefMod;
+  const units: DefenderUnit[] = [];
+
+  if (defendingOfficer) {
+    const heroHp = Math.round((560 + defLdr * 4) * defScale);
+    units.push({
+      id: 'dg_hero',
+      kind: 'hero',
+      name: `守将 · ${defendingOfficer.name}`,
+      icon: '🦁',
+      x: 57,
+      y: 50,
+      hp: heroHp,
+      maxHp: heroHp,
+      dps: Math.round(36 + defendingOfficer.stats.force * 0.35),
+      speed: 0.78,
+      range: 6.5,
+      cooldown: 6,
+      maxCooldown: 15,
+      facing: -1,
+      attackFlash: 0,
+    });
+  }
+
+  const guardCount =
+    defenderFactionId === 'ronin'
+      ? 1
+      : clampedDefense >= 82
+      ? 4
+      : clampedDefense >= 65
+      ? 3
+      : 2;
+
+  for (let i = 0; i < guardCount; i++) {
+    const guardHp = Math.round(220 * defScale);
+    units.push({
+      id: `dg_${i}`,
+      kind: 'guard',
+      name: defenderFactionId === 'ronin' ? '乡勇守卒' : '守城精锐',
+      icon: '🛡️',
+      x: 52 + (i % 2) * 8,
+      y: 38 + i * 7,
+      hp: guardHp,
+      maxHp: guardHp,
+      dps: Math.round(22 * mult),
+      speed: 0.8,
+      range: 6,
+      cooldown: 6,
+      maxCooldown: 16,
+      facing: -1,
+      attackFlash: 0,
+    });
+  }
+
+  return units;
+}
+
 function createInitialSim(
   targetCityName: string,
   defendingOfficer: Officer | null,
+  defenderFactionId: string,
   seasonDefenseBonus: number,
+  targetCityDefense: number,
   initialPhase: 'fighting' | 'victory' | 'defeat',
 ): RaidSim {
   return {
     troops: [],
-    buildings: createVillageBuildings(targetCityName, defendingOfficer, seasonDefenseBonus),
+    defenders: createDefenderGarrison(defendingOfficer, defenderFactionId, targetCityDefense),
+    buildings: createVillageBuildings(
+      targetCityName,
+      defendingOfficer,
+      seasonDefenseBonus,
+      targetCityDefense,
+    ),
     spells: [],
     projectiles: [],
     deckCounts: {
-      barbarian: 12,
-      archer: 10,
+      barbarian: 10,
+      archer: 8,
       giant: 4,
       wall_breaker: 3,
       hero: 1,
@@ -550,6 +653,7 @@ function createInitialSim(
 function toSnapshot(sim: RaidSim): RaidSnapshot {
   return {
     troops: sim.troops.map(t => ({ ...t })),
+    defenders: sim.defenders.map(d => ({ ...d })),
     buildings: sim.buildings.map(b => ({ ...b })),
     spells: sim.spells.map(s => ({ ...s })),
     projectiles: sim.projectiles.map(p => ({ ...p })),
@@ -572,6 +676,8 @@ export default function WarMode({
   defenderFaction,
   attackingOfficer,
   defendingOfficer,
+  targetCityDefense = 70,
+  playerFactionId,
   weatherId,
   seasonId = 'spring',
   soundEnabled,
@@ -582,6 +688,12 @@ export default function WarMode({
   onClose,
 }: WarModeProps) {
   const activeSeason = SEASONS[seasonId];
+  const isPlayerDefending = Boolean(
+    playerFactionId &&
+      playerFactionId !== 'ronin' &&
+      defenderFaction.id === playerFactionId &&
+      attackerFaction.id !== playerFactionId,
+  );
   const seasonalAttacker = useMemo(
     () => (attackingOfficer ? applySeasonalOfficerModifiers(attackingOfficer, seasonId) : null),
     [attackingOfficer, seasonId],
@@ -596,10 +708,19 @@ export default function WarMode({
       createInitialSim(
         targetCity.name,
         seasonalDefender,
+        defenderFaction.id,
         activeSeason.tacticalModifiers.defenseBonus,
+        targetCityDefense,
         initialPhase,
       ),
-    [targetCity.name, seasonalDefender, activeSeason.tacticalModifiers.defenseBonus, initialPhase],
+    [
+      targetCity.name,
+      seasonalDefender,
+      defenderFaction.id,
+      activeSeason.tacticalModifiers.defenseBonus,
+      targetCityDefense,
+      initialPhase,
+    ],
   );
 
   const simRef = useRef<RaidSim>(initialSim);
@@ -616,7 +737,7 @@ export default function WarMode({
   const [battleLogs, setBattleLogs] = useState<string[]>([
     `🏰 部落突袭展开！[${attackerFaction.name}] ${attackingOfficer?.name || '攻城主帅'} 兵临 [${targetCity.name}] 营寨外围！`,
     `${activeSeason.icon} 节令 [${activeSeason.name}]：${activeSeason.tacticalSummary}`,
-    `👉 选择下方兵种或法术卡片，点击绿地营寨外围即可空降放兵，摧毁大本营与 50%/100% 建筑夺星！`,
+    `🎯 胜负规则：攻破 [${targetCity.name}] 主城大本营即夺得城池；大本营未破则由 [${defenderFaction.name}] 守住城池！`,
   ]);
 
   const addLog = (msg: string) => {
@@ -636,11 +757,18 @@ export default function WarMode({
     }, 900);
   };
 
+  const battleKey = `${battleNonce}:${originCity.id}:${targetCity.id}`;
+  const lastBattleKeyRef = useRef<string>(battleKey);
+  const weatherIdRef = useRef(weatherId);
+  weatherIdRef.current = weatherId;
+
   const resetRaid = () => {
     const fresh = createInitialSim(
       targetCity.name,
       seasonalDefender,
+      defenderFaction.id,
       activeSeason.tacticalModifiers.defenseBonus,
+      targetCityDefense,
       'fighting',
     );
     simRef.current = fresh;
@@ -650,20 +778,25 @@ export default function WarMode({
     setFloatingBadges([]);
     setBattleLogs([
       `🏰 重新整备兵团！[${attackerFaction.name}] 再度围绕 [${targetCity.name}] 营寨列阵！`,
-      `👉 点击兵种卡并在草地外围点放兵力，或点击「全军一键突袭」！`,
+      `🎯 胜负规则：攻破主城大本营即破城胜出；若全军折戟或超时仍未破大本，则 [${defenderFaction.name}] 守城获胜！`,
     ]);
   };
 
   useEffect(() => {
-    resetRaid();
-    if (autoDeploy) {
+    if (lastBattleKeyRef.current !== battleKey) {
+      lastBattleKeyRef.current = battleKey;
+      resetRaid();
+    }
+    if (autoDeploy && !simRef.current.raidStarted && simRef.current.phase === 'fighting') {
       const t = setTimeout(() => {
-        handleAllInDeploy();
+        if (!simRef.current.raidStarted && simRef.current.phase === 'fighting') {
+          handleAllInDeploy();
+        }
       }, 150);
       return () => clearTimeout(t);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetCity.id, originCity.id, weatherId, seasonId, battleNonce, autoDeploy]);
+  }, [battleKey, autoDeploy]);
 
   const spawnTroopOrSpellAt = (card: CardType, rawX: number, rawY: number, silentLog = false) => {
     const sim = simRef.current;
@@ -705,9 +838,10 @@ export default function WarMode({
     sim.deckCounts[card] -= 1;
     sim.raidStarted = true;
 
-    const heroForce = seasonalAttacker ? seasonalAttacker.stats.force : 78;
-    const heroLdr = seasonalAttacker ? seasonalAttacker.stats.leadership : 76;
-    const sunnyBoost = weatherId === 'sunny' ? 1.15 : 1;
+    const heroForce = seasonalAttacker ? seasonalAttacker.stats.force : 74;
+    const heroLdr = seasonalAttacker ? seasonalAttacker.stats.leadership : 74;
+    const attScale = 0.85 + (heroLdr / 100) * 0.3;
+    const sunnyBoost = weatherId === 'sunny' ? 1.1 : 1;
 
     const spec: Record<
       TroopKind,
@@ -716,8 +850,8 @@ export default function WarMode({
       barbarian: {
         name: '陷阵蛮勇',
         icon: '⚔️',
-        hp: 155,
-        dps: Math.round(24 * sunnyBoost),
+        hp: Math.round(140 * attScale),
+        dps: Math.round(20 * attScale * sunnyBoost),
         speed: 0.95,
         range: 5.5,
         cd: 16,
@@ -725,8 +859,8 @@ export default function WarMode({
       archer: {
         name: '神射弓手',
         icon: '🏹',
-        hp: 90,
-        dps: Math.round(22 * activeSeason.tacticalModifiers.archerMultiplier),
+        hp: Math.round(82 * attScale),
+        dps: Math.round(18 * attScale * activeSeason.tacticalModifiers.archerMultiplier),
         speed: 0.9,
         range: 17,
         cd: 16,
@@ -734,8 +868,8 @@ export default function WarMode({
       giant: {
         name: '铁甲巨人',
         icon: '🛡️',
-        hp: 580,
-        dps: 32,
+        hp: Math.round(520 * attScale),
+        dps: 28,
         speed: 0.56,
         range: 6,
         cd: 22,
@@ -743,8 +877,8 @@ export default function WarMode({
       wall_breaker: {
         name: '爆破工兵',
         icon: '💣',
-        hp: 85,
-        dps: 340,
+        hp: 80,
+        dps: 320,
         speed: 1.25,
         range: 5.2,
         cd: 8,
@@ -752,8 +886,8 @@ export default function WarMode({
       hero: {
         name: attackingOfficer?.name || '攻城主帅',
         icon: '👑',
-        hp: Math.round(760 + heroLdr * 4.5),
-        dps: Math.round((46 + heroForce * 0.4) * sunnyBoost),
+        hp: Math.round(660 + heroLdr * 4.2),
+        dps: Math.round((38 + heroForce * 0.38) * sunnyBoost),
         speed: 0.85,
         range: 6.8,
         cd: 14,
@@ -880,16 +1014,31 @@ export default function WarMode({
   const concludeBattleEarly = () => {
     const sim = simRef.current;
     if (sim.phase !== 'fighting') return;
-    const win = sim.stars > 0;
-    sim.phase = win ? 'victory' : 'defeat';
-    setBattlePhase(sim.phase);
-    if (win) {
+    const result = evaluateWarSiegeOutcome({
+      destructionPct: sim.destructionPct,
+      townHallDestroyed: sim.townHallDestroyed,
+      remainingTroopCards:
+        sim.deckCounts.barbarian +
+        sim.deckCounts.archer +
+        sim.deckCounts.giant +
+        sim.deckCounts.wall_breaker +
+        sim.deckCounts.hero,
+      activeTroopsCount: sim.troops.length,
+      inFlightAttackerProjectiles: sim.projectiles.filter(p => p.fromSide === 'attacker').length,
+      timeRemaining: sim.timeRemaining,
+      manualSettle: true,
+    });
+    const outcome = result.winner === 'attacker' ? 'victory' : 'defeat';
+    sim.phase = outcome;
+    setBattlePhase(outcome);
+    if (outcome === 'victory') {
       if (soundEnabledRef.current) playUnifiedVictorySound();
-      addLog(`🏆 鸣金收兵！取得 ${sim.stars} ★ (${sim.destructionPct}% 摧毁度) 攻城胜利！`);
+      addLog(`🏆 破城收兵！大本营已陷落，取得 ${sim.stars} ★ (${sim.destructionPct}% 摧毁度) 攻城胜利！`);
     } else {
       if (soundEnabledRef.current) playUnifiedDefeatSound();
-      addLog('💀 撤兵收队：尚未夺得半颗战星，强袭失利！');
+      addLog(`💀 撤兵收队：主城大本营尚未攻破（摧毁度 ${sim.destructionPct}%），【${defenderFaction.name}】守城获胜！`);
     }
+    setSnap(toSnapshot(sim));
   };
 
   // Real-Time 33ms Clash of Clans Simulation Engine
@@ -903,19 +1052,34 @@ export default function WarMode({
       sim.tickCount += 1;
       if (!sim.raidStarted) return;
 
+      const countRemainingTroopCards = () =>
+        sim.deckCounts.barbarian +
+        sim.deckCounts.archer +
+        sim.deckCounts.giant +
+        sim.deckCounts.wall_breaker +
+        sim.deckCounts.hero;
+
       // 1) Update Raid Countdown (1 sec every 30 ticks)
       if (sim.tickCount % 30 === 0) {
         sim.timeRemaining = Math.max(0, sim.timeRemaining - 1);
         if (sim.timeRemaining === 0) {
-          const outcome = sim.stars >= 1 ? 'victory' : 'defeat';
+          const timeoutRes = evaluateWarSiegeOutcome({
+            destructionPct: sim.destructionPct,
+            townHallDestroyed: sim.townHallDestroyed,
+            remainingTroopCards: countRemainingTroopCards(),
+            activeTroopsCount: sim.troops.length,
+            inFlightAttackerProjectiles: sim.projectiles.filter(p => p.fromSide === 'attacker').length,
+            timeRemaining: 0,
+          });
+          const outcome = timeoutRes.winner === 'attacker' ? 'victory' : 'defeat';
           sim.phase = outcome;
           setBattlePhase(outcome);
           if (outcome === 'victory') {
             if (soundEnabledRef.current) playUnifiedVictorySound();
-            addLog(`⏱️ 战时已尽！以 ${sim.stars} ★ (${sim.destructionPct}%) 拿下 [${targetCity.name}]！`);
+            addLog(`⏱️ 战时已尽！主城大本营已破，以 ${sim.stars} ★ (${sim.destructionPct}%) 拿下 [${targetCity.name}]！`);
           } else {
             if (soundEnabledRef.current) playUnifiedDefeatSound();
-            addLog('⏱️ 强袭超时且未能取星，兵马撤退！');
+            addLog(`⏱️ 强袭超时且主城大本营屹立不倒，【${defenderFaction.name}】守城获胜！`);
           }
           setSnap(toSnapshot(sim));
           return;
@@ -931,6 +1095,7 @@ export default function WarMode({
       const aliveNonWall = sim.buildings.filter(b => b.hp > 0 && !b.isWall);
       const aliveDefenses = aliveNonWall.filter(b => b.isDefense);
       const aliveWalls = sim.buildings.filter(b => b.hp > 0 && b.isWall);
+      const aliveGarrison = sim.defenders.filter(d => d.hp > 0);
 
       for (const troop of sim.troops) {
         if (troop.hp <= 0) continue;
@@ -952,6 +1117,44 @@ export default function WarMode({
 
         const rageSpeedMult = troop.ragedTicks > 0 ? 1.5 : 1;
         const rageDmgMult = troop.ragedTicks > 0 ? 1.6 : 1;
+
+        // Non-giant / non-wall-breaker attackers engage nearby defender garrison units
+        let garrisonTarget: DefenderUnit | null = null;
+        if (troop.kind !== 'giant' && troop.kind !== 'wall_breaker' && aliveGarrison.length > 0) {
+          let bestDist = 16;
+          for (const g of aliveGarrison) {
+            if (g.hp <= 0) continue;
+            const d = Math.hypot(g.x - troop.x, g.y - troop.y);
+            if (d < bestDist) {
+              bestDist = d;
+              garrisonTarget = g;
+            }
+          }
+        }
+
+        if (garrisonTarget) {
+          const dx = garrisonTarget.x - troop.x;
+          const dy = garrisonTarget.y - troop.y;
+          const dist = Math.hypot(dx, dy) || 0.01;
+          troop.facing = dx >= 0 ? 1 : -1;
+          if (dist > troop.range) {
+            const step = troop.speed * rageSpeedMult;
+            troop.x = Math.max(3, Math.min(97, troop.x + (dx / dist) * step));
+            troop.y = Math.max(5, Math.min(95, troop.y + (dy / dist) * step));
+          } else {
+            if (troop.cooldown > 0) {
+              troop.cooldown -= rageSpeedMult;
+            } else {
+              troop.cooldown = troop.maxCooldown;
+              troop.attackFlash = 6;
+              const dmg = Math.round(troop.dps * rageDmgMult);
+              garrisonTarget.hp = Math.max(0, garrisonTarget.hp - dmg);
+              if (soundEnabledRef.current && sim.tickCount % 4 === 0) playUnifiedClashSound();
+              spawnFloatingBadge(garrisonTarget.x, garrisonTarget.y - 3, `-${dmg}`, 'dmg');
+            }
+          }
+          continue;
+        }
 
         // Pick target by CoC priority
         let pool: DefenseBuilding[] = aliveNonWall;
@@ -1008,7 +1211,6 @@ export default function WarMode({
             troop.attackFlash = 6;
 
             if (troop.kind === 'wall_breaker') {
-              // Suicide bomb dealing 8x vs Walls!
               const blastDmg = target.isWall ? troop.dps * 2.4 : troop.dps;
               target.hp = Math.max(0, target.hp - blastDmg);
               target.hitFlash = 8;
@@ -1047,9 +1249,45 @@ export default function WarMode({
         }
       }
 
+      // 3b) Advance Defender Garrison Units Intercepting Attackers
+      const activeAttackers = sim.troops.filter(t => t.hp > 0);
+      for (const g of sim.defenders) {
+        if (g.hp <= 0) continue;
+        if (g.attackFlash > 0) g.attackFlash -= 1;
+
+        let bestTroop: TroopUnit | null = null;
+        let bestDist = 28;
+        for (const tr of activeAttackers) {
+          if (tr.hp <= 0) continue;
+          const d = Math.hypot(tr.x - g.x, tr.y - g.y);
+          if (d < bestDist) {
+            bestDist = d;
+            bestTroop = tr;
+          }
+        }
+        if (!bestTroop) continue;
+
+        const dx = bestTroop.x - g.x;
+        const dy = bestTroop.y - g.y;
+        const dist = Math.hypot(dx, dy) || 0.01;
+        g.facing = dx >= 0 ? 1 : -1;
+
+        if (dist > g.range) {
+          g.x = Math.max(6, Math.min(94, g.x + (dx / dist) * g.speed));
+          g.y = Math.max(8, Math.min(92, g.y + (dy / dist) * g.speed));
+        } else if (g.cooldown > 0) {
+          g.cooldown -= 1;
+        } else {
+          g.cooldown = g.maxCooldown;
+          g.attackFlash = 6;
+          bestTroop.hp = Math.max(0, bestTroop.hp - g.dps);
+          spawnFloatingBadge(bestTroop.x, bestTroop.y - 2, `-${g.dps}`, 'dmg');
+        }
+      }
+
       // 4) Advance Defense Buildings Targeting
       const aliveTroops = sim.troops.filter(t => t.hp > 0);
-      const fogRangeMult = weatherId === 'dense_fog' ? 0.85 : 1;
+      const fogRangeMult = weatherIdRef.current === 'dense_fog' ? 0.85 : 1;
       for (const b of sim.buildings) {
         if (b.hitFlash > 0) b.hitFlash -= 1;
         if (b.hp <= 0 || !b.isDefense) continue;
@@ -1059,7 +1297,7 @@ export default function WarMode({
           continue;
         }
 
-        // Find closest alive troop within defense range (Mortar has deadzone < 9)
+        // Find closest alive troop within defense range (Mortar has deadzone < 8)
         let bestTarget: TroopUnit | null = null;
         let bestDist = Infinity;
         for (const tr of aliveTroops) {
@@ -1134,6 +1372,7 @@ export default function WarMode({
       }
       sim.projectiles = nextProjectiles;
       sim.troops = sim.troops.filter(t => t.hp > 0);
+      sim.defenders = sim.defenders.filter(d => d.hp > 0);
 
       // 6) Recompute CoC Destruction %, Town Hall Star & Total Stars
       const scoreBuildings = sim.buildings.filter(b => !b.isWall);
@@ -1144,43 +1383,42 @@ export default function WarMode({
 
       if (thDown && !sim.townHallDestroyed) {
         sim.townHallDestroyed = true;
-        addLog(`💥 捷报！[${targetCity.name}] 主城大本营轰然坍塌，夺得关键大本星 ★！`);
+        addLog(`💥 捷报！[${targetCity.name}] 主城大本营轰然坍塌，破城关键条件达成 ★！`);
         setScreenShake('heavy');
         setTimeout(() => setScreenShake('none'), 350);
       }
 
       if (newPct >= 50 && sim.destructionPct < 50) {
-        addLog('⭐ 摧毁度突破 50%，稳稳摘得一星 ★！');
+        addLog('⭐ 外围摧毁度突破 50%，额外夺得战星 ★！');
       }
 
       sim.destructionPct = newPct;
       sim.stars = (newPct >= 50 ? 1 : 0) + (thDown ? 1 : 0) + (newPct >= 100 ? 1 : 0);
       sim.lootGold = Math.round(newPct * 8 + (thDown ? 240 : 0));
 
-      // Check 100% 3-Star Victory or Full Army Wipe
-      if (newPct >= 100) {
-        sim.phase = 'victory';
-        setBattlePhase('victory');
-        if (soundEnabledRef.current) playUnifiedVictorySound();
-        addLog(`🏆 100% 三星横扫平推！！！[${targetCity.name}] 营寨化作焦土，掠得军饷 ${sim.lootGold} 金！`);
-      } else {
-        const remainingCards =
-          sim.deckCounts.barbarian +
-          sim.deckCounts.archer +
-          sim.deckCounts.giant +
-          sim.deckCounts.wall_breaker +
-          sim.deckCounts.hero;
-        if (remainingCards === 0 && sim.troops.length === 0) {
-          const outcome = sim.stars >= 1 ? 'victory' : 'defeat';
-          sim.phase = outcome;
-          setBattlePhase(outcome);
-          if (outcome === 'victory') {
-            if (soundEnabledRef.current) playUnifiedVictorySound();
-            addLog(`🎉 全军力战到底！最终收获 ${sim.stars} ★ (${newPct}%)，成功攻破 [${targetCity.name}]！`);
+      const siegeResult = evaluateWarSiegeOutcome({
+        destructionPct: newPct,
+        townHallDestroyed: thDown,
+        remainingTroopCards: countRemainingTroopCards(),
+        activeTroopsCount: sim.troops.length,
+        inFlightAttackerProjectiles: sim.projectiles.filter(p => p.fromSide === 'attacker').length,
+        timeRemaining: sim.timeRemaining,
+      });
+
+      if (siegeResult.finished) {
+        const outcome = siegeResult.winner === 'attacker' ? 'victory' : 'defeat';
+        sim.phase = outcome;
+        setBattlePhase(outcome);
+        if (outcome === 'victory') {
+          if (soundEnabledRef.current) playUnifiedVictorySound();
+          if (siegeResult.reason === 'total_destruction') {
+            addLog(`🏆 100% 三星横扫平推！！！[${targetCity.name}] 营寨化作焦土，掠得军饷 ${sim.lootGold} 金！`);
           } else {
-            if (soundEnabledRef.current) playUnifiedDefeatSound();
-            addLog(`💀 全军覆没！摧毁度止步 ${newPct}%，未能摘星，只能退军！`);
+            addLog(`🎉 破城大捷！[${targetCity.name}] 主城大本营已破（${sim.stars} ★ · ${newPct}%），成功夺下城池！`);
           }
+        } else {
+          if (soundEnabledRef.current) playUnifiedDefeatSound();
+          addLog(`💀 攻城军全军覆没！摧毁度 ${newPct}% 但主城大本营未破，【${defenderFaction.name}】坚守获胜！`);
         }
       }
 
@@ -1188,7 +1426,7 @@ export default function WarMode({
     }, 33);
 
     return () => clearInterval(timer);
-  }, [battlePhase, targetCity.name, weatherId]);
+  }, [battlePhase, targetCity.name, defenderFaction.name]);
 
   const handleVictoryClose = () => {
     const relList = [
@@ -1267,9 +1505,19 @@ export default function WarMode({
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              if (battlePhase === 'victory') {
+                handleVictoryClose();
+              } else if (battlePhase === 'defeat') {
+                handleDefeatClose();
+              } else if (snap.raidStarted) {
+                concludeBattleEarly();
+              } else {
+                onClose();
+              }
+            }}
             className="p-1.5 hover:bg-slate-800 hover:text-rose-400 rounded-lg text-slate-500 transition-colors cursor-pointer"
-            title="退出战役"
+            title={snap.raidStarted ? '结算战果并退出' : '退回沙盘'}
           >
             <X size={18} />
           </button>
@@ -1324,9 +1572,26 @@ export default function WarMode({
           {/* 3-Star Raid Objectives Card */}
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-900 space-y-2.5">
             <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider block font-bold">
-              ★ 部落战夺星条件
+              ★ 破城胜负与夺星条件
             </span>
+            {isPlayerDefending && (
+              <div className="px-2.5 py-1.5 rounded-lg border border-sky-500/40 bg-sky-950/35 text-[11px] font-serif text-sky-200">
+                🛡️ 敌军来犯！护住【主城大本营】不失即守城胜利
+              </div>
+            )}
             <div className="space-y-1.5 text-xs font-serif">
+              <div
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border ${
+                  snap.townHallDestroyed
+                    ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
+                    : 'bg-slate-900/70 border-amber-500/30 text-amber-200'
+                }`}
+              >
+                <span>★ 摧毁主城大本营（破城关键）</span>
+                <span className="font-mono font-bold">
+                  {snap.townHallDestroyed ? '已陷落·攻方胜' : '坚守中'}
+                </span>
+              </div>
               <div
                 className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border ${
                   snap.destructionPct >= 50
@@ -1334,20 +1599,8 @@ export default function WarMode({
                     : 'bg-slate-900/70 border-slate-800 text-slate-400'
                 }`}
               >
-                <span>★ 摧毁建筑达 50%</span>
+                <span>★ 摧毁建筑达 50%（劫掠加赏）</span>
                 <span className="font-mono font-bold">{snap.destructionPct}%</span>
-              </div>
-              <div
-                className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border ${
-                  snap.townHallDestroyed
-                    ? 'bg-amber-500/15 border-amber-500/50 text-amber-300'
-                    : 'bg-slate-900/70 border-slate-800 text-slate-400'
-                }`}
-              >
-                <span>★ 摧毁主城大本营</span>
-                <span className="font-mono font-bold">
-                  {snap.townHallDestroyed ? '已陷落' : '坚守中'}
-                </span>
               </div>
               <div
                 className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border ${
@@ -1563,6 +1816,43 @@ export default function WarMode({
               );
             })}
 
+            {/* Defending Garrison Units */}
+            {snap.defenders.map(def => {
+              const hpPct = Math.max(0, Math.min(100, (def.hp / def.maxHp) * 100));
+              return (
+                <div
+                  key={def.id}
+                  data-testid="coc-defender-unit"
+                  title={`${def.name} (${Math.round(def.hp)}/${def.maxHp})`}
+                  style={{
+                    left: `${def.x}%`,
+                    top: `${def.y}%`,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                  className="absolute flex flex-col items-center pointer-events-none z-25"
+                >
+                  <div className="w-7 h-1 bg-slate-950 rounded-full overflow-hidden mb-0.5 border border-black/70">
+                    <div
+                      style={{ width: `${hpPct}%` }}
+                      className="h-full bg-rose-400"
+                    />
+                  </div>
+                  <div
+                    style={{
+                      transform: `scaleX(${def.facing}) scale(${def.attackFlash > 0 ? 1.2 : 1})`,
+                    }}
+                    className={`rounded-full flex items-center justify-center shadow-md border ${
+                      def.kind === 'hero'
+                        ? 'w-9 h-9 bg-rose-950 border-rose-400 text-base shadow-[0_0_12px_rgba(244,63,94,0.65)]'
+                        : 'w-6 h-6 bg-rose-950/90 border-rose-500/80 text-xs'
+                    }`}
+                  >
+                    {def.icon}
+                  </div>
+                </div>
+              );
+            })}
+
             {/* Deployed Autonomous Troops */}
             {snap.troops.map(tr => {
               const hpPct = Math.max(0, Math.min(100, (tr.hp / tr.maxHp) * 100));
@@ -1662,7 +1952,9 @@ export default function WarMode({
                 <button
                   type="button"
                   onClick={resetRaid}
-                  className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[10.5px] text-slate-300 cursor-pointer flex items-center gap-1"
+                  disabled={snap.raidStarted || battlePhase !== 'fighting'}
+                  title={snap.raidStarted ? '开战后不可重开' : '重新整备队列'}
+                  className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-800 text-[10.5px] text-slate-300 cursor-pointer flex items-center gap-1"
                 >
                   <RefreshCw size={10} /> 重开攻城
                 </button>
@@ -1671,9 +1963,15 @@ export default function WarMode({
                   type="button"
                   onClick={concludeBattleEarly}
                   disabled={battlePhase !== 'fighting' || !snap.raidStarted}
-                  className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white text-[10.5px] font-serif font-bold cursor-pointer"
+                  className={`px-3 py-1 rounded-lg disabled:opacity-40 text-white text-[10.5px] font-serif font-bold cursor-pointer ${
+                    snap.townHallDestroyed
+                      ? 'bg-emerald-600 hover:bg-emerald-500'
+                      : 'bg-rose-600 hover:bg-rose-500'
+                  }`}
                 >
-                  🔔 鸣金结算 ({snap.stars}★)
+                  {snap.townHallDestroyed
+                    ? `🏆 破城收兵 (${snap.stars}★ 胜)`
+                    : '🏳️ 鸣金退兵 (大本未破·守方胜)'}
                 </button>
               </div>
             </div>
@@ -1823,13 +2121,13 @@ export default function WarMode({
             <AlertTriangle size={56} className="text-rose-500 mx-auto animate-pulse" />
             <div className="space-y-1.5">
               <span className="text-xs font-mono text-rose-400 uppercase tracking-widest font-black">
-                【0 星折戟 · 突袭失利】
+                【{snap.stars} ★ · 主城大本营未破 · 守方获胜】
               </span>
               <h3 className="text-xl md:text-2xl font-serif font-black text-slate-50">
-                营防坚固：暂退整军！
+                营防坚固：守军击退来袭！
               </h3>
               <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
-                <strong>[{targetCity.name}]</strong> 炮火猛烈，此次突袭摧毁度为 {snap.destructionPct}%，未能摘下战星。城池仍由【{defenderFaction.name}】坚守！
+                <strong>[{targetCity.name}]</strong> 守军与城防固若金汤，此次强袭摧毁度为 {snap.destructionPct}%，未能攻破主城大本营。城池仍由【{defenderFaction.name}】坚守！
               </p>
             </div>
             <button

@@ -416,15 +416,15 @@ export default function App() {
     });
   };
 
-  // Background auto-time increment timer
+  // Background auto-time increment timer (paused during active WarMode siege)
   useEffect(() => {
-    if (!isAutoTime) return;
+    if (!isAutoTime || (activeTab === 'map' && inSiegeBattle)) return;
     const intervalMs = timeSpeed === 'fast' ? 1200 : timeSpeed === 'normal' ? 2500 : 5000;
     const timer = setInterval(() => {
       handleAdvanceXun();
     }, intervalMs);
     return () => clearInterval(timer);
-  }, [isAutoTime, timeSpeed]);
+  }, [isAutoTime, timeSpeed, activeTab, inSiegeBattle]);
 
   const timestampLabel = `${gameYear}年 ${gameMonth}月 ${['上旬', '中旬', '下旬'][gameXun - 1]}`;
 

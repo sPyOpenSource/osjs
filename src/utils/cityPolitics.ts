@@ -318,4 +318,65 @@ export function resolveWarBattleOwnership(
   };
 }
 
+export interface WarSiegeOutcomeInput {
+  destructionPct: number;
+  townHallDestroyed: boolean;
+  remainingTroopCards: number;
+  activeTroopsCount: number;
+  inFlightAttackerProjectiles: number;
+  timeRemaining: number;
+  manualSettle?: boolean;
+}
 
+export interface WarSiegeOutcomeResult {
+  finished: boolean;
+  winner: 'attacker' | 'defender' | null;
+  reason: 'ongoing' | 'total_destruction' | 'town_hall_captured' | 'repelled' | 'timeout' | 'army_wiped';
+}
+
+/**
+ * Evaluate win/lose state for a WarMode city siege:
+ * - 100% destruction -> immediate attacker victory
+ * - When battle ends (manual settle, timer expires, or army wiped with no in-flight attacker projectiles):
+ *   - Attacker wins ONLY if the Town Hall (主城大本营) was destroyed (or 100% destroyed)
+ *   - Otherwise (even with >= 50% outer building destruction), defender holds the city
+ */
+export function evaluateWarSiegeOutcome({
+  destructionPct,
+  townHallDestroyed,
+  remainingTroopCards,
+  activeTroopsCount,
+  inFlightAttackerProjectiles,
+  timeRemaining,
+  manualSettle = false,
+}: WarSiegeOutcomeInput): WarSiegeOutcomeResult {
+  if (destructionPct >= 100) {
+    return { finished: true, winner: 'attacker', reason: 'total_destruction' };
+  }
+  if (manualSettle) {
+    return {
+      finished: true,
+      winner: townHallDestroyed ? 'attacker' : 'defender',
+      reason: townHallDestroyed ? 'town_hall_captured' : 'repelled',
+    };
+  }
+  if (timeRemaining <= 0) {
+    return {
+      finished: true,
+      winner: townHallDestroyed ? 'attacker' : 'defender',
+      reason: townHallDestroyed ? 'town_hall_captured' : 'timeout',
+    };
+  }
+  if (
+    remainingTroopCards <= 0 &&
+    activeTroopsCount <= 0 &&
+    inFlightAttackerProjectiles <= 0
+  ) {
+    return {
+      finished: true,
+      winner: townHallDestroyed ? 'attacker' : 'defender',
+      reason: townHallDestroyed ? 'town_hall_captured' : 'army_wiped',
+    };
+  }
+  return { finished: false, winner: null, reason: 'ongoing' };
+}

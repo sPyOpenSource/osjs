@@ -5,6 +5,7 @@ import {
   applyClaimCity,
   applyCoupCity,
   applyDissolveFaction,
+  evaluateWarSiegeOutcome,
   getCityControllerActionState,
   isOfficerFactionLeader,
   resolveCoupOutcome,
@@ -205,4 +206,70 @@ test('resolveWarBattleOwnership assigns city to whichever faction wins WarMode',
   const aiRivalAttackWin = resolveWarBattleOwnership(ownership, 'luoyang', 'attacker', 'wu', 'wei');
   assert.equal(aiRivalAttackWin.winnerFactionId, 'wu');
   assert.equal(aiRivalAttackWin.nextOwnership.luoyang, 'wu');
+});
+
+test('evaluateWarSiegeOutcome requires Town Hall fall or 100% destruction for attacker victory', () => {
+  // 50% outer building destruction WITHOUT destroying Town Hall -> army wiped -> defender wins!
+  const outerRaidOnly = evaluateWarSiegeOutcome({
+    destructionPct: 50,
+    townHallDestroyed: false,
+    remainingTroopCards: 0,
+    activeTroopsCount: 0,
+    inFlightAttackerProjectiles: 0,
+    timeRemaining: 120,
+  });
+  assert.equal(outerRaidOnly.finished, true);
+  assert.equal(outerRaidOnly.winner, 'defender');
+  assert.equal(outerRaidOnly.reason, 'army_wiped');
+
+  // Manual retreat with 50% outer huts but Town Hall still standing -> defender wins!
+  const earlyRetreat = evaluateWarSiegeOutcome({
+    destructionPct: 63,
+    townHallDestroyed: false,
+    remainingTroopCards: 4,
+    activeTroopsCount: 2,
+    inFlightAttackerProjectiles: 0,
+    timeRemaining: 90,
+    manualSettle: true,
+  });
+  assert.equal(earlyRetreat.finished, true);
+  assert.equal(earlyRetreat.winner, 'defender');
+
+  // Town Hall destroyed + manual settle or army wiped -> attacker wins!
+  const thCaptured = evaluateWarSiegeOutcome({
+    destructionPct: 38,
+    townHallDestroyed: true,
+    remainingTroopCards: 0,
+    activeTroopsCount: 0,
+    inFlightAttackerProjectiles: 0,
+    timeRemaining: 80,
+  });
+  assert.equal(thCaptured.finished, true);
+  assert.equal(thCaptured.winner, 'attacker');
+  assert.equal(thCaptured.reason, 'town_hall_captured');
+
+  // In-flight arrow still flying when last archer dies -> wait before declaring defeat
+  const arrowInFlight = evaluateWarSiegeOutcome({
+    destructionPct: 38,
+    townHallDestroyed: false,
+    remainingTroopCards: 0,
+    activeTroopsCount: 0,
+    inFlightAttackerProjectiles: 1,
+    timeRemaining: 80,
+  });
+  assert.equal(arrowInFlight.finished, false);
+  assert.equal(arrowInFlight.winner, null);
+
+  // 100% destruction -> immediate attacker victory even while troops remain
+  const totalSweep = evaluateWarSiegeOutcome({
+    destructionPct: 100,
+    townHallDestroyed: true,
+    remainingTroopCards: 2,
+    activeTroopsCount: 5,
+    inFlightAttackerProjectiles: 0,
+    timeRemaining: 110,
+  });
+  assert.equal(totalSweep.finished, true);
+  assert.equal(totalSweep.winner, 'attacker');
+  assert.equal(totalSweep.reason, 'total_destruction');
 });

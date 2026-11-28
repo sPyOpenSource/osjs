@@ -1341,6 +1341,10 @@ describe('WarMode Clash of Clans Village Raid', () => {
         !aiWarAnimHtml.includes('id="war-mode-panel"'),
       'expected AI-vs-AI war to play full animated clash on svg-map without opening WarMode',
     );
+    assert.ok(
+      mapHtml.includes('id="select-war-pacing"') && mapHtml.includes('舒缓 (低频)'),
+      'expected war pacing selector with calm default in TacticalMap controls',
+    );
   });
 });
 

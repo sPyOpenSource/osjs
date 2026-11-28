@@ -501,3 +501,74 @@ export function isPlayerFactionInBattle({
   return playerIds.has(attackerFactionId) || playerIds.has(defenderFactionId);
 }
 
+export type WarPacingId = 'low' | 'normal' | 'high';
+
+export interface WarPacingPreset {
+  id: WarPacingId;
+  label: string;
+  rivalIntervalMs: number;
+  autoPlayIntervalMs: number;
+  playerSiegeCooldownMs: number;
+  counterAttackCooldownMs: number;
+  counterAttackGraceMs: number;
+  counterAttackOnLossChance: number;
+  counterAttackOnRepelChance: number;
+}
+
+export const WAR_PACING_PRESETS: Record<WarPacingId, WarPacingPreset> = {
+  low: {
+    id: 'low',
+    label: '舒缓 (低频)',
+    rivalIntervalMs: 30000,
+    autoPlayIntervalMs: 12000,
+    playerSiegeCooldownMs: 60000,
+    counterAttackCooldownMs: 45000,
+    counterAttackGraceMs: 6500,
+    counterAttackOnLossChance: 0.45,
+    counterAttackOnRepelChance: 0.2,
+  },
+  normal: {
+    id: 'normal',
+    label: '适中 (标准)',
+    rivalIntervalMs: 18000,
+    autoPlayIntervalMs: 7500,
+    playerSiegeCooldownMs: 35000,
+    counterAttackCooldownMs: 30000,
+    counterAttackGraceMs: 5000,
+    counterAttackOnLossChance: 0.65,
+    counterAttackOnRepelChance: 0.3,
+  },
+  high: {
+    id: 'high',
+    label: '激战 (高频)',
+    rivalIntervalMs: 9000,
+    autoPlayIntervalMs: 4000,
+    playerSiegeCooldownMs: 15000,
+    counterAttackCooldownMs: 15000,
+    counterAttackGraceMs: 3500,
+    counterAttackOnLossChance: 0.85,
+    counterAttackOnRepelChance: 0.45,
+  },
+};
+
+export function shouldTriggerAiCounterAttack({
+  now,
+  lastCounterAttackAt,
+  pacing,
+  cityLost,
+  roll,
+}: {
+  now: number;
+  lastCounterAttackAt: number;
+  pacing: WarPacingId;
+  cityLost: boolean;
+  roll: number;
+}): boolean {
+  const cfg = WAR_PACING_PRESETS[pacing];
+  if (lastCounterAttackAt > 0 && now - lastCounterAttackAt < cfg.counterAttackCooldownMs) {
+    return false;
+  }
+  const threshold = cityLost ? cfg.counterAttackOnLossChance : cfg.counterAttackOnRepelChance;
+  return roll < threshold;
+}
+

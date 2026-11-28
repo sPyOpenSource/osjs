@@ -36,6 +36,9 @@ import {
   planAiCounterAttack,
   resolveWarBattleOwnership,
   selectCoupDuelists,
+  shouldTriggerAiCounterAttack,
+  WAR_PACING_PRESETS,
+  WarPacingId,
 } from '../utils/cityPolitics';
 import {
   applySeasonalOfficerModifiers,
@@ -781,6 +784,9 @@ export default function TacticalMap({
   const [activeWarBattle, setActiveWarBattle] = useState<ActiveWarBattle | null>(null);
   const warBattleNonceRef = useRef<number>(0);
   const [aiCounterAttackOn, setAiCounterAttackOn] = useState(true);
+  const [warPacing, setWarPacing] = useState<WarPacingId>('low');
+  const lastPlayerWarEndedAtRef = useRef<number>(0);
+  const lastCounterAttackAtRef = useRef<number>(0);
   const [pendingCounterAttack, setPendingCounterAttack] = useState<{
     plan: AiCounterAttackPlan;
     reasonLabel: string;
@@ -1343,9 +1349,9 @@ export default function TacticalMap({
       setExpeditionTargetId(best.t.id);
       setAutoPending(top ? top.id : '');
       setAutoStatus(`🤖 AI 决策：自 [${best.o.name}] 发兵攻打 [${best.t.name}]${top ? `，由 ${top.name} 挂帅` : ''}`);
-    }, 2500);
+    }, WAR_PACING_PRESETS[warPacing].autoPlayIntervalMs);
     return () => clearTimeout(timer);
-  }, [autoPlay, autoPending, isExpeditionRunning, expeditionStep, cityOwnership, autoFaction, officers, mapTab]);
+  }, [autoPlay, autoPending, isExpeditionRunning, expeditionStep, cityOwnership, autoFaction, officers, mapTab, warPacing]);
 
   // Launch once selections have settled
   useEffect(() => {
@@ -1498,12 +1504,23 @@ export default function TacticalMap({
         f => f && f !== 'ronin' && !activeHumanFactions.includes(f) && officers.some(o => o.factionId === f)
       ))) as string[];
       if (!rivals.length) return;
+      const pacingCfg = WAR_PACING_PRESETS[warPacing];
+      const playerOnCooldown =
+        lastPlayerWarEndedAtRef.current > 0 &&
+        Date.now() - lastPlayerWarEndedAtRef.current < pacingCfg.playerSiegeCooldownMs;
       const att = rivals[Math.floor(Math.random() * rivals.length)];
       const owned = CITIES.filter(c => cityOwnership[c.id] === att);
-      const targets = CITIES.filter(c => (cityOwnership[c.id] || 'ronin') !== att);
+      const targets = CITIES.filter(c => {
+        const owner = cityOwnership[c.id] || 'ronin';
+        if (owner === att) return false;
+        if (playerOnCooldown && activeHumanFactions.includes(owner)) return false;
+        return true;
+      });
       let best: { o: City; t: City; s: number } | null = null;
       for (const o of owned) for (const t of targets) {
-        const s = Math.hypot(o.x - t.x, o.y - t.y) * (activeHumanFactions.includes(cityOwnership[t.id]) ? 0.8 : 1) + Math.random() * 4;
+        const targetOwner = cityOwnership[t.id] || 'ronin';
+        const weight = activeHumanFactions.includes(targetOwner) ? 1.35 : 1;
+        const s = Math.hypot(o.x - t.x, o.y - t.y) * weight + Math.random() * 5;
         if (!best || s < best.s) best = { o, t, s };
       }
       if (!best) return;
@@ -1579,9 +1596,9 @@ export default function TacticalMap({
           }
         },
       });
-    }, 6000);
+    }, WAR_PACING_PRESETS[warPacing].rivalIntervalMs + Math.round(Math.random() * 4000));
     return () => clearTimeout(timer);
-  }, [rivalsOn, controlledFactions, playerCombatantFactions, ownFactionId, cityOwnership, cityStats, isExpeditionRunning, expeditionStep, officers, mapTab, soundEnabled]);
+  }, [rivalsOn, controlledFactions, playerCombatantFactions, ownFactionId, cityOwnership, cityStats, isExpeditionRunning, expeditionStep, officers, mapTab, soundEnabled, warPacing]);
 
   // Handle faction revision by user (used by directory table picker)
   const handleModifyController = (cityId: string, factionId: string) => {
@@ -1609,14 +1626,28 @@ export default function TacticalMap({
     aggressorFactionId,
     preferredTargetCityId,
     reasonLabel,
+    cityLost = true,
   }: {
     ownershipMap: Record<string, string>;
     aggrievedFactionId: string;
     aggressorFactionId: string;
     preferredTargetCityId?: string;
     reasonLabel: string;
+    cityLost?: boolean;
   }) => {
     if (!aiCounterAttackOn) return;
+    const now = Date.now();
+    if (
+      !shouldTriggerAiCounterAttack({
+        now,
+        lastCounterAttackAt: lastCounterAttackAtRef.current,
+        pacing: warPacing,
+        cityLost,
+        roll: Math.random(),
+      })
+    ) {
+      return;
+    }
     const plan = planAiCounterAttack({
       cityOwnership: ownershipMap,
       cities: CITIES,
@@ -1626,6 +1657,7 @@ export default function TacticalMap({
       preferredTargetCityId,
     });
     if (!plan) return;
+    lastCounterAttackAtRef.current = now;
     const aggrievedName =
       FACTIONS.find(f => f.id === plan.aggrievedFactionId)?.name ?? plan.aggrievedFactionId;
     const originName = CITIES.find(c => c.id === plan.originCityId)?.name ?? plan.originCityId;
@@ -1656,9 +1688,9 @@ export default function TacticalMap({
         autoDeploy: true,
         triggerSource: 'counterattack',
       });
-    }, 2400);
+    }, WAR_PACING_PRESETS[warPacing].counterAttackGraceMs);
     return () => clearTimeout(timer);
-  }, [aiCounterAttackOn, pendingCounterAttack, mapTab]);
+  }, [aiCounterAttackOn, pendingCounterAttack, mapTab, warPacing]);
 
   const applyResolvedCoupResult = (res: CoupResolution) => {
     if (lastAppliedCoupNonceRef.current === res.nonce) return;
@@ -1707,6 +1739,7 @@ export default function TacticalMap({
         aggressorFactionId: res.attackerFactionId,
         preferredTargetCityId: res.winnerSide === 'left' ? res.cityId : undefined,
         reasonLabel: res.winnerSide === 'left' ? `痛失【${res.cityName}】` : `【${res.cityName}】遭政变袭扰`,
+        cityLost: res.winnerSide === 'left',
       });
     }
   };
@@ -1976,6 +2009,7 @@ export default function TacticalMap({
         setRivalLogs(prev => [`【${attackerName}】合战进攻 ${targetCityName} 被${defenderName}击退`, ...prev].slice(0, 8));
       }
     }
+    lastPlayerWarEndedAtRef.current = Date.now();
     setActiveWarBattle(null);
     setMapTab('svg-map');
 
@@ -1995,6 +2029,7 @@ export default function TacticalMap({
         aggressorFactionId: attackerFactionId,
         preferredTargetCityId: preferredCity,
         reasonLabel: winner === 'attacker' ? `【${targetCityName}】失守` : `【${targetCityName}】遭兵临城下`,
+        cityLost: winner === 'attacker',
       });
     }
 
@@ -2711,6 +2746,21 @@ export default function TacticalMap({
           >
             {aiCounterAttackOn ? '停止 AI 反击' : 'AI 自动反击'}
           </Button>
+          <label className="inline-flex items-center gap-1.5 text-xs text-slate-300">
+            <span>战事频率</span>
+            <select
+              id="select-war-pacing"
+              value={warPacing}
+              onChange={(e) => setWarPacing(e.target.value as WarPacingId)}
+              className="bg-slate-900 border border-slate-700 text-slate-100 rounded-md px-2 py-1 text-xs"
+            >
+              {(Object.values(WAR_PACING_PRESETS) as { id: WarPacingId; label: string }[]).map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <Button id="btn-reset-map" onClick={handleResetMap}><RefreshCw size={14} />重置地图</Button>
         </div></details>
       </div>

@@ -13,6 +13,8 @@ import {
   resolveCoupOutcome,
   resolveWarBattleOwnership,
   selectCoupDuelists,
+  shouldTriggerAiCounterAttack,
+  WAR_PACING_PRESETS,
 } from './cityPolitics';
 
 const TEST_CITIES = [
@@ -378,5 +380,46 @@ test('isPlayerFactionInBattle returns true only when player controls attacker or
       playerFactions: ['shu', 'wu'],
     }),
     true,
+  );
+});
+
+test('war pacing presets calm rival/autoplay intervals and throttle AI counter-attacks', () => {
+  assert.ok(WAR_PACING_PRESETS.low.rivalIntervalMs >= 30000);
+  assert.ok(WAR_PACING_PRESETS.low.autoPlayIntervalMs >= 12000);
+  assert.ok(WAR_PACING_PRESETS.low.rivalIntervalMs > WAR_PACING_PRESETS.normal.rivalIntervalMs);
+  assert.ok(WAR_PACING_PRESETS.normal.rivalIntervalMs > WAR_PACING_PRESETS.high.rivalIntervalMs);
+
+  // Within cooldown -> blocked even with roll 0
+  assert.equal(
+    shouldTriggerAiCounterAttack({
+      now: 100000,
+      lastCounterAttackAt: 80000,
+      pacing: 'low',
+      cityLost: true,
+      roll: 0,
+    }),
+    false,
+  );
+
+  // Outside cooldown + favorable roll -> allowed; unfavorable roll -> skipped
+  assert.equal(
+    shouldTriggerAiCounterAttack({
+      now: 150000,
+      lastCounterAttackAt: 80000,
+      pacing: 'low',
+      cityLost: true,
+      roll: 0.2,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldTriggerAiCounterAttack({
+      now: 150000,
+      lastCounterAttackAt: 80000,
+      pacing: 'low',
+      cityLost: false,
+      roll: 0.35,
+    }),
+    false,
   );
 });

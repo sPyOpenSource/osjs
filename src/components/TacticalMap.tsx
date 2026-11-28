@@ -6,6 +6,7 @@ import { nextIncompleteObjective } from '../utils/quest';
 import { motion, AnimatePresence } from 'motion/react';
 import { playDrumSound, playClashSound } from '../utils/audio';
 import WarMode from './WarMode';
+import DuelArena from './DuelArena';
 import GlobalTrade from './GlobalTrade';
 import HistoricalDisastersPanel from './HistoricalDisastersPanel';
 import WorldSituation2026 from './WorldSituation2026';
@@ -26,9 +27,12 @@ import { createCountryDebts, changeCountryDebt } from '../utils/debt';
 import { DiplomacyState, hasTradePact } from '../utils/diplomacy';
 import {
   applyClaimCity,
-  applyCoupCity,
+  CoupChallenge,
+  CoupResolution,
   applyDissolveFaction,
   getCityControllerActionState,
+  resolveWarBattleOwnership,
+  selectCoupDuelists,
 } from '../utils/cityPolitics';
 import {
   applySeasonalOfficerModifiers,
@@ -252,6 +256,18 @@ export interface ExpeditionBattleVisual {
   isSiege: boolean;
   siegeWin: boolean;
   successRate: number;
+}
+
+export interface ActiveWarBattle {
+  nonce: number;
+  originCityId: string;
+  targetCityId: string;
+  attackerFactionId: string;
+  defenderFactionId: string;
+  attackingOfficerId: string | null;
+  defendingOfficerId: string | null;
+  autoDeploy: boolean;
+  triggerSource: 'manual' | 'autoplay' | 'rivals';
 }
 
 export const EURASIA_THEATERS: { id: AsiaTheater; name: string; title: string; desc: string; icon: string }[] = [
@@ -650,6 +666,8 @@ interface TacticalMapProps {
   };
   onActiveDisasterChange?: (disaster: AlertActiveDisaster | null) => void;
   initialBattleVisual?: ExpeditionBattleVisual & { step: number };
+  onStartCoupDuel?: (challenge: CoupChallenge) => void;
+  coupResolution?: CoupResolution | null;
 }
 
 export default function TacticalMap({ 
@@ -681,7 +699,9 @@ export default function TacticalMap({
   onBattleActiveChange,
   requestedMapTab,
   onActiveDisasterChange,
-  initialBattleVisual
+  initialBattleVisual,
+  onStartCoupDuel,
+  coupResolution,
 }: TacticalMapProps) {
   const [mapTab, setMapTab] = useState<'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026' | '3d-viewer'>(
     () => requestedMapTab?.tab ?? 'city-view'
@@ -753,6 +773,11 @@ export default function TacticalMap({
   }, [selectedFactionFilter, activeMapFactions, neutralMapCityCount]);
   const [dissolvedFactionIds, setDissolvedFactionIds] = useState<string[]>([]);
   const [politicsNotice, setPoliticsNotice] = useState<{ kind: 'claim' | 'coup' | 'dissolve'; text: string } | null>(null);
+  const [inlineCoupChallenge, setInlineCoupChallenge] = useState<CoupChallenge | null>(null);
+  const coupNonceRef = useRef<number>(0);
+  const lastAppliedCoupNonceRef = useRef<number>(0);
+  const [activeWarBattle, setActiveWarBattle] = useState<ActiveWarBattle | null>(null);
+  const warBattleNonceRef = useRef<number>(0);
 
   // City View / Interior Facility states
   const [selectedFacility, setSelectedFacility] = useState<'palace' | 'market' | 'tavern' | 'barracks' | 'gate'>('palace');
@@ -872,6 +897,8 @@ export default function TacticalMap({
     setWorldState(createWorldState(FACTIONS));
     setDissolvedFactionIds([]);
     setPoliticsNotice(null);
+    setInlineCoupChallenge(null);
+    setActiveWarBattle(null);
     lastDisasterTickKeyRef.current = '';
     lastWorldTickKeyRef.current = '';
     lastMigrationTickKeyRef.current = '';
@@ -1275,16 +1302,22 @@ export default function TacticalMap({
   // Launch once selections have settled
   useEffect(() => {
     if (!autoPlay || autoPending === null) return;
+    if (mapTab === 'war-mode') return;
     if (autoPending && selectedGeneralId !== autoPending) {
       setSelectedGeneralId(autoPending);
       return;
     }
     const t = setTimeout(() => {
       setAutoPending(null);
-      handleLaunchExpedition({ preventDefault: () => {} } as React.FormEvent);
+      if (effectiveExpeditionOriginId && effectiveExpeditionTargetId) {
+        executeExpedition(effectiveExpeditionOriginId, effectiveExpeditionTargetId, selectedGeneralId, {
+          autoDeploy: true,
+          triggerSource: 'autoplay',
+        });
+      }
     }, 400);
     return () => clearTimeout(t);
-  }, [autoPlay, autoPending, selectedGeneralId, expeditionOriginId, expeditionTargetId]);
+  }, [autoPlay, autoPending, selectedGeneralId, expeditionOriginId, expeditionTargetId, mapTab]);
 
   // ===== Computer rivals: other factions attack on their own =====
   const [rivalsOn, setRivalsOn] = useState(false);
@@ -1303,13 +1336,9 @@ export default function TacticalMap({
 
   useEffect(() => {
     if (!rivalsOn) return;
+    if (mapTab === 'war-mode') return;
     if (isExpeditionRunning && expeditionStep !== 4) return;
     const timer = setTimeout(() => {
-      const power = (fid: string) => {
-        const gs = officers.filter(g => g.factionId === fid);
-        if (!gs.length) return 30;
-        return Math.max(...gs.map(g => g.stats.leadership * 0.4 + g.stats.intelligence * 0.3 + g.stats.force * 0.3));
-      };
       const rivals = Array.from(new Set(CITIES.map(c => cityOwnership[c.id]).filter(
         f => f && f !== 'ronin' && !controlledFactions.includes(f) && officers.some(o => o.factionId === f)
       ))) as string[];
@@ -1324,58 +1353,32 @@ export default function TacticalMap({
       }
       if (!best) return;
       const def = cityOwnership[best.t.id] || 'ronin';
-      const a = power(att) * (0.7 + Math.random() * 0.6);
-      const d = (def === 'ronin' ? 35 : power(def)) * (0.7 + Math.random() * 0.6) + (cityStats[best.t.id]?.defense || 0) * 0.1;
       const attFaction = FACTIONS.find(f => f.id === att);
       const defFaction = FACTIONS.find(f => f.id === def);
       const an = attFaction?.name || att;
       const dn = def === 'ronin' ? '在野义军' : defFaction?.name || def;
-      const attGeneral = officers.find(g => g.factionId === att)?.name || an;
-      const defGeneral = officers.find(g => g.factionId === def)?.name || dn;
+      const attGeneral = officers.find(g => g.factionId === att) ?? null;
+      const defGeneral = officers.find(g => g.factionId === def) ?? null;
       const mine = controlledFactions.includes(def) ? '🚨 ' : '';
-      const win = a > d;
-      const targetCityId = best.t.id;
-      const origCityId = best.o.id;
-      const targetCityName = best.t.name;
-      const origCityName = best.o.name;
 
-      setRivalBattleVisual({
-        origId: origCityId,
-        targId: targetCityId,
+      setRivalLogs(prev => [
+        `${mine}⚔️ 【${an}】自 ${best.o.name} 发兵攻打 ${best.t.name}（${dn}），进入合战决胜负！`,
+        ...prev,
+      ].slice(0, 8));
+
+      openWarModeForBattle({
+        originCityId: best.o.id,
+        targetCityId: best.t.id,
         attackerFactionId: att,
         defenderFactionId: def,
-        attackerFactionName: an,
-        defenderFactionName: dn,
-        attackerColor: attFaction?.color || '#f59e0b',
-        defenderColor: defFaction?.color || '#94a3b8',
-        attackerGeneralName: attGeneral,
-        defenderGeneralName: defGeneral,
-        isSiege: true,
-        siegeWin: win,
-        successRate: Math.min(92, Math.max(12, Math.round((a / Math.max(1, a + d)) * 100))),
-        step: 2,
+        attackingOfficerId: attGeneral?.id ?? null,
+        defendingOfficerId: defGeneral?.id ?? null,
+        autoDeploy: true,
+        triggerSource: 'rivals',
       });
-
-      setTimeout(() => {
-        setRivalBattleVisual(prev => (prev ? { ...prev, step: 3 } : null));
-      }, 900);
-
-      setTimeout(() => {
-        if (win) {
-          setCityOwnership(prev => ({ ...prev, [targetCityId]: att }));
-          setRivalLogs(prev => [`${mine}【${an}】自 ${origCityName} 攻陷 ${targetCityName}（原属${dn}）`, ...prev].slice(0, 8));
-        } else {
-          setRivalLogs(prev => [`${mine}【${an}】进攻 ${targetCityName} 被${dn}击退`, ...prev].slice(0, 8));
-        }
-        setRivalBattleVisual(prev => (prev ? { ...prev, step: 4 } : null));
-      }, 2100);
-
-      setTimeout(() => {
-        setRivalBattleVisual(null);
-      }, 3400);
     }, 6000);
     return () => clearTimeout(timer);
-  }, [rivalsOn, controlledFactions, cityOwnership, isExpeditionRunning, expeditionStep, officers, cityStats]);
+  }, [rivalsOn, controlledFactions, cityOwnership, isExpeditionRunning, expeditionStep, officers, mapTab]);
 
   // Handle faction revision by user (used by directory table picker)
   const handleModifyController = (cityId: string, factionId: string) => {
@@ -1397,35 +1400,96 @@ export default function TacticalMap({
     setInteriorLogs(prev => [`【宣称占领】${msg}`, ...prev].slice(0, 40));
   };
 
-  // Stage a coup in another faction's city to seize control
+  const applyResolvedCoupResult = (res: CoupResolution) => {
+    if (lastAppliedCoupNonceRef.current === res.nonce) return;
+    lastAppliedCoupNonceRef.current = res.nonce;
+
+    setCityOwnership(prev => ({
+      ...prev,
+      [res.cityId]: res.winnerFactionId,
+    }));
+
+    const winnerFactionName =
+      FACTIONS.find(f => f.id === res.winnerFactionId)?.name ?? res.winnerFactionId;
+
+    if (res.winnerSide === 'left') {
+      setDissolvedFactionIds(prev => prev.filter(id => id !== res.attackerFactionId));
+      setCityStats(prev => {
+        const cur = prev[res.cityId];
+        if (!cur) return prev;
+        return {
+          ...prev,
+          [res.cityId]: {
+            ...cur,
+            defense: Math.max(20, cur.defense - 8),
+            prosperity: Math.max(25, cur.prosperity - 5),
+          },
+        };
+      });
+      const msg = `【政变大捷】${res.winnerOfficerName} 阵前单挑击倒 ${res.loserOfficerName}，【${res.cityName}】正式归入 ${winnerFactionName}！`;
+      setPoliticsNotice({ kind: 'coup', text: msg });
+      setInteriorLogs(prev => [msg, ...prev].slice(0, 40));
+    } else {
+      const msg = `【守城平乱】${res.winnerOfficerName} 阵前击退 ${res.loserOfficerName} 政变奇袭，【${res.cityName}】仍由 ${winnerFactionName} 掌控！`;
+      setPoliticsNotice({ kind: 'coup', text: msg });
+      setInteriorLogs(prev => [msg, ...prev].slice(0, 40));
+    }
+  };
+
+  useEffect(() => {
+    if (coupResolution) {
+      applyResolvedCoupResult(coupResolution);
+    }
+  }, [coupResolution?.nonce]);
+
+  // Stage a coup in another faction's city by launching a Duel Arena battle; whoever wins gets the city
   const handleCoupCity = (cityId: string) => {
     const city = CITIES.find(c => c.id === cityId);
-    const res = applyCoupCity(
-      cityOwnership,
-      cityId,
-      cityActionState.activePlayerFactionId,
-      cityActionState.bannerFactionId,
-    );
-    if (!res.ok) return;
-    const prevFactionName =
-      FACTIONS.find(f => f.id === res.previousControllerId)?.name ?? res.previousControllerId;
-    setCityOwnership(res.nextOwnership);
-    setDissolvedFactionIds(prev => prev.filter(id => id !== cityActionState.bannerFactionId));
-    setCityStats(prev => {
-      const cur = prev[cityId];
-      if (!cur) return prev;
-      return {
-        ...prev,
-        [cityId]: {
-          ...cur,
-          defense: Math.max(20, cur.defense - 8),
-          prosperity: Math.max(25, cur.prosperity - 5),
-        },
-      };
+    if (!city) return;
+    const defenderFactionId = cityOwnership[cityId] || 'ronin';
+    const attackerFactionId = cityActionState.bannerFactionId;
+    if (
+      defenderFactionId === 'ronin' ||
+      defenderFactionId === cityActionState.activePlayerFactionId ||
+      attackerFactionId === 'ronin' ||
+      defenderFactionId === attackerFactionId
+    ) {
+      return;
+    }
+
+    const { attackerOfficer, defenderOfficer } = selectCoupDuelists({
+      officers,
+      cityName: city.name,
+      attackerFactionId,
+      defenderFactionId,
+      protagonistId,
     });
-    const msg = `已在【${city?.name ?? cityId}】发动政变，推翻 ${prevFactionName} 并改悬 ${bannerFaction.name} 旗号！`;
-    setPoliticsNotice({ kind: 'coup', text: msg });
-    setInteriorLogs(prev => [`【策反政变】${msg}`, ...prev].slice(0, 40));
+    if (!attackerOfficer || !defenderOfficer) return;
+
+    const defenderFactionName =
+      FACTIONS.find(f => f.id === defenderFactionId)?.name ?? defenderFactionId;
+    const challenge: CoupChallenge = {
+      nonce: ++coupNonceRef.current,
+      cityId,
+      cityName: city.name,
+      attackerFactionId,
+      attackerFactionName: bannerFaction.name,
+      defenderFactionId,
+      defenderFactionName,
+      attackerOfficerId: attackerOfficer.id,
+      defenderOfficerId: defenderOfficer.id,
+    };
+
+    setInteriorLogs(prev => [
+      `⚔️ 【发动政变】对【${city.name}】发起阵前单挑夺城：${bannerFaction.name}【${attackerOfficer.name}】vs ${defenderFactionName}【${defenderOfficer.name}】！`,
+      ...prev,
+    ].slice(0, 40));
+
+    if (onStartCoupDuel) {
+      onStartCoupDuel(challenge);
+    } else {
+      setInlineCoupChallenge(challenge);
+    }
   };
 
   // Dissolve the player's own faction (available only to the reigning faction leader)
@@ -1446,16 +1510,65 @@ export default function TacticalMap({
     setInteriorLogs(prev => [`【解散势力】${msg}`, ...prev].slice(0, 40));
   };
 
+  const openWarModeForBattle = ({
+    originCityId,
+    targetCityId,
+    attackerFactionId,
+    defenderFactionId,
+    attackingOfficerId,
+    defendingOfficerId,
+    autoDeploy = false,
+    triggerSource = 'manual',
+  }: Omit<ActiveWarBattle, 'nonce'>) => {
+    setIsExpeditionRunning(false);
+    setExpeditionBattleVisual(null);
+    setRivalBattleVisual(null);
+    setActiveWarBattle({
+      nonce: ++warBattleNonceRef.current,
+      originCityId,
+      targetCityId,
+      attackerFactionId,
+      defenderFactionId,
+      attackingOfficerId,
+      defendingOfficerId,
+      autoDeploy,
+      triggerSource,
+    });
+    setMapTab('war-mode');
+  };
+
   const handleBattleComplete = (winner: 'attacker' | 'defender', goldReward: number, epicRelic?: string, conqueredCityId?: string) => {
     const xpAmount = winner === 'attacker' ? 120 : 40;
-    if (winner === 'attacker' && conqueredCityId) {
-      const originControllerId = cityOwnership[expeditionOriginId] || 'ronin';
-      setCityOwnership(prev => ({
-        ...prev,
-        [conqueredCityId]: originControllerId
-      }));
+    const battleCtx = activeWarBattle;
+    const resolvedCityId =
+      conqueredCityId || battleCtx?.targetCityId || effectiveExpeditionTargetId;
+    const attackerFactionId =
+      battleCtx?.attackerFactionId ?? (cityOwnership[effectiveExpeditionOriginId] || 'ronin');
+    const defenderFactionId =
+      battleCtx?.defenderFactionId ?? (cityOwnership[resolvedCityId] || 'ronin');
+
+    const attackerName =
+      FACTIONS.find(f => f.id === attackerFactionId)?.name ?? attackerFactionId;
+    const defenderName =
+      defenderFactionId === 'ronin'
+        ? '在野守军'
+        : FACTIONS.find(f => f.id === defenderFactionId)?.name ?? defenderFactionId;
+    const targetCityName =
+      CITIES.find(c => c.id === resolvedCityId)?.name || resolvedCityId;
+
+    const { nextOwnership } = resolveWarBattleOwnership(
+      cityOwnership,
+      resolvedCityId,
+      winner,
+      attackerFactionId,
+      defenderFactionId,
+    );
+    setCityOwnership(nextOwnership);
+
+    if (winner === 'attacker') {
+      setDissolvedFactionIds(prev => prev.filter(id => id !== attackerFactionId));
       // Conquering a city advances any quest anchored there.
-      const cityQuests = (initialQuests ?? []).filter(q => q.cityId === conqueredCityId && q.objectives.length);
+      const cityQuests = (initialQuests ?? []).filter(q => q.cityId === resolvedCityId && q.objectives.length);
       for (const q of cityQuests) {
         const st = questStates.find(s => s.questId === q.id);
         if (st && st.status !== 'completed') {
@@ -1463,25 +1576,40 @@ export default function TacticalMap({
           if (next) onCompleteQuestObjective?.(q.id, next.id);
         }
       }
-      setPlayerGold(prev => prev + goldReward);
-      if (epicRelic) {
-        setPlayerInventory(prev => {
-          if (prev.includes(epicRelic)) return prev;
-          return [...prev, epicRelic];
-        });
+      if (!battleCtx || battleCtx.triggerSource !== 'rivals') {
+        setPlayerGold(prev => prev + goldReward);
+        if (epicRelic) {
+          setPlayerInventory(prev => {
+            if (prev.includes(epicRelic)) return prev;
+            return [...prev, epicRelic];
+          });
+        }
       }
+      const msg = `🏆 【会战破城】${attackerName} 大军攻克【${targetCityName}】（原属 ${defenderName}），城池正式归入 ${attackerName}！`;
+      setPoliticsNotice({ kind: 'coup', text: msg });
       setInteriorLogs(prev => [
-        `【关前合战胜利】大军亲自击破攻克敌境 [${CITIES.find(c => c.id === conqueredCityId)?.name || conqueredCityId}] 门阀大捷！缴获犒赏军饷黄金 ${goldReward}，夺取传代宝物 [${epicRelic || '名门铁券'}]！`,
-        ...prev
+        `${msg} 缴获犒赏军饷黄金 ${goldReward}，夺取宝物 [${epicRelic || '名门铁券'}]！`,
+        ...prev,
       ]);
+      if (battleCtx?.triggerSource === 'rivals') {
+        setRivalLogs(prev => [`【${attackerName}】合战攻陷 ${targetCityName}（原属${defenderName}）`, ...prev].slice(0, 8));
+      }
     } else {
       const absoluteLoss = Math.abs(goldReward);
-      setPlayerGold(prev => Math.max(0, prev - absoluteLoss));
+      if (!battleCtx || battleCtx.triggerSource !== 'rivals') {
+        setPlayerGold(prev => Math.max(0, prev - absoluteLoss));
+      }
+      const msg = `🛡️ 【守城获胜】${defenderName} 击退 ${attackerName} 攻城大军，守住【${targetCityName}】！`;
+      setPoliticsNotice({ kind: 'coup', text: msg });
       setInteriorLogs(prev => [
-        `【合战攻城折戟】前线突袭受阻引兵撤遁，整军抢修工事折耗抚恤黄金 ${absoluteLoss}。`,
-        ...prev
+        `${msg} 攻方撤军，折耗军资黄金 ${absoluteLoss}。`,
+        ...prev,
       ]);
+      if (battleCtx?.triggerSource === 'rivals') {
+        setRivalLogs(prev => [`【${attackerName}】合战进攻 ${targetCityName} 被${defenderName}击退`, ...prev].slice(0, 8));
+      }
     }
+    setActiveWarBattle(null);
     setMapTab('svg-map');
 
     // Award combat XP to the party (applied in App). A defeat still grants a
@@ -1726,8 +1854,13 @@ export default function TacticalMap({
     }, 150);
   };
 
-  // Execute campaign expedition simulation
-  const executeExpedition = (origId: string, targId: string, genId: string) => {
+  // Execute campaign expedition: when two different factions fight, open WarMode so winner claims the city
+  const executeExpedition = (
+    origId: string,
+    targId: string,
+    genId: string,
+    options?: { autoDeploy?: boolean; triggerSource?: 'manual' | 'autoplay' | 'rivals' },
+  ) => {
     if (origId === targId) {
       alert('请选择不同的起源地与目的地，大军无法在同地远征调配！');
       return;
@@ -1739,6 +1872,22 @@ export default function TacticalMap({
     const originFaction = FACTIONS.find(f => f.id === origOwner) || FACTIONS[FACTIONS.length - 1];
     const targetControllerId = cityOwnership[targId] || 'ronin';
     const targetFaction = FACTIONS.find(f => f.id === targetControllerId) || FACTIONS[FACTIONS.length - 1];
+
+    const isSiege = origOwner !== targetControllerId;
+    if (isSiege) {
+      const defenderOfficer = officers.find(o => o.factionId === targetControllerId) ?? null;
+      openWarModeForBattle({
+        originCityId: origId,
+        targetCityId: targId,
+        attackerFactionId: origOwner,
+        defenderFactionId: targetControllerId,
+        attackingOfficerId: genId || officers.find(o => o.factionId === origOwner)?.id || null,
+        defendingOfficerId: defenderOfficer?.id ?? null,
+        autoDeploy: Boolean(options?.autoDeploy),
+        triggerSource: options?.triggerSource ?? 'manual',
+      });
+      return;
+    }
     
     const rawCommandingGeneral = officers.find(o => o.id === genId);
     const commandingGeneral = rawCommandingGeneral
@@ -1756,7 +1905,6 @@ export default function TacticalMap({
       playDrumSound();
     }
 
-    const isSiege = origOwner !== targetControllerId;
     let siegeWin = true;
     let rate = 100;
 
@@ -2033,11 +2181,14 @@ export default function TacticalMap({
     }, step4Delay);
   };
 
-  // Launch Battle/Expedition via manual form
+  // Launch Battle/Expedition via manual form (faction fights open WarMode)
   const handleLaunchExpedition = (e: React.FormEvent) => {
     e.preventDefault();
     if (!effectiveExpeditionOriginId || !effectiveExpeditionTargetId) return;
-    executeExpedition(effectiveExpeditionOriginId, effectiveExpeditionTargetId, selectedGeneralId);
+    executeExpedition(effectiveExpeditionOriginId, effectiveExpeditionTargetId, selectedGeneralId, {
+      autoDeploy: autoPlay,
+      triggerSource: autoPlay ? 'autoplay' : 'manual',
+    });
   };
 
   // AI Auto-Play: let AI autonomously command factions and expand territory
@@ -2081,7 +2232,10 @@ export default function TacticalMap({
     ]);
 
     setTimeout(() => {
-      executeExpedition(origin.id, target.id, general.id);
+      executeExpedition(origin.id, target.id, general.id, {
+        autoDeploy: true,
+        triggerSource: 'autoplay',
+      });
     }, 200);
   };
 
@@ -2096,6 +2250,8 @@ export default function TacticalMap({
     setMigrationState(createInitialMigrationState());
     setDissolvedFactionIds([]);
     setPoliticsNotice(null);
+    setInlineCoupChallenge(null);
+    setActiveWarBattle(null);
     lastWorldTickKeyRef.current = '';
     lastMigrationTickKeyRef.current = '';
   };
@@ -4308,21 +4464,39 @@ export default function TacticalMap({
           seasonId={activeSeasonId}
           weatherId={weatherId}
         />
-      ) : mapTab === 'war-mode' ? (
-        <WarMode
-          originCity={CITIES.find(c => c.id === effectiveExpeditionOriginId) || CITIES[0]}
-          targetCity={CITIES.find(c => c.id === effectiveExpeditionTargetId) || CITIES[1]}
-          attackerFaction={FACTIONS.find(f => f.id === originControllerId) || FACTIONS[5]}
-          defenderFaction={FACTIONS.find(f => f.id === (cityOwnership[effectiveExpeditionTargetId] || 'ronin')) || FACTIONS[5]}
-          attackingOfficer={officers.find(o => o.id === selectedGeneralId) || null}
-          defendingOfficer={officers.filter(o => o.factionId === (cityOwnership[effectiveExpeditionTargetId] || 'ronin'))[0] || null}
-          weatherId={weatherId}
-          seasonId={activeSeasonId}
-          soundEnabled={soundEnabled}
-          onBattleComplete={handleBattleComplete}
-          onClose={() => setMapTab('svg-map')}
-        />
-      ) : (
+      ) : mapTab === 'war-mode' ? (() => {
+        const battleOriginId = activeWarBattle?.originCityId ?? effectiveExpeditionOriginId;
+        const battleTargetId = activeWarBattle?.targetCityId ?? effectiveExpeditionTargetId;
+        const battleAttackerFactionId = activeWarBattle?.attackerFactionId ?? originControllerId;
+        const battleDefenderFactionId =
+          activeWarBattle?.defenderFactionId ?? (cityOwnership[battleTargetId] || 'ronin');
+        const battleAttackingOfficerId = activeWarBattle?.attackingOfficerId ?? selectedGeneralId;
+        const battleDefendingOfficerId = activeWarBattle?.defendingOfficerId ?? null;
+        return (
+          <WarMode
+            originCity={CITIES.find(c => c.id === battleOriginId) || CITIES[0]}
+            targetCity={CITIES.find(c => c.id === battleTargetId) || CITIES[1]}
+            attackerFaction={FACTIONS.find(f => f.id === battleAttackerFactionId) || FACTIONS[5]}
+            defenderFaction={FACTIONS.find(f => f.id === battleDefenderFactionId) || FACTIONS[5]}
+            attackingOfficer={officers.find(o => o.id === battleAttackingOfficerId) || null}
+            defendingOfficer={
+              (battleDefendingOfficerId
+                ? officers.find(o => o.id === battleDefendingOfficerId)
+                : officers.filter(o => o.factionId === battleDefenderFactionId)[0]) || null
+            }
+            weatherId={weatherId}
+            seasonId={activeSeasonId}
+            soundEnabled={soundEnabled}
+            autoDeploy={Boolean(activeWarBattle?.autoDeploy)}
+            battleNonce={activeWarBattle?.nonce ?? 0}
+            onBattleComplete={handleBattleComplete}
+            onClose={() => {
+              setActiveWarBattle(null);
+              setMapTab('svg-map');
+            }}
+          />
+        );
+      })() : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {CITIES.map(city => {
             const controllerId = cityOwnership[city.id] || 'ronin';
@@ -4813,16 +4987,30 @@ export default function TacticalMap({
                   className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 text-xs font-black py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
                   <Play size={12} fill="currentColor" />
-                  {isExpeditionRunning ? '推演中...' : '发兵演武'}
+                  {isExpeditionRunning ? '推演中...' : isHostileTarget ? '发兵会战' : '内部调兵'}
                 </button>
 
                 {isHostileTarget && (
                   <button
                     id="btn-launch-war-mode-direct"
                     type="button"
-                    onClick={() => setMapTab('war-mode')}
+                    onClick={() =>
+                      openWarModeForBattle({
+                        originCityId: effectiveExpeditionOriginId,
+                        targetCityId: effectiveExpeditionTargetId,
+                        attackerFactionId: originControllerId,
+                        defenderFactionId: cityOwnership[effectiveExpeditionTargetId] || 'ronin',
+                        attackingOfficerId: selectedGeneralId || null,
+                        defendingOfficerId:
+                          officers.find(
+                            o => o.factionId === (cityOwnership[effectiveExpeditionTargetId] || 'ronin'),
+                          )?.id ?? null,
+                        autoDeploy: false,
+                        triggerSource: 'manual',
+                      })
+                    }
                     disabled={isExpeditionRunning || leadersAvailable.length === 0}
-                    title="亲自指挥攻城（手动合战役）"
+                    title="亲自指挥攻城（进入会战）"
                     className="bg-[linear-gradient(135deg,#e11d48,_#be123c)] hover:bg-[linear-gradient(135deg,#f43f5e,_#e11d48)] disabled:opacity-45 text-slate-50 text-xs font-black py-2 px-3 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer border border-rose-500/30 whitespace-nowrap"
                   >
                     <Sword size={12} />
@@ -4888,6 +5076,28 @@ export default function TacticalMap({
         );
       })()}
 
+      {inlineCoupChallenge && (
+        <div
+          id="inline-coup-duel-modal"
+          className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm overflow-y-auto p-4 md:p-8"
+        >
+          <div className="max-w-6xl mx-auto">
+            <DuelArena
+              officers={officers}
+              playerFactionId={inlineCoupChallenge.attackerFactionId}
+              playerFactionName={inlineCoupChallenge.attackerFactionName}
+              currentCityId={inlineCoupChallenge.cityName}
+              soundEnabled={soundEnabled}
+              seasonId={activeSeasonId}
+              coupChallenge={inlineCoupChallenge}
+              onCoupDuelComplete={applyResolvedCoupResult}
+              playClashSound={playClashSound}
+              playDrumSound={playDrumSound}
+              onClose={() => setInlineCoupChallenge(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

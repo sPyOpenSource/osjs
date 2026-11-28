@@ -5,6 +5,7 @@ import { ALL_QUESTS, INITIAL_QUEST_STATES } from './data/quests';
 import { createRpgCharacter, applyXp, validateEquipAssignment } from './utils/rpg';
 import { getCandidateOfficers, getRecruitRefusal, MAX_COMPANIONS } from './utils/party';
 import { completeObjective, isQuestComplete, markQuestCompleted } from './utils/quest';
+import { CoupChallenge, CoupResolution } from './utils/cityPolitics';
 import OfficerCard from './components/OfficerCard';
 import AvatarRenderer from './components/AvatarRenderer';
 import TacticalMap, { CITIES } from './components/TacticalMap';
@@ -111,6 +112,8 @@ export default function App() {
     tab: 'svg-map' | 'cities-all' | 'city-view' | 'war-mode' | 'global-trade' | 'disasters' | 'migrations' | 'world-2026' | '3d-viewer';
     nonce: number;
   } | undefined>(undefined);
+  const [activeCoupChallenge, setActiveCoupChallenge] = useState<CoupChallenge | null>(null);
+  const [latestCoupResolution, setLatestCoupResolution] = useState<CoupResolution | null>(null);
 
   const handleViewReliefMeasures = useCallback(() => {
     setActiveTab('map');
@@ -207,6 +210,8 @@ export default function App() {
     const candidates = getCandidateOfficers(FAMOUS_OFFICERS, selectedScenario.featuredFactions, selectedScenario.featuredFactions);
     const next = candidates.find(candidate => candidate.id === protagonistId)?.id ?? candidates[0]?.id;
     if (next !== protagonistId) setProtagonistId(next);
+    setActiveCoupChallenge(null);
+    setLatestCoupResolution(null);
   }, [selectedScenario, protagonistId]);
 
   // Periodically update weather based on the current season as the game loop advances
@@ -1935,6 +1940,11 @@ export default function App() {
                   onBattleActiveChange={setInSiegeBattle}
                   requestedMapTab={requestedMapTab}
                   onActiveDisasterChange={setActiveAlertDisaster}
+                  onStartCoupDuel={(challenge) => {
+                    setActiveCoupChallenge(challenge);
+                    setActiveTab('duel');
+                  }}
+                  coupResolution={latestCoupResolution}
                 />
               );
             })()}
@@ -1969,9 +1979,16 @@ export default function App() {
                 currentCityId={currentCityId}
                 soundEnabled={soundEnabled}
                 seasonId={currentSeason.id}
+                coupChallenge={activeCoupChallenge}
+                onCoupDuelComplete={(resolution) => {
+                  setLatestCoupResolution(resolution);
+                }}
                 playClashSound={playClashSound}
                 playDrumSound={playDrumSound}
-                onClose={() => setActiveTab('map')}
+                onClose={() => {
+                  setActiveCoupChallenge(null);
+                  setActiveTab('map');
+                }}
               />
             );
           })()}

@@ -281,6 +281,41 @@ describe('DuelArena Left Camp Faction & Right Nearby City Filters', () => {
     assert.ok(html.includes('波动气功'), 'expected Hadouken arcade button');
     assert.ok(html.includes('升龙奥义'), 'expected Shoryuken Super arcade button');
   });
+
+  test('mounts active coup DuelArena fight with stakes banner when coupChallenge is passed', () => {
+    const coupOfficers: Officer[] = [
+      makeOfficer('guanyu', '关羽', { factionId: 'shu', homeCity: '成都' }),
+      makeOfficer('caocao', '曹操', { factionId: 'wei', homeCity: '许昌' }),
+    ];
+    const html = renderToStaticMarkup(
+      <DuelArena
+        officers={coupOfficers}
+        playerFactionId="shu"
+        playerFactionName="蜀汉"
+        currentCityId="洛阳"
+        soundEnabled={false}
+        coupChallenge={{
+          nonce: 1,
+          cityId: 'luoyang',
+          cityName: '洛阳',
+          attackerFactionId: 'shu',
+          attackerFactionName: '蜀汉',
+          defenderFactionId: 'wei',
+          defenderFactionName: '曹魏',
+          attackerOfficerId: 'guanyu',
+          defenderOfficerId: 'caocao',
+        }}
+        playClashSound={noop}
+        playDrumSound={noop}
+      />,
+    );
+
+    assert.ok(html.includes('id="coup-duel-stakes-banner"'), 'expected #coup-duel-stakes-banner');
+    assert.ok(html.includes('洛阳'), 'expected contested city name in coup banner');
+    assert.ok(html.includes('data-testid="sf-fighter-left"'), 'expected auto-launched active arena');
+    assert.ok(html.includes('关羽'), 'expected attacker champion guanyu in arena');
+    assert.ok(html.includes('曹操'), 'expected defender champion caocao in arena');
+  });
 });
 
 describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {
@@ -594,7 +629,7 @@ describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {
     assert.ok(!mapHtml.includes('id="btn-map-faction-qing"'), 'expected zero-city qing omitted in 208 AD');
   });
 
-  test('renders contextual Coup, Claim, and leader-only Dissolve controls on #select-city-controller', () => {
+  test('renders contextual Coup, Claim, and leader-only Dissolve buttons for city politics', () => {
     const chibiScenario = SCENARIOS.find(s => s.id === 'chibi') ?? SCENARIOS[1];
 
     // 1. Enemy city (Luoyang -> wei) with non-leader protagonist (guanyu -> shu): offers Coup only
@@ -609,11 +644,9 @@ describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {
         requestedMapTab={{ tab: 'svg-map', nonce: 1 }}
       />,
     );
-    const enemySelect = enemyHtml.match(/<select[^>]*id="select-city-controller"[\s\S]*?<\/select>/)?.[0] ?? '';
-    assert.ok(enemySelect.includes('__action_coup__'), 'expected Coup option for enemy-held city');
-    assert.ok(!enemySelect.includes('__action_claim__'), 'did not expect Claim option on enemy-held city');
-    assert.ok(!enemySelect.includes('__action_dissolve__'), 'did not expect Dissolve option for non-leader');
     assert.ok(enemyHtml.includes('id="btn-city-coup"'), 'expected #btn-city-coup button');
+    assert.ok(!enemyHtml.includes('id="btn-city-claim"'), 'did not expect #btn-city-claim on enemy city');
+    assert.ok(!enemyHtml.includes('id="btn-city-dissolve-faction"'), 'did not expect dissolve button for non-leader');
 
     // 2. Unowned city (Chengdu -> ronin in 208 AD) with non-leader protagonist: offers Claim only
     const unownedHtml = renderToStaticMarkup(
@@ -627,10 +660,8 @@ describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {
         requestedMapTab={{ tab: 'svg-map', nonce: 1 }}
       />,
     );
-    const unownedSelect = unownedHtml.match(/<select[^>]*id="select-city-controller"[\s\S]*?<\/select>/)?.[0] ?? '';
-    assert.ok(unownedSelect.includes('__action_claim__'), 'expected Claim option for unowned city');
-    assert.ok(!unownedSelect.includes('__action_coup__'), 'did not expect Coup option for unowned city');
     assert.ok(unownedHtml.includes('id="btn-city-claim"'), 'expected #btn-city-claim button');
+    assert.ok(!unownedHtml.includes('id="btn-city-coup"'), 'did not expect #btn-city-coup on unowned city');
 
     // 3. Own city (Jingzhou -> shu) with leader protagonist (liubei): offers Dissolve Faction
     const leaderOwnHtml = renderToStaticMarkup(
@@ -644,11 +675,9 @@ describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {
         requestedMapTab={{ tab: 'svg-map', nonce: 1 }}
       />,
     );
-    const leaderSelect = leaderOwnHtml.match(/<select[^>]*id="select-city-controller"[\s\S]*?<\/select>/)?.[0] ?? '';
-    assert.ok(leaderSelect.includes('__action_dissolve__'), 'expected Dissolve option for faction leader');
-    assert.ok(!leaderSelect.includes('__action_coup__'), 'did not expect Coup on own city');
-    assert.ok(!leaderSelect.includes('__action_claim__'), 'did not expect Claim on own city');
     assert.ok(leaderOwnHtml.includes('id="btn-city-dissolve-faction"'), 'expected #btn-city-dissolve-faction button');
+    assert.ok(!leaderOwnHtml.includes('id="btn-city-coup"'), 'did not expect #btn-city-coup on own city');
+    assert.ok(!leaderOwnHtml.includes('id="btn-city-claim"'), 'did not expect #btn-city-claim on own city');
 
     // 4. Own city with non-leader protagonist (guanyu): cannot dissolve faction
     const nonLeaderOwnHtml = renderToStaticMarkup(
@@ -662,8 +691,6 @@ describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {
         requestedMapTab={{ tab: 'svg-map', nonce: 1 }}
       />,
     );
-    const nonLeaderSelect = nonLeaderOwnHtml.match(/<select[^>]*id="select-city-controller"[\s\S]*?<\/select>/)?.[0] ?? '';
-    assert.ok(!nonLeaderSelect.includes('__action_dissolve__'), 'subordinate must not get Dissolve option');
     assert.ok(!nonLeaderOwnHtml.includes('id="btn-city-dissolve-faction"'), 'subordinate must not see Dissolve button');
     assert.ok(nonLeaderOwnHtml.includes('id="city-controller-nonleader-note"'), 'expected non-leader note on own city');
   });
@@ -1153,6 +1180,79 @@ describe('WarMode Clash of Clans Village Raid', () => {
     assert.ok(html.includes('data-testid="coc-card-wall_breaker"'), 'expected Wall Breaker card');
     assert.ok(html.includes('data-testid="coc-card-rage_spell"'), 'expected Rage Spell card');
     assert.ok(html.includes('data-testid="coc-card-heal_spell"'), 'expected Heal Spell card');
+  });
+
+  test('routes hostile faction expeditions to WarMode and displays winner/defender city retention overlays', () => {
+    const chibiScenario = SCENARIOS.find(s => s.id === 'chibi') ?? SCENARIOS[1];
+    // Default origin in 208 AD for Shu is jingzhou (shu) and nearby target is xuchang (wei) -> hostile clash -> 发兵会战
+    const mapHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+        requestedMapTab={{ tab: 'svg-map', nonce: 1 }}
+      />,
+    );
+    assert.ok(mapHtml.includes('id="btn-launch-exp"'), 'expected #btn-launch-exp button');
+    assert.ok(mapHtml.includes('发兵会战'), 'expected hostile faction button label 发兵会战');
+
+    // Switching TacticalMap to war-mode renders WarMode panel for the fighting factions
+    const warTabHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        soundEnabled={false}
+        requestedMapTab={{ tab: 'war-mode', nonce: 2 }}
+      />,
+    );
+    assert.ok(warTabHtml.includes('id="war-mode-panel"'), 'expected #war-mode-panel when WarMode opens');
+    assert.ok(
+      warTabHtml.includes('突袭部落') && warTabHtml.includes('守寨营垒') && warTabHtml.includes('蜀汉'),
+      'expected attacker & defender faction panels shown in WarMode',
+    );
+
+    // Victory & Defeat overlays clearly show whichever faction wins gets/keeps the city
+    const victoryHtml = renderToStaticMarkup(
+      <WarMode
+        originCity={CITIES[0]}
+        targetCity={CITIES[1]}
+        attackerFaction={FACTIONS[0]}
+        defenderFaction={FACTIONS[1]}
+        attackingOfficer={officers[1]}
+        defendingOfficer={officers[3]}
+        weatherId="sunny"
+        soundEnabled={false}
+        initialPhase="victory"
+        onBattleComplete={noop}
+        onClose={noop}
+      />,
+    );
+    assert.ok(
+      victoryHtml.includes(`${CITIES[1].name} 归入【${FACTIONS[0].name}】`),
+      'expected victory overlay to assign target city to attacker faction',
+    );
+
+    const defeatHtml = renderToStaticMarkup(
+      <WarMode
+        originCity={CITIES[0]}
+        targetCity={CITIES[1]}
+        attackerFaction={FACTIONS[0]}
+        defenderFaction={FACTIONS[1]}
+        attackingOfficer={officers[1]}
+        defendingOfficer={officers[3]}
+        weatherId="sunny"
+        soundEnabled={false}
+        initialPhase="defeat"
+        onBattleComplete={noop}
+        onClose={noop}
+      />,
+    );
+    assert.ok(
+      defeatHtml.includes(`城池仍由【${FACTIONS[1].name}】坚守`),
+      'expected defeat overlay to retain target city for defender faction',
+    );
   });
 });
 

@@ -7,6 +7,9 @@ import {
   applyDissolveFaction,
   getCityControllerActionState,
   isOfficerFactionLeader,
+  resolveCoupOutcome,
+  resolveWarBattleOwnership,
+  selectCoupDuelists,
 } from './cityPolitics';
 
 const TEST_CITIES = [
@@ -139,4 +142,67 @@ test('only the faction leader can dissolve their faction, releasing all held cit
   });
   assert.equal(afterDissolve.canDissolve, false);
   assert.equal(afterDissolve.canClaim, true);
+});
+
+test('coup duelists selection and outcome assign city to whoever wins the duel', () => {
+  const { attackerOfficer, defenderOfficer } = selectCoupDuelists({
+    officers: FAMOUS_OFFICERS,
+    cityName: '洛阳',
+    attackerFactionId: 'shu',
+    defenderFactionId: 'wei',
+    protagonistId: 'guanyu',
+  });
+  assert.equal(attackerOfficer?.id, 'guanyu');
+  assert.equal(defenderOfficer?.factionId, 'wei');
+
+  const challenge = {
+    nonce: 1,
+    cityId: 'luoyang',
+    cityName: '洛阳',
+    attackerFactionId: 'shu',
+    attackerFactionName: '蜀汉',
+    defenderFactionId: 'wei',
+    defenderFactionName: '曹魏',
+    attackerOfficerId: attackerOfficer!.id,
+    defenderOfficerId: defenderOfficer!.id,
+  };
+
+  const attackerWin = resolveCoupOutcome(
+    challenge,
+    'left',
+    attackerOfficer!.name,
+    defenderOfficer!.name,
+  );
+  assert.equal(attackerWin.winnerFactionId, 'shu');
+
+  const defenderWin = resolveCoupOutcome(
+    challenge,
+    'right',
+    defenderOfficer!.name,
+    attackerOfficer!.name,
+  );
+  assert.equal(defenderWin.winnerFactionId, 'wei');
+});
+
+test('resolveWarBattleOwnership assigns city to whichever faction wins WarMode', () => {
+  const ownership = {
+    luoyang: 'wei',
+    chengdu: 'shu',
+    jianye: 'wu',
+    rome: 'rome',
+  };
+
+  const attackerWon = resolveWarBattleOwnership(ownership, 'luoyang', 'attacker', 'shu', 'wei');
+  assert.equal(attackerWon.winnerFactionId, 'shu');
+  assert.equal(attackerWon.nextOwnership.luoyang, 'shu');
+  assert.equal(attackerWon.nextOwnership.jianye, 'wu');
+
+  const defenderWon = resolveWarBattleOwnership(ownership, 'luoyang', 'defender', 'shu', 'wei');
+  assert.equal(defenderWon.winnerFactionId, 'wei');
+  assert.equal(defenderWon.nextOwnership.luoyang, 'wei');
+
+  // AI rival vs rival clash: attacker Wu takes Luoyang from Wei, or Wei keeps it
+  const aiRivalAttackWin = resolveWarBattleOwnership(ownership, 'luoyang', 'attacker', 'wu', 'wei');
+  assert.equal(aiRivalAttackWin.winnerFactionId, 'wu');
+  assert.equal(aiRivalAttackWin.nextOwnership.luoyang, 'wu');
 });

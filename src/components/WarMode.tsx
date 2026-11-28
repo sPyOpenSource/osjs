@@ -43,6 +43,8 @@ interface WarModeProps {
   seasonId?: SeasonId;
   soundEnabled: boolean;
   initialPhase?: 'fighting' | 'victory' | 'defeat';
+  autoDeploy?: boolean;
+  battleNonce?: number;
   onBattleComplete: (
     winner: 'attacker' | 'defender',
     goldReward: number,
@@ -574,6 +576,8 @@ export default function WarMode({
   seasonId = 'spring',
   soundEnabled,
   initialPhase = 'fighting',
+  autoDeploy = false,
+  battleNonce = 0,
   onBattleComplete,
   onClose,
 }: WarModeProps) {
@@ -652,8 +656,14 @@ export default function WarMode({
 
   useEffect(() => {
     resetRaid();
+    if (autoDeploy) {
+      const t = setTimeout(() => {
+        handleAllInDeploy();
+      }, 150);
+      return () => clearTimeout(t);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetCity.id, originCity.id, weatherId, seasonId]);
+  }, [targetCity.id, originCity.id, weatherId, seasonId, battleNonce, autoDeploy]);
 
   const spawnTroopOrSpellAt = (card: CardType, rawX: number, rawY: number, silentLog = false) => {
     const sim = simRef.current;
@@ -1194,7 +1204,7 @@ export default function WarMode({
   };
 
   const handleDefeatClose = () => {
-    onBattleComplete('defender', -150);
+    onBattleComplete('defender', -150, undefined, targetCity.id);
   };
 
   const totalRemainingTroops =
@@ -1819,7 +1829,7 @@ export default function WarMode({
                 营防坚固：暂退整军！
               </h3>
               <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
-                <strong>[{targetCity.name}]</strong> 炮火猛烈，此次突袭摧毁度为 {snap.destructionPct}%，未能摘下战星。
+                <strong>[{targetCity.name}]</strong> 炮火猛烈，此次突袭摧毁度为 {snap.destructionPct}%，未能摘下战星。城池仍由【{defenderFaction.name}】坚守！
               </p>
             </div>
             <button

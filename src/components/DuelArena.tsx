@@ -4,6 +4,11 @@ import AvatarRenderer from './AvatarRenderer';
 import { applySeasonalOfficerModifiers, SEASONS, SeasonId } from '../utils/seasons';
 import { CITIES, getNearbyTargetCities } from './TacticalMap';
 import {
+  CoupChallenge,
+  CoupResolution,
+  resolveCoupOutcome,
+} from '../utils/cityPolitics';
+import {
   playHeavyImpactSound,
   playParrySound,
   playDodgeSound,
@@ -112,6 +117,8 @@ interface DuelArenaProps {
   soundEnabled: boolean;
   seasonId?: SeasonId;
   initialFighting?: boolean;
+  coupChallenge?: CoupChallenge | null;
+  onCoupDuelComplete?: (resolution: CoupResolution) => void;
   onClose?: () => void;
   playClashSound: () => void;
   playDrumSound: () => void;
@@ -505,6 +512,8 @@ export default function DuelArena({
   soundEnabled,
   seasonId = 'spring',
   initialFighting = false,
+  coupChallenge = null,
+  onCoupDuelComplete,
   playClashSound,
   playDrumSound,
   onClose,
@@ -522,8 +531,24 @@ export default function DuelArena({
   const [selectedRightId, setSelectedRightId] = useState<string>('');
   const [combatType, setCombatType] = useState<'player_vs_ai' | 'ai_vs_ai' | 'player_vs_player'>('player_vs_ai');
 
-  // Precompute initial candidates so `initialFighting={true}` can mount straight into active arena (e.g. tests)
+  // Precompute initial candidates so `initialFighting={true}` or an active `coupChallenge`
+  // mounts straight into the active Duel Arena fight.
   const initialPair = useMemo(() => {
+    if (coupChallenge) {
+      const rawL =
+        officers.find(o => o.id === coupChallenge.attackerOfficerId) ??
+        myFactionOfficers[0] ??
+        officers[0];
+      if (!rawL) return null;
+      const rawR =
+        officers.find(o => o.id === coupChallenge.defenderOfficerId) ??
+        officers.find(o => o.id !== rawL.id) ??
+        rawL;
+      return {
+        leftOff: applySeasonalOfficerModifiers(rawL, seasonId),
+        rightOff: applySeasonalOfficerModifiers(rawR, seasonId),
+      };
+    }
     if (!initialFighting) return null;
     const rawL =
       myFactionOfficers.find(o => o.name.includes('关羽')) ?? myFactionOfficers[0];
@@ -546,7 +571,7 @@ export default function DuelArena({
     const leftOff = applySeasonalOfficerModifiers(rawL, seasonId);
     const rightOff = applySeasonalOfficerModifiers(rawR, seasonId);
     return { leftOff, rightOff };
-  }, [initialFighting, myFactionOfficers, officers, currentCityId, seasonId]);
+  }, [initialFighting, coupChallenge, myFactionOfficers, officers, currentCityId, seasonId]);
 
   const initialSim: ArenaSim | null = initialPair
     ? {
@@ -567,10 +592,15 @@ export default function DuelArena({
   const [roundCount, setRoundCount] = useState<number>(1);
   const [battleLogs, setBattleLogs] = useState<string[]>(() =>
     initialPair
-      ? [
-          `🥊 【街头快打演武】Round 1 — FIGHT!`,
-          `🏁 P1【${initialPair.leftOff.name}】vs P2【${initialPair.rightOff.name}】`,
-        ]
+      ? coupChallenge
+        ? [
+            `⚔️ 【政变夺城单挑】争夺【${coupChallenge.cityName}】！`,
+            `🏴 ${coupChallenge.attackerFactionName}【${initialPair.leftOff.name}】vs ${coupChallenge.defenderFactionName}【${initialPair.rightOff.name}】— 胜者执掌此城！`,
+          ]
+        : [
+            `🥊 【街头快打演武】Round 1 — FIGHT!`,
+            `🏁 P1【${initialPair.leftOff.name}】vs P2【${initialPair.rightOff.name}】`,
+          ]
       : [],
   );
 
@@ -673,6 +703,10 @@ export default function DuelArena({
   soundEnabledRef.current = soundEnabled;
   const combatTypeRef = useRef(combatType);
   combatTypeRef.current = combatType;
+  const launchedCoupNonceRef = useRef<number>(coupChallenge?.nonce ?? 0);
+  const reportedCoupNonceRef = useRef<number>(0);
+  const onCoupDuelCompleteRef = useRef(onCoupDuelComplete);
+  onCoupDuelCompleteRef.current = onCoupDuelComplete;
 
   const TAUNT_QUOTES = [
     "三姓家奴，安敢在此门前叫阵！",
@@ -790,6 +824,101 @@ export default function DuelArena({
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [battleLogs]);
+
+  // Auto-launch Duel Arena match whenever a new coupChallenge nonce arrives
+  useEffect(() => {
+    if (!coupChallenge || launchedCoupNonceRef.current === coupChallenge.nonce) return;
+    const rawL =
+      officers.find(o => o.id === coupChallenge.attackerOfficerId) ??
+      myFactionOfficers[0] ??
+      officers[0];
+    const rawR =
+      officers.find(o => o.id === coupChallenge.defenderOfficerId) ??
+      officers.find(o => o.id !== rawL?.id) ??
+      rawL;
+    if (!rawL || !rawR) return;
+
+    launchedCoupNonceRef.current = coupChallenge.nonce;
+    const leftOff = applySeasonalOfficerModifiers(rawL, seasonId);
+    const rightOff = applySeasonalOfficerModifiers(rawR, seasonId);
+    setSelectedLeftId(rawL.id);
+    setSelectedRightId(rawR.id);
+    setCombatType('player_vs_ai');
+
+    if (soundEnabledRef.current) {
+      playDrumSound();
+    }
+
+    const sim: ArenaSim = {
+      left: buildFighterSim('left', leftOff),
+      right: buildFighterSim('right', rightOff),
+      projectiles: [],
+      clockSeconds: 99,
+      tickCount: 0,
+      hitstop: 0,
+      roundOver: false,
+      aiThinkCooldown: { left: 8, right: 10 },
+    };
+    simRef.current = sim;
+    keysRef.current.clear();
+    virtualHoldRef.current = { leftMove: 0, leftGuard: false, rightMove: 0, rightGuard: false };
+    setLeftDuelist({
+      officer: leftOff,
+      hp: sim.left.hp,
+      maxHp: sim.left.maxHp,
+      rage: 0,
+      isParrying: false,
+      isTaunted: false,
+      shieldValue: 0,
+    });
+    setRightDuelist({
+      officer: rightOff,
+      hp: sim.right.hp,
+      maxHp: sim.right.maxHp,
+      rage: 0,
+      isParrying: false,
+      isTaunted: false,
+      shieldValue: 0,
+    });
+    setArenaSnap({
+      left: { ...sim.left },
+      right: { ...sim.right },
+      projectiles: [],
+      clockSeconds: 99,
+      hitstop: 0,
+    });
+    setLastTauntMsg({ left: '', right: '' });
+    setSparkParticles([]);
+    setDustPuffs([]);
+    setClashImpact(null);
+    setUltBanner(null);
+    setStageShake('none');
+    setIsFighting(true);
+    setRoundCount(1);
+    setCurrentTurn('left');
+    setWinnerSide(null);
+    setBattleLogs([
+      `⚔️ 【政变夺城单挑】争夺【${coupChallenge.cityName}】！`,
+      `🏴 ${coupChallenge.attackerFactionName}【${leftOff.name}】vs ${coupChallenge.defenderFactionName}【${rightOff.name}】— 胜者执掌此城！`,
+      `🎮 操作说明：A/D 移动，W 跳跃，S 格挡，J 轻拳，K 重脚，L 波动气功，U 升龙奥义（或点击下方招式键）。`,
+    ]);
+  }, [coupChallenge, officers, myFactionOfficers, seasonId]);
+
+  // Report coup outcome back once a winner (or draw) is decided
+  useEffect(() => {
+    if (!coupChallenge || !winnerSide) return;
+    if (reportedCoupNonceRef.current === coupChallenge.nonce) return;
+    reportedCoupNonceRef.current = coupChallenge.nonce;
+
+    const leftName = leftDuelist?.officer.name ?? coupChallenge.attackerOfficerId;
+    const rightName = rightDuelist?.officer.name ?? coupChallenge.defenderOfficerId;
+    const winnerOfficerName = winnerSide === 'left' ? leftName : rightName;
+    const loserOfficerName = winnerSide === 'left' ? rightName : leftName;
+
+    onCoupDuelCompleteRef.current?.(
+      resolveCoupOutcome(coupChallenge, winnerSide, winnerOfficerName, loserOfficerName),
+    );
+  }, [coupChallenge, winnerSide, leftDuelist, rightDuelist]);
 
   // Pre-configured Epic Duel presets
   const MATCHUPS = [
@@ -1663,6 +1792,26 @@ export default function DuelArena({
         </div>
       </div>
 
+      {coupChallenge && (
+        <div
+          id="coup-duel-stakes-banner"
+          className="px-4 py-2.5 rounded-xl bg-rose-950/50 border border-rose-500/40 flex flex-wrap items-center justify-between gap-2 text-xs font-serif text-rose-100"
+        >
+          <span>
+            ⚔️ 政变夺城决斗 · 争夺【<strong>{coupChallenge.cityName}</strong>】 ·{' '}
+            <strong className="text-emerald-300">{coupChallenge.attackerFactionName}</strong> 挑战{' '}
+            <strong className="text-amber-300">{coupChallenge.defenderFactionName}</strong>（胜者获得城池）
+          </span>
+          {winnerSide && (
+            <span className="font-mono font-bold text-amber-300">
+              {winnerSide === 'left'
+                ? `胜者归属：${coupChallenge.attackerFactionName}`
+                : `守方胜出：${coupChallenge.defenderFactionName} 守住城池`}
+            </span>
+          )}
+        </div>
+      )}
+
       {!isFighting ? (
         /* ================= SELECTION PHASE VIEW ================= */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fadeIn">
@@ -1985,23 +2134,36 @@ export default function DuelArena({
                 )}
               </div>
 
-              {/* Reset/Rematch Button when finished */}
+              {/* Reset/Rematch or Return Button when finished */}
               {winnerSide && (
                 <div className="flex flex-col gap-2 w-full">
-                  <button
-                    onClick={resetDuel}
-                    className="w-full bg-slate-900 hover:bg-slate-850 text-slate-200 py-2.5 rounded-xl text-xs font-serif border border-slate-800 transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <RotateCcw size={12} />
-                    重整旗鼓 (重置)
-                  </button>
-                  <button
-                    onClick={startDuel}
-                    className="w-full bg-amber-500 text-slate-950 font-bold py-2.5 rounded-xl text-xs font-serif transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Play size={12} fill="currentColor" />
-                    再战一回合！
-                  </button>
+                  {coupChallenge && onClose ? (
+                    <button
+                      id="btn-coup-return-map"
+                      type="button"
+                      onClick={onClose}
+                      className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs font-serif transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      返回沙盘查看城池归属
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={resetDuel}
+                        className="w-full bg-slate-900 hover:bg-slate-850 text-slate-200 py-2.5 rounded-xl text-xs font-serif border border-slate-800 transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <RotateCcw size={12} />
+                        重整旗鼓 (重置)
+                      </button>
+                      <button
+                        onClick={startDuel}
+                        className="w-full bg-amber-500 text-slate-950 font-bold py-2.5 rounded-xl text-xs font-serif transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Play size={12} fill="currentColor" />
+                        再战一回合！
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -2480,9 +2642,13 @@ export default function DuelArena({
                   🏆 三军见证！街头武道演武尘埃落定 🏆
                 </span>
                 <span className="text-xs text-slate-300 block mt-1.5 leading-relaxed max-w-lg mx-auto font-serif">
-                  {winnerSide === 'draw'
-                    ? '双方拳脚齐飞难分高下，战至钟响平局收场！'
-                    : `${winnerSide === 'left' ? '1P 大捷！' : '2P 大捷！'}名将【${winnerSide === 'left' ? leftDuelist!.officer.name : rightDuelist!.officer.name}】凌厉连段击倒对手，赢得武道单挑大胜！`}
+                  {coupChallenge
+                    ? winnerSide === 'left'
+                      ? `政变大捷！1P【${leftDuelist!.officer.name}】击倒【${rightDuelist!.officer.name}】，【${coupChallenge.cityName}】即日起归入 ${coupChallenge.attackerFactionName}！`
+                      : `守城平乱！【${rightDuelist!.officer.name}】击退政变攻势，【${coupChallenge.cityName}】仍由 ${coupChallenge.defenderFactionName} 掌控！`
+                    : winnerSide === 'draw'
+                      ? '双方拳脚齐飞难分高下，战至钟响平局收场！'
+                      : `${winnerSide === 'left' ? '1P 大捷！' : '2P 大捷！'}名将【${winnerSide === 'left' ? leftDuelist!.officer.name : rightDuelist!.officer.name}】凌厉连段击倒对手，赢得武道单挑大胜！`}
                 </span>
               </div>
             ) : (

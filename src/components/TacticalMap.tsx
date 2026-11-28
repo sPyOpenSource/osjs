@@ -25,6 +25,12 @@ import { executeTrade } from '../utils/trade';
 import { createCountryDebts, changeCountryDebt } from '../utils/debt';
 import { DiplomacyState, hasTradePact } from '../utils/diplomacy';
 import {
+  applyClaimCity,
+  applyCoupCity,
+  applyDissolveFaction,
+  getCityControllerActionState,
+} from '../utils/cityPolitics';
+import {
   applySeasonalOfficerModifiers,
   getSeasonFromMonth,
   getSeasonalTacticalPreview,
@@ -622,6 +628,7 @@ interface TacticalMapProps {
   isAutoTime?: boolean;
   playerFactions?: string[];
   playerFactionId?: string;
+  protagonistId?: string;
   rpgCharacters?: Record<string, RpgCharacter>;
   onRpgCharactersChange?: React.Dispatch<React.SetStateAction<Record<string, RpgCharacter>>>;
   onBattleXp?: (amount: number) => void;
@@ -656,6 +663,7 @@ export default function TacticalMap({
   isAutoTime = true,
   playerFactions: initialPlayerFactions,
   playerFactionId,
+  protagonistId,
   rpgCharacters,
   onRpgCharactersChange,
   onBattleXp,
@@ -743,6 +751,8 @@ export default function TacticalMap({
       setSelectedFactionFilter('all');
     }
   }, [selectedFactionFilter, activeMapFactions, neutralMapCityCount]);
+  const [dissolvedFactionIds, setDissolvedFactionIds] = useState<string[]>([]);
+  const [politicsNotice, setPoliticsNotice] = useState<{ kind: 'claim' | 'coup' | 'dissolve'; text: string } | null>(null);
 
   // City View / Interior Facility states
   const [selectedFacility, setSelectedFacility] = useState<'palace' | 'market' | 'tavern' | 'barracks' | 'gate'>('palace');
@@ -860,6 +870,8 @@ export default function TacticalMap({
     setDisasterState(createInitialDisasterState());
     setMigrationState(createInitialMigrationState());
     setWorldState(createWorldState(FACTIONS));
+    setDissolvedFactionIds([]);
+    setPoliticsNotice(null);
     lastDisasterTickKeyRef.current = '';
     lastWorldTickKeyRef.current = '';
     lastMigrationTickKeyRef.current = '';
@@ -1086,8 +1098,41 @@ export default function TacticalMap({
   // Stationed generals at currently selected city (based on faction ownership)
   const stationedOfficers = officers.filter(o => o.factionId === selectedCityControllerId);
 
-  // Expedition Origin cities restricted to the player's own faction
-  const ownFactionId = playerFactionId ?? initialPlayerFactions?.[0];
+  // Expedition Origin cities restricted to the player's own active faction
+  const rawOwnFactionId = playerFactionId ?? initialPlayerFactions?.[0];
+  const ownFactionId =
+    rawOwnFactionId && !dissolvedFactionIds.includes(rawOwnFactionId)
+      ? rawOwnFactionId
+      : rawOwnFactionId && dissolvedFactionIds.includes(rawOwnFactionId)
+        ? 'ronin'
+        : rawOwnFactionId;
+  const cityActionState = useMemo(
+    () =>
+      getCityControllerActionState({
+        cityId: selectedCity.id,
+        cityOwnership,
+        cities: CITIES,
+        factions: FACTIONS,
+        officers,
+        protagonistId,
+        playerFactionId,
+        playerFactions: initialPlayerFactions,
+        dissolvedFactionIds,
+      }),
+    [
+      selectedCity.id,
+      cityOwnership,
+      officers,
+      protagonistId,
+      playerFactionId,
+      initialPlayerFactions,
+      dissolvedFactionIds,
+    ],
+  );
+  const bannerFaction =
+    FACTIONS.find(f => f.id === cityActionState.bannerFactionId) || FACTIONS[0];
+  const activePlayerFaction =
+    FACTIONS.find(f => f.id === cityActionState.activePlayerFactionId) || FACTIONS[FACTIONS.length - 1];
   const ownCities = useMemo(
     () =>
       ownFactionId
@@ -1332,12 +1377,73 @@ export default function TacticalMap({
     return () => clearTimeout(timer);
   }, [rivalsOn, controlledFactions, cityOwnership, isExpeditionRunning, expeditionStep, officers, cityStats]);
 
-  // Handle faction revision by user
+  // Handle faction revision by user (used by directory table picker)
   const handleModifyController = (cityId: string, factionId: string) => {
     setCityOwnership(prev => ({
       ...prev,
       [cityId]: factionId
     }));
+  };
+
+  // Claim an unowned (ronin) city for the player's banner faction
+  const handleClaimCity = (cityId: string) => {
+    const city = CITIES.find(c => c.id === cityId);
+    const res = applyClaimCity(cityOwnership, cityId, cityActionState.bannerFactionId);
+    if (!res.ok) return;
+    setCityOwnership(res.nextOwnership);
+    setDissolvedFactionIds(prev => prev.filter(id => id !== cityActionState.bannerFactionId));
+    const msg = `已宣称占领无主之地【${city?.name ?? cityId}】，归入 ${bannerFaction.name}！`;
+    setPoliticsNotice({ kind: 'claim', text: msg });
+    setInteriorLogs(prev => [`【宣称占领】${msg}`, ...prev].slice(0, 40));
+  };
+
+  // Stage a coup in another faction's city to seize control
+  const handleCoupCity = (cityId: string) => {
+    const city = CITIES.find(c => c.id === cityId);
+    const res = applyCoupCity(
+      cityOwnership,
+      cityId,
+      cityActionState.activePlayerFactionId,
+      cityActionState.bannerFactionId,
+    );
+    if (!res.ok) return;
+    const prevFactionName =
+      FACTIONS.find(f => f.id === res.previousControllerId)?.name ?? res.previousControllerId;
+    setCityOwnership(res.nextOwnership);
+    setDissolvedFactionIds(prev => prev.filter(id => id !== cityActionState.bannerFactionId));
+    setCityStats(prev => {
+      const cur = prev[cityId];
+      if (!cur) return prev;
+      return {
+        ...prev,
+        [cityId]: {
+          ...cur,
+          defense: Math.max(20, cur.defense - 8),
+          prosperity: Math.max(25, cur.prosperity - 5),
+        },
+      };
+    });
+    const msg = `已在【${city?.name ?? cityId}】发动政变，推翻 ${prevFactionName} 并改悬 ${bannerFaction.name} 旗号！`;
+    setPoliticsNotice({ kind: 'coup', text: msg });
+    setInteriorLogs(prev => [`【策反政变】${msg}`, ...prev].slice(0, 40));
+  };
+
+  // Dissolve the player's own faction (available only to the reigning faction leader)
+  const handleDissolveOwnFaction = () => {
+    if (!cityActionState.canDissolve) return;
+    const targetFactionId = cityActionState.activePlayerFactionId;
+    const res = applyDissolveFaction(cityOwnership, CITIES, targetFactionId);
+    if (!res.ok) return;
+    setCityOwnership(res.nextOwnership);
+    setDissolvedFactionIds(prev =>
+      prev.includes(targetFactionId) ? prev : [...prev, targetFactionId],
+    );
+    const protagonistName =
+      (protagonistId && officers.find(o => o.id === protagonistId)?.name) ||
+      activePlayerFaction.ruler;
+    const msg = `君主 ${protagonistName} 已解散 ${activePlayerFaction.name}，旗下 ${res.releasedCityIds.length} 座城池悉数归于无主（在野）。`;
+    setPoliticsNotice({ kind: 'dissolve', text: msg });
+    setInteriorLogs(prev => [`【解散势力】${msg}`, ...prev].slice(0, 40));
   };
 
   const handleBattleComplete = (winner: 'attacker' | 'defender', goldReward: number, epicRelic?: string, conqueredCityId?: string) => {
@@ -1988,6 +2094,8 @@ export default function TacticalMap({
     setZoomOrigin({ x: 50, y: 50 });
     setWorldState(createWorldState(FACTIONS));
     setMigrationState(createInitialMigrationState());
+    setDissolvedFactionIds([]);
+    setPoliticsNotice(null);
     lastWorldTickKeyRef.current = '';
     lastMigrationTickKeyRef.current = '';
   };
@@ -3249,21 +3357,78 @@ export default function TacticalMap({
                   </h3>
                 </div>
 
-                {/* Mini selector to change control manually */}
-                <div className="text-right">
-                  <label className="text-[9px] font-mono text-slate-500 block mb-1">势力</label>
-                  <select
-                    id="select-city-controller"
-                    value={selectedCityControllerId}
-                    onChange={(e) => handleModifyController(selectedCity.id, e.target.value)}
-                    className="bg-slate-900 border border-slate-800 text-[10px] text-slate-300 rounded font-serif px-2 py-1 focus:outline-none focus:border-slate-700"
-                  >
-                    {FACTIONS.map(f => (
-                      <option key={f.id} value={f.id}>{f.name}</option>
-                    ))}
-                  </select>
+                {/* Contextual city political action selector: Coup (enemy), Claim (unowned), Dissolve (leader) */}
+                <div className="text-right space-y-1.5">
+                  <label htmlFor="select-city-controller" className="text-[9px] font-mono text-slate-500 block">
+                    势力政略
+                  </label>
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {cityActionState.canCoup && (
+                      <button
+                        id="btn-city-coup"
+                        type="button"
+                        onClick={() => handleCoupCity(selectedCity.id)}
+                        className="px-2 py-0.5 text-[10px] font-mono font-bold rounded border border-rose-500/40 bg-rose-950/70 text-rose-200 hover:bg-rose-900/80 transition-colors cursor-pointer"
+                        title={`发动政变夺取 ${selectedCity.name} 归入 ${bannerFaction.name}`}
+                      >
+                        政变
+                      </button>
+                    )}
+                    {cityActionState.canClaim && (
+                      <button
+                        id="btn-city-claim"
+                        type="button"
+                        onClick={() => handleClaimCity(selectedCity.id)}
+                        className="px-2 py-0.5 text-[10px] font-mono font-bold rounded border border-emerald-500/40 bg-emerald-950/70 text-emerald-200 hover:bg-emerald-900/80 transition-colors cursor-pointer"
+                        title={`宣称占领无主之城 ${selectedCity.name} 归入 ${bannerFaction.name}`}
+                      >
+                        占领
+                      </button>
+                    )}
+                    {cityActionState.canDissolve && (
+                      <button
+                        id="btn-city-dissolve-faction"
+                        type="button"
+                        onClick={handleDissolveOwnFaction}
+                        className="px-2 py-0.5 text-[10px] font-mono font-bold rounded border border-amber-500/40 bg-amber-950/70 text-amber-200 hover:bg-amber-900/80 transition-colors cursor-pointer"
+                        title={`作为君主解散 ${activePlayerFaction.name}，释放旗下全部城池为无主`}
+                      >
+                        解散势力
+                      </button>
+                    )}
+                    {cityActionState.isOwnCity && !cityActionState.isLeader && (
+                      <span
+                        id="city-controller-nonleader-note"
+                        className="text-[9px] font-mono text-slate-500"
+                      >
+                        仅君主可解散势力
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
+              {politicsNotice && (
+                <div
+                  id="city-politics-notice"
+                  className={`flex items-center justify-between gap-2 text-[10.5px] font-sans px-2.5 py-1.5 rounded-lg border ${
+                    politicsNotice.kind === 'claim'
+                      ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-200'
+                      : politicsNotice.kind === 'coup'
+                        ? 'bg-rose-950/40 border-rose-500/30 text-rose-200'
+                        : 'bg-amber-950/40 border-amber-500/30 text-amber-200'
+                  }`}
+                >
+                  <span>{politicsNotice.text}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPoliticsNotice(null)}
+                    className="text-[10px] opacity-70 hover:opacity-100 cursor-pointer shrink-0"
+                    aria-label="关闭提示"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
               {/* Selected city demographic & stockpile summary */}
               {cityStats[selectedCity.id] && (

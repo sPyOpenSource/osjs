@@ -1919,6 +1919,7 @@ export default function App() {
                   isAutoTime={isAutoTime}
                   playerFactions={playerFactions}
                   playerFactionId={myFactionId}
+                  protagonistId={protagonistId}
                   rpgCharacters={rpgCharacters}
                   onRpgCharactersChange={setRpgCharacters}
                   onBattleXp={grantBattleXp}

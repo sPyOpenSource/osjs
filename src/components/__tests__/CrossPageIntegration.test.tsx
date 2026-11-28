@@ -593,6 +593,80 @@ describe('TacticalMap Expedition Origin & Nearby Target City Filters', () => {
     assert.ok(!mapHtml.includes('id="btn-map-faction-america"'), 'expected zero-city america omitted in 208 AD');
     assert.ok(!mapHtml.includes('id="btn-map-faction-qing"'), 'expected zero-city qing omitted in 208 AD');
   });
+
+  test('renders contextual Coup, Claim, and leader-only Dissolve controls on #select-city-controller', () => {
+    const chibiScenario = SCENARIOS.find(s => s.id === 'chibi') ?? SCENARIOS[1];
+
+    // 1. Enemy city (Luoyang -> wei) with non-leader protagonist (guanyu -> shu): offers Coup only
+    const enemyHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        protagonistId="guanyu"
+        currentCityId="洛阳"
+        soundEnabled={false}
+        requestedMapTab={{ tab: 'svg-map', nonce: 1 }}
+      />,
+    );
+    const enemySelect = enemyHtml.match(/<select[^>]*id="select-city-controller"[\s\S]*?<\/select>/)?.[0] ?? '';
+    assert.ok(enemySelect.includes('__action_coup__'), 'expected Coup option for enemy-held city');
+    assert.ok(!enemySelect.includes('__action_claim__'), 'did not expect Claim option on enemy-held city');
+    assert.ok(!enemySelect.includes('__action_dissolve__'), 'did not expect Dissolve option for non-leader');
+    assert.ok(enemyHtml.includes('id="btn-city-coup"'), 'expected #btn-city-coup button');
+
+    // 2. Unowned city (Chengdu -> ronin in 208 AD) with non-leader protagonist: offers Claim only
+    const unownedHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        protagonistId="guanyu"
+        currentCityId="成都"
+        soundEnabled={false}
+        requestedMapTab={{ tab: 'svg-map', nonce: 1 }}
+      />,
+    );
+    const unownedSelect = unownedHtml.match(/<select[^>]*id="select-city-controller"[\s\S]*?<\/select>/)?.[0] ?? '';
+    assert.ok(unownedSelect.includes('__action_claim__'), 'expected Claim option for unowned city');
+    assert.ok(!unownedSelect.includes('__action_coup__'), 'did not expect Coup option for unowned city');
+    assert.ok(unownedHtml.includes('id="btn-city-claim"'), 'expected #btn-city-claim button');
+
+    // 3. Own city (Jingzhou -> shu) with leader protagonist (liubei): offers Dissolve Faction
+    const leaderOwnHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        protagonistId="liubei"
+        currentCityId="荆州"
+        soundEnabled={false}
+        requestedMapTab={{ tab: 'svg-map', nonce: 1 }}
+      />,
+    );
+    const leaderSelect = leaderOwnHtml.match(/<select[^>]*id="select-city-controller"[\s\S]*?<\/select>/)?.[0] ?? '';
+    assert.ok(leaderSelect.includes('__action_dissolve__'), 'expected Dissolve option for faction leader');
+    assert.ok(!leaderSelect.includes('__action_coup__'), 'did not expect Coup on own city');
+    assert.ok(!leaderSelect.includes('__action_claim__'), 'did not expect Claim on own city');
+    assert.ok(leaderOwnHtml.includes('id="btn-city-dissolve-faction"'), 'expected #btn-city-dissolve-faction button');
+
+    // 4. Own city with non-leader protagonist (guanyu): cannot dissolve faction
+    const nonLeaderOwnHtml = renderToStaticMarkup(
+      <TacticalMap
+        selectedScenario={chibiScenario}
+        officers={officers}
+        playerFactionId="shu"
+        protagonistId="guanyu"
+        currentCityId="荆州"
+        soundEnabled={false}
+        requestedMapTab={{ tab: 'svg-map', nonce: 1 }}
+      />,
+    );
+    const nonLeaderSelect = nonLeaderOwnHtml.match(/<select[^>]*id="select-city-controller"[\s\S]*?<\/select>/)?.[0] ?? '';
+    assert.ok(!nonLeaderSelect.includes('__action_dissolve__'), 'subordinate must not get Dissolve option');
+    assert.ok(!nonLeaderOwnHtml.includes('id="btn-city-dissolve-faction"'), 'subordinate must not see Dissolve button');
+    assert.ok(nonLeaderOwnHtml.includes('id="city-controller-nonleader-note"'), 'expected non-leader note on own city');
+  });
 });
 
 describe('RelationshipTree Root Officer Faction Filter', () => {
